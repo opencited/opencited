@@ -1,25 +1,25 @@
 {
-  "name": "web",
-  "version": "0.1.0",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start",
-    "check-types": "next typegen && tsc --noEmit"
-  },
-  "dependencies": {
-    "@opencited/ui": "*",
-    "next": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:"
-  },
-  "devDependencies": {
-    "@opencited/typescript-config": "*",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "typescript": "catalog:"
-  }
+	"name": "web",
+	"version": "0.1.0",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "next dev --port 3000",
+		"build": "next build",
+		"start": "next start",
+		"tsc": "next typegen && tsc --noEmit"
+	},
+	"dependencies": {
+		"@opencited/ui": "*",
+		"next": "catalog:",
+		"react": "catalog:",
+		"react-dom": "catalog:"
+	},
+	"devDependencies": {
+		"@opencited/typescript-config": "*",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"typescript": "catalog:"
+	}
 }

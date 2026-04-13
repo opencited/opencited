@@ -1,23 +1,23 @@
 {
-  "name": "@opencited/ui",
-  "version": "0.0.0",
-  "private": true,
-  "exports": {
-    "./*": "./src/*.tsx"
-  },
-  "scripts": {
-    "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit"
-  },
-  "devDependencies": {
-    "@opencited/typescript-config": "*",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "typescript": "catalog:"
-  },
-  "dependencies": {
-    "react": "catalog:",
-    "react-dom": "catalog:"
-  }
+	"name": "@opencited/ui",
+	"version": "0.0.0",
+	"private": true,
+	"exports": {
+		"./*": "./src/*.tsx"
+	},
+	"scripts": {
+		"generate:component": "turbo gen react-component",
+		"tsc": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@opencited/typescript-config": "*",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"react": "catalog:",
+		"react-dom": "catalog:"
+	}
 }
