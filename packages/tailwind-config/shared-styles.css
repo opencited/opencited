@@ -2,6 +2,7 @@
 
 @theme {
 	--color-background: hsl(0 0% 100%);
+	--color-background-subtle: hsl(220 14% 96%);
 	--color-foreground: hsl(240 10% 3.9%);
 	--color-card: hsl(0 0% 100%);
 	--color-card-foreground: hsl(240 10% 3.9%);
@@ -20,5 +21,18 @@
 	--color-border: hsl(240 5.9% 90%);
 	--color-input: hsl(240 5.9% 90%);
 	--color-ring: hsl(240 5.9% 10%);
+	--color-emphasis: hsl(220 13% 91%);
+	--color-emphasis-foreground: hsl(222 56% 12%);
+	--color-sidebar: hsl(0 0% 95.9%);
+	--color-sidebar-background: hsl(0 0% 95.9%);
+	--color-sidebar-foreground: hsl(240 5.3% 26.1%);
+	--color-sidebar-primary: hsl(240 5.9% 10%);
+	--color-sidebar-primary-foreground: hsl(0 0% 98%);
+	--color-sidebar-accent: hsl(220 14% 96%);
+	--color-sidebar-accent-foreground: hsl(240 5.9% 10%);
+	--color-sidebar-border: hsl(220 13% 91%);
+	--color-sidebar-ring: hsl(217.2 91.2% 59.8%);
+	--color-sidebar-emphasis: hsl(220 13% 91%);
+	--color-sidebar-emphasis-foreground: hsl(222 56% 12%);
 	--radius: 0.5rem;
 }

@@ -12,9 +12,12 @@
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
 		"@opencited/ui": "*",
+		"clsx": "^2.1.1",
+		"lucide-react": "^1.8.0",
 		"next": "catalog:",
 		"react": "catalog:",
-		"react-dom": "catalog:"
+		"react-dom": "catalog:",
+		"tailwind-merge": "^3.5.0"
 	},
 	"devDependencies": {
 		"@opencited/tailwind-config": "workspace:*",

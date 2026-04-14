@@ -1,6 +1,14 @@
 import { Waitlist } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 
-export default function Home() {
+export default async function Home() {
+	const { userId, orgId } = await auth();
+
+	if (userId && orgId) {
+		redirect("/dashboard");
+	}
+
 	return (
 		<div className="min-h-screen flex flex-col">
 			<main className="flex-1 flex items-center justify-center px-6">
