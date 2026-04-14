@@ -8,12 +8,14 @@
 		"lint-ci": "biome lint .",
 		"tsc": "turbo run tsc",
 		"format": "biome format --write .",
-		"prepare": "husky"
+		"prepare": "husky",
+		"commit": "git add . && czg"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",
 		"dotenv-cli": "catalog:",
 		"husky": "9.1.7",
+		"shadcn": "catalog:",
 		"turbo": "2.9.6",
 		"typescript": "catalog:"
 	},
@@ -40,7 +42,9 @@
 			"@types/react-dom": "19.2.3",
 			"typescript": "6.0.2",
 			"@biomejs/biome": "2.4.11",
-			"dotenv-cli": "11.0.0"
+			"dotenv-cli": "11.0.0",
+			"shadcn": "4.2.0",
+			"@clerk/nextjs": "7.1.0"
 		}
 	},
 	"config": {

@@ -10,7 +10,7 @@
 		"tsc": "next typegen && tsc --noEmit"
 	},
 	"dependencies": {
-		"@clerk/nextjs": "^7.1.0",
+		"@clerk/nextjs": "catalog:",
 		"@opencited/ui": "*",
 		"next": "catalog:",
 		"react": "catalog:",
