@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "@opencited/tailwind-config";
 
 @theme {
 	--color-background: hsl(0 0% 100%);
@@ -22,9 +21,4 @@
 	--color-input: hsl(240 5.9% 90%);
 	--color-ring: hsl(240 5.9% 10%);
 	--radius: 0.5rem;
-}
-
-body {
-	background-color: var(--color-background);
-	color: var(--color-foreground);
 }

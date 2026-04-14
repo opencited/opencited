@@ -141,6 +141,11 @@
 			"sourceType": "github",
 			"computedHash": "8edad33758f2461f51afdb51741bfcc4cc57d84ea42e2751a84be2c6a2d48f69"
 		},
+		"turborepo": {
+			"source": "vercel/turborepo",
+			"sourceType": "github",
+			"computedHash": "e9c923a56fb6f16c22c438b37ee9db2a520588b439bfffb85c2ee025e992028f"
+		},
 		"typeset": {
 			"source": "pbakaus/impeccable",
 			"sourceType": "github",

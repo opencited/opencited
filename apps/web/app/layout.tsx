@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import localFont from "next/font/local";
+import "@opencited/ui/styles.css";
 import "./globals.css";
 import { AuthUI } from "./components/auth-ui";
 

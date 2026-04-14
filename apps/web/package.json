@@ -17,10 +17,15 @@
 		"react-dom": "catalog:"
 	},
 	"devDependencies": {
+		"@opencited/tailwind-config": "workspace:*",
 		"@opencited/typescript-config": "*",
+		"@tailwindcss/postcss": "catalog:",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
+		"autoprefixer": "catalog:",
+		"postcss": "catalog:",
+		"tailwindcss": "catalog:",
 		"typescript": "catalog:"
 	}
 }

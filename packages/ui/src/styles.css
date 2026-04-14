@@ -1,0 +1,4 @@
+/* Component-level styles for the UI package */
+@import "@opencited/tailwind-config";
+
+@source "../src";

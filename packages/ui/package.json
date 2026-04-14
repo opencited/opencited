@@ -2,21 +2,45 @@
 	"name": "@opencited/ui",
 	"version": "0.0.0",
 	"private": true,
+	"type": "module",
+	"sideEffects": [
+		"**/*.css"
+	],
 	"exports": {
-		"./*": "./src/*.tsx"
+		".": "./dist/index.js",
+		"./styles.css": "./dist/index.css",
+		"./*": "./dist/*.js"
 	},
+	"main": "./src/index.tsx",
+	"types": "./src/index.tsx",
 	"scripts": {
+		"build:styles": "tailwindcss -i ./src/styles.css -o ./dist/index.css",
+		"build:components": "tsc",
+		"dev:styles": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
+		"dev:components": "tsc --watch",
 		"generate:component": "turbo gen react-component",
 		"tsc": "tsc --noEmit"
 	},
 	"devDependencies": {
+		"@opencited/tailwind-config": "workspace:*",
 		"@opencited/typescript-config": "*",
+		"@tailwindcss/cli": "catalog:",
+		"@tailwindcss/postcss": "catalog:",
 		"@types/node": "catalog:",
 		"@types/react": "catalog:",
 		"@types/react-dom": "catalog:",
+		"autoprefixer": "catalog:",
+		"class-variance-authority": "catalog:",
+		"clsx": "catalog:",
+		"postcss": "catalog:",
+		"tailwind-merge": "catalog:",
+		"tailwindcss": "catalog:",
+		"tailwindcss-animate": "catalog:",
 		"typescript": "catalog:"
 	},
 	"dependencies": {
+		"@radix-ui/react-label": "catalog:",
+		"@radix-ui/react-slot": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:"
 	}
