@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import localFont from "next/font/local";
 import "./globals.css";
+import { AuthUI } from "./components/auth-ui";
 
 const geistSans = localFont({
 	src: "./fonts/GeistVF.woff",
@@ -22,10 +24,13 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en">
-			<body className={`${geistSans.variable} ${geistMono.variable}`}>
-				{children}
-			</body>
-		</html>
+		<ClerkProvider>
+			<html lang="en">
+				<body className={`${geistSans.variable} ${geistMono.variable}`}>
+					<AuthUI />
+					{children}
+				</body>
+			</html>
+		</ClerkProvider>
 	);
 }

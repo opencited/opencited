@@ -49,3 +49,16 @@ Runs on every `git commit` via Husky. The `prepare` script in root `package.json
 ## Environment files
 
 `.env`, `.env.local`, `.env.development.local`, `.env.test.local`, `.env.production.local` are gitignored. The `lint` script loads `.env` via `dotenv-cli`.
+
+## Clerk Authentication
+
+`apps/web` uses Clerk for auth with Next.js App Router:
+
+| File | Purpose |
+|------|---------|
+| `apps/web/proxy.ts` | `clerkMiddleware()` — protects routes |
+| `apps/web/app/components/auth-ui.tsx` | `<Show>`, `<SignInButton>`, `<SignUpButton>`, `<UserButton>` |
+| `apps/web/app/layout.tsx` | `<ClerkProvider>` wraps the app |
+| `.env.local` | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` |
+
+Keys are declared in `turbo.json` `globalEnv` so they are available during builds.
