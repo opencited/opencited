@@ -1,7 +1,9 @@
 {
 	"$schema": "https://turborepo.dev/schema.json",
 	"ui": "stream",
-	"globalDependencies": [".env*"],
+	"globalDependencies": [
+		".env*"
+	],
 	"globalEnv": [
 		"NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
 		"CLERK_SECRET_KEY",
@@ -9,16 +11,30 @@
 	],
 	"tasks": {
 		"build": {
-			"inputs": ["$TURBO_DEFAULT$", ".env*"],
-			"outputs": [".next/**", "!.next/cache/**"]
+			"inputs": [
+				"$TURBO_DEFAULT$",
+				".env*"
+			],
+			"outputs": [
+				".next/**",
+				"!.next/cache/**"
+			]
 		},
 		"lint": {
-			"dependsOn": ["^lint"]
+			"dependsOn": [
+				"^lint"
+			]
 		},
 		"tsc": {
-			"dependsOn": ["^tsc"]
+			"dependsOn": [
+				"^tsc"
+			]
 		},
 		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"dev:turbo": {
 			"cache": false,
 			"persistent": true
 		}

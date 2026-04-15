@@ -8,7 +8,7 @@ export default function DashboardPage() {
 				Welcome to your dashboard. This page is under construction.
 			</div>
 			<div className="mt-4">
-				<Link href="/trpc-demo" className="text-primary hover:underline">
+				<Link href="/app/trpc-demo" className="text-primary hover:underline">
 					View tRPC Demo
 				</Link>
 			</div>

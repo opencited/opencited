@@ -23,17 +23,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
-
-function BrandNameLink({ className }: { className?: string }) {
-	return (
-		<Link href="/dashboard" className={className}>
-			<span>
-				<span className="text-muted-foreground">Open</span>
-				<span className="text-primary">Cited</span>
-			</span>
-		</Link>
-	);
-}
+import { BrandNameLink } from "./brand-name";
 
 export function AppSidebar() {
 	const pathname = usePathname();

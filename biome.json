@@ -20,7 +20,8 @@
 			"!**/*.js",
 			"!**/*.cjs",
 			"!**/*.ejs",
-			"!biome.json"
+			"!biome.json",
+			"!turbo.json"
 		]
 	},
 	"formatter": {

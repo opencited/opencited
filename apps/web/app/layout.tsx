@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import localFont from "next/font/local";
 import "@opencited/ui/styles.css";
 import "./globals.css";
-import { TRPCReactProvider } from "./_trpc/client";
 
 const geistSans = localFont({
 	src: "./fonts/GeistVF.woff",
@@ -15,7 +13,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-	title: "OpenCide — AEO Analysis & Optimization",
+	title: "OpenCited — AEO Analysis & Optimization",
 	description:
 		"Open source tool to analyze and optimize your website's Answer Engine Optimization",
 };
@@ -26,12 +24,10 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<ClerkProvider>
-			<html lang="en">
-				<body className={`${geistSans.variable} ${geistMono.variable}`}>
-					<TRPCReactProvider>{children}</TRPCReactProvider>
-				</body>
-			</html>
-		</ClerkProvider>
+		<html lang="en">
+			<body className={`${geistSans.variable} ${geistMono.variable}`}>
+				{children}
+			</body>
+		</html>
 	);
 }

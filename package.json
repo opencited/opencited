@@ -4,6 +4,7 @@
 	"scripts": {
 		"build": "turbo run build",
 		"dev": "turbo run dev",
+		"dev:turbo": "turbo run dev:turbo",
 		"lint": "dotenv -e .env -- biome lint --write . --unsafe",
 		"lint-ci": "biome lint .",
 		"tsc": "turbo run tsc",

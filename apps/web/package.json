@@ -5,6 +5,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev --port 3000",
+		"dev:turbo": "next dev --port 3000 --turbopack",
 		"build": "next build",
 		"start": "next start",
 		"tsc": "next typegen && tsc --noEmit"
