@@ -41,6 +41,7 @@ Runs on every `git commit` via Husky. The `prepare` script in root `package.json
 | `apps/web` | `web` | Next.js 16 App Router |
 | `packages/ui` | `@opencited/ui` | React component library (shadcn, Tailwind v4) |
 | `packages/trpc` | `@opencited/trpc` | tRPC server & client (routers, procedures, context) |
+| `packages/db` | `@opencited/db` | Drizzle ORM + Neon Postgres (used only by tRPC) |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
 | `packages/typescript-config` | `@opencited/typescript-config` | Shared tsconfigs |
 
@@ -64,7 +65,7 @@ Turbo's `dependsOn: ["^build"]` ensures dependencies build first:
 ### tRPC package internals
 
 The tRPC package (`packages/trpc`) follows the ConvoForm structure:
-- `src/trpc.ts` — tRPC initialization, context creation, and base procedures
+- `src/trpc.ts` — tRPC initialization, context creation, and base procedures. **Exports `db` from context.**
 - `src/procedures/publicProcedure.ts` — Base public procedure
 - `src/procedures/authProtectedProcedure.ts` — Protected procedure for authenticated users
 - `src/router/root.ts` — Main app router that merges all sub-routers
@@ -75,6 +76,31 @@ The web app uses tRPC via:
 - `apps/web/app/api/trpc/[trpc]/route.ts` — Edge runtime HTTP handler
 - `apps/web/app/_trpc/client.tsx` — Client-side `TRPCProvider` + `useTRPC` hook
 - `apps/web/app/_trpc/query-client.ts` — TanStack Query client factory
+
+### DB package internals
+
+The db package (`packages/db`) provides Drizzle ORM with Neon Postgres (drizzle-orm `1.0.0-beta.21`):
+- `src/index.ts` — Exports `db` (Drizzle client with Pool from `@neondatabase/serverless`)
+- `src/schema/index.ts` — Schema barrel export
+- `src/schema/fields.ts` — Reusable fields: `id` (UUID), `createdAt`, `updatedAt`
+- `src/schema/projects.ts` — Table definition + Zod schemas (`projectSelectSchema`, `projectInsertSchema`, `projectUpdateSchema`)
+- `drizzle.config.ts` — Drizzle Kit config (schema, out, dialect)
+
+**Scripts:**
+```sh
+bun run --filter=@opencited/db generate   # Generate migrations
+bun run --filter=@opencited/db migrate    # Apply migrations
+bun run --filter=@opencited/db dev        # Push schema (dev workflow)
+```
+
+**Usage in tRPC routes:**
+```ts
+// ctx.db is available in all procedures
+const result = await ctx.db.select().from(projects);
+
+// Zod schemas for validation (exported from same file as table)
+import { projectSelectSchema, projectInsertSchema, projectUpdateSchema } from "@opencited/db";
+```
 
 ### Tailwind theme
 
@@ -94,6 +120,14 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 ## Environment files
 
 `.env*` files are gitignored. The `lint` script loads `.env` via `dotenv-cli`.
+
+| Variable | Used by | Purpose |
+|----------|---------|---------|
+| `DATABASE_URL` | `packages/db`, `turbo.json` | Neon Postgres connection string |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `apps/web` | Clerk auth |
+| `CLERK_SECRET_KEY` | `apps/web` | Clerk auth |
+
+`turborepo` `globalEnv` includes all env vars required during builds.
 
 ## Clerk Authentication
 

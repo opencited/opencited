@@ -1,0 +1,23 @@
+{
+	"name": "@opencited/db",
+	"version": "0.0.1",
+	"private": true,
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"generate": "drizzle-kit generate",
+		"migrate": "drizzle-kit migrate",
+		"dev": "drizzle-kit push"
+	},
+	"dependencies": {
+		"drizzle-orm": "catalog:",
+		"@neondatabase/serverless": "catalog:",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"drizzle-kit": "catalog:",
+		"tsx": "catalog:"
+	}
+}

@@ -16,6 +16,7 @@
 	},
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
+		"@opencited/db": "workspace:*",
 		"@trpc/server": "catalog:",
 		"@trpc/client": "catalog:",
 		"zod": "catalog:"
