@@ -1,2 +1,1 @@
-export * from "./fields";
-export * from "./projects";
+export * from "./common-fields";
