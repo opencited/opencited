@@ -18,6 +18,7 @@
 	},
 	"devDependencies": {
 		"drizzle-kit": "catalog:",
-		"tsx": "catalog:"
+		"tsx": "catalog:",
+		"@opencited/typescript-config": "*"
 	}
 }

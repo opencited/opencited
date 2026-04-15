@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageShell } from "../../../components/page-shell";
+import { PageShell } from "../../components/page-shell";
 
 export default function DashboardPage() {
 	return (
