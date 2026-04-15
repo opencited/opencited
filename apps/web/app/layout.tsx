@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import localFont from "next/font/local";
 import "@opencited/ui/styles.css";
 import "./globals.css";
+import { TRPCReactProvider } from "./_trpc/client";
 
 const geistSans = localFont({
 	src: "./fonts/GeistVF.woff",
@@ -28,7 +29,7 @@ export default function RootLayout({
 		<ClerkProvider>
 			<html lang="en">
 				<body className={`${geistSans.variable} ${geistMono.variable}`}>
-					{children}
+					<TRPCReactProvider>{children}</TRPCReactProvider>
 				</body>
 			</html>
 		</ClerkProvider>

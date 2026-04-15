@@ -40,6 +40,7 @@ Runs on every `git commit` via Husky. The `prepare` script in root `package.json
 |---|---|---|
 | `apps/web` | `web` | Next.js 16 App Router |
 | `packages/ui` | `@opencited/ui` | React component library (shadcn, Tailwind v4) |
+| `packages/trpc` | `@opencited/trpc` | tRPC server & client (routers, procedures, context) |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
 | `packages/typescript-config` | `@opencited/typescript-config` | Shared tsconfigs |
 
@@ -60,6 +61,21 @@ Turbo's `dependsOn: ["^build"]` ensures dependencies build first:
 - shadcn config in `components.json` — `style: "new-york"`, `rsc: false`, `baseColor: zinc`.
 - Adding a component: `bun run --filter=@opencited/ui generate:component`.
 
+### tRPC package internals
+
+The tRPC package (`packages/trpc`) follows the ConvoForm structure:
+- `src/trpc.ts` — tRPC initialization, context creation, and base procedures
+- `src/procedures/publicProcedure.ts` — Base public procedure
+- `src/procedures/authProtectedProcedure.ts` — Protected procedure for authenticated users
+- `src/router/root.ts` — Main app router that merges all sub-routers
+- `src/router/*.ts` — Individual routers (e.g., `user.ts`)
+- `index.ts` — Package exports
+
+The web app uses tRPC via:
+- `apps/web/app/api/trpc/[trpc]/route.ts` — Edge runtime HTTP handler
+- `apps/web/app/_trpc/client.tsx` — Client-side `TRPCProvider` + `useTRPC` hook
+- `apps/web/app/_trpc/query-client.ts` — TanStack Query client factory
+
 ### Tailwind theme
 
 `packages/tailwind-config/shared-styles.css` defines all shadcn `@theme` variables (zinc palette). Both the UI package and web app share this via `@import "@opencited/tailwind-config"`.
@@ -67,6 +83,13 @@ Turbo's `dependsOn: ["^build"]` ensures dependencies build first:
 ## Dependencies
 
 All shared versions are pinned in root `package.json` `workspaces.catalog`. Use `catalog:` in package.json files, not hardcoded versions. Workspace packages use `workspace:*`.
+
+**When adding new packages/dependencies:**
+1. Always use `catalog:` for version pinning — never hardcode versions
+2. Add the package to root `package.json` `workspaces.catalog` with the latest stable version first
+3. Then use `catalog:` in all package.json files
+4. Run `bun install` to update the lockfile
+5. Verify with `bun run tsc && bun run build`
 
 ## Environment files
 
@@ -80,7 +103,7 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 |------|---------|
 | `apps/web/proxy.ts` | `clerkMiddleware()` — protects routes |
 | `apps/web/app/components/auth-ui.tsx` | `<Show>`, `<SignInButton>`, `<SignUpButton>`, `<UserButton>` |
-| `apps/web/app/layout.tsx` | `<ClerkProvider>` wraps the app |
+| `apps/web/app/layout.tsx` | `<ClerkProvider>` and `<TRPCReactProvider>` wrap the app |
 | `.env.local` | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` |
 
 Keys are declared in `turbo.json` `globalEnv` so they are available during builds.

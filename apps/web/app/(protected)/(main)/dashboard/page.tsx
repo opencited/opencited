@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageShell } from "../../../components/page-shell";
 
 export default function DashboardPage() {
@@ -5,6 +6,11 @@ export default function DashboardPage() {
 		<PageShell title="Dashboard">
 			<div className="text-muted-foreground">
 				Welcome to your dashboard. This page is under construction.
+			</div>
+			<div className="mt-4">
+				<Link href="/trpc-demo" className="text-primary hover:underline">
+					View tRPC Demo
+				</Link>
 			</div>
 		</PageShell>
 	);

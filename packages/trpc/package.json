@@ -1,0 +1,26 @@
+{
+	"name": "@opencited/trpc",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "./index.ts",
+	"types": "./index.ts",
+	"exports": {
+		".": "./index.ts",
+		"./server": "./index.ts"
+	},
+	"devDependencies": {
+		"@opencited/typescript-config": "workspace:*",
+		"@clerk/nextjs": "catalog:",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@clerk/nextjs": "catalog:",
+		"@trpc/server": "catalog:",
+		"@trpc/client": "catalog:",
+		"zod": "catalog:"
+	},
+	"peerDependencies": {
+		"@tanstack/react-query": "catalog:"
+	}
+}
