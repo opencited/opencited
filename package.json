@@ -9,7 +9,8 @@
 		"tsc": "turbo run tsc",
 		"format": "biome format --write .",
 		"prepare": "husky",
-		"commit": "git add . && czg"
+		"commit": "git add . && czg",
+		"clean": "find . -name node_modules -o -name .next -o -name .turbo -o -name dist -type d -prune | xargs rm -rf"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",

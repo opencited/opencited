@@ -7,17 +7,12 @@
 		"**/*.css"
 	],
 	"exports": {
-		".": "./dist/index.js",
-		"./styles.css": "./dist/index.css",
-		"./*": "./dist/*.js"
+		".": "./src/index.tsx",
+		"./styles.css": "./src/styles.css"
 	},
 	"main": "./src/index.tsx",
 	"types": "./src/index.tsx",
 	"scripts": {
-		"build:styles": "tailwindcss -i ./src/styles.css -o ./dist/index.css",
-		"build:components": "tsc",
-		"dev:styles": "tailwindcss -i ./src/styles.css -o ./dist/index.css --watch",
-		"dev:components": "tsc --watch",
 		"generate:component": "turbo gen react-component",
 		"tsc": "tsc --noEmit"
 	},
