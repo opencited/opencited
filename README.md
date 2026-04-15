@@ -1,6 +1,10 @@
-# opencited
+# OpenCited
 
-Monorepo for opencited web application.
+OpenCited is an open-source platform for Answer Engine Optimization (AEO) — helping you analyze, track, and improve your website's visibility in AI-powered answer engines like ChatGPT, Perplexity, Google AI Overviews, Claude, Gemini, and more.
+
+Built for developers, indie hackers, and marketing teams who want to understand and act on where they appear (or don't) in AI-generated answers — without paying $200-500/month for closed-source tools.
+
+OpenCited is MIT licensed, self-hostable, and puts no limits on workspaces, domains, or users in the open-source version.
 
 ## Tech Stack
 
