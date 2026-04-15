@@ -82,9 +82,9 @@ The web app uses tRPC via:
 The db package (`packages/db`) provides Drizzle ORM with Neon Postgres (drizzle-orm `1.0.0-beta.21`):
 - `src/index.ts` — Exports `db` (Drizzle client with Pool from `@neondatabase/serverless`)
 - `src/schema/index.ts` — Schema barrel export
-- `src/schema/fields.ts` — Reusable fields: `id` (UUID), `createdAt`, `updatedAt`
-- `src/schema/projects.ts` — Table definition + Zod schemas (`projectSelectSchema`, `projectInsertSchema`, `projectUpdateSchema`)
+- `src/schema/common-fields.ts` — Reusable fields: `id` (UUID), `createdAt`, `updatedAt`
 - `drizzle.config.ts` — Drizzle Kit config (schema, out, dialect)
+- Create zod schema using `import { createSelectSchema, createInsertSchema, createUpdateSchema } from 'drizzle-orm/zod';`
 
 **Scripts:**
 ```sh

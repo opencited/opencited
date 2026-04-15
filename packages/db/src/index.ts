@@ -12,3 +12,10 @@ const pool = new Pool({ connectionString: databaseUrl });
 const db = drizzle({ client: pool, schema });
 
 export { db, schema };
+export {
+	domainProjectTable,
+	domainProjectSelectSchema,
+	domainProjectInsertSchema,
+	domainProjectUpdateSchema,
+	domainProjectCreateSchema,
+} from "./schema/domainProject";

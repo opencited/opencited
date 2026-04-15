@@ -24,6 +24,7 @@ import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { BrandNameLink } from "./brand-name";
+import { DomainDisplay } from "./domain-display";
 
 export function AppSidebar() {
 	const pathname = usePathname();
@@ -129,6 +130,9 @@ export function AppSidebar() {
 			{!isCollapsed && (
 				<SidebarFooter>
 					<SidebarMenu>
+						<SidebarMenuItem>
+							<DomainDisplay />
+						</SidebarMenuItem>
 						<SidebarMenuItem>
 							<div className="px-2 py-1 text-xs text-muted-foreground">
 								Opencited v1.0

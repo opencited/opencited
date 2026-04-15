@@ -19,6 +19,7 @@
 		"@opencited/db": "workspace:*",
 		"@trpc/server": "catalog:",
 		"@trpc/client": "catalog:",
+		"drizzle-orm": "catalog:",
 		"zod": "catalog:"
 	},
 	"peerDependencies": {

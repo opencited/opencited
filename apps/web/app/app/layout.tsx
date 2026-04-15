@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider } from "@opencited/ui";
 import { redirect } from "next/navigation";
 import { TRPCReactProvider } from "../_trpc/client";
 import { AppSidebar } from "../components/app-sidebar";
+import { trpc } from "../_trpc/server";
 
 export default async function ProtectedLayout({
 	children,
@@ -17,7 +18,13 @@ export default async function ProtectedLayout({
 	}
 
 	if (!orgId) {
-		redirect("/dashboard/create-organization");
+		redirect("/onboarding");
+	}
+
+	const domainProject = await trpc.domainProject.get();
+
+	if (!domainProject) {
+		redirect("/onboarding");
 	}
 
 	return (
