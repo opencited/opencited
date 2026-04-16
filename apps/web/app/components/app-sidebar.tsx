@@ -35,7 +35,7 @@ export function AppSidebar() {
 		() => [
 			{
 				name: "Dashboard",
-				link: "/dashboard",
+				link: "/app/dashboard",
 				isActive: pathname.includes("dashboard"),
 				icon: <LayoutDashboard className="size-4" />,
 			},
@@ -71,11 +71,13 @@ export function AppSidebar() {
 								isCollapsed ? "flex-col items-start pe-0" : "pe-2",
 							)}
 						>
-							<SidebarMenuButton>
+							<SidebarMenuButton asChild>
 								<OrganizationSwitcher
-									afterSelectOrganizationUrl="/dashboard"
+									afterSelectOrganizationUrl="/app/dashboard"
 									hidePersonal
-									afterLeaveOrganizationUrl="/organizations"
+									afterLeaveOrganizationUrl="/app"
+									afterCreateOrganizationUrl="/onboarding"
+									skipInvitationScreen
 									fallback={<Skeleton className="h-6 w-40 animate-pulse" />}
 								/>
 							</SidebarMenuButton>

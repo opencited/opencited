@@ -39,14 +39,14 @@ export function DomainForm() {
 				</label>
 				<Input
 					id="domain"
-					type="text"
+					type="url"
 					placeholder="example.com"
 					value={domain}
 					onChange={(e) => setDomain(e.target.value)}
 					required
 				/>
 				<p className="text-xs text-muted-foreground mt-1">
-					Enter your website domain (e.g., example.com)
+					Enter your website domain (e.g., https://example.com)
 				</p>
 			</div>
 			{error && <p className="text-sm text-red-500">{error}</p>}

@@ -8,7 +8,9 @@
 	"scripts": {
 		"generate": "drizzle-kit generate",
 		"migrate": "drizzle-kit migrate",
-		"dev": "drizzle-kit push"
+		"push": "drizzle-kit push",
+		"dev": "bunx drizzle-kit studio",
+		"dev:turbo": "bunx drizzle-kit studio"
 	},
 	"dependencies": {
 		"drizzle-orm": "catalog:",
