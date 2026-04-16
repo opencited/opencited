@@ -2,11 +2,11 @@ import { eq, count } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, publicProcedure } from "../trpc";
-import { domainProjectCreateSchema, domainProjectTable } from "@opencited/db";
+import { domainProjectInsertSchema, domainProjectTable } from "@opencited/db";
 
 export const domainProjectRouter = createTRPCRouter({
 	create: publicProcedure
-		.input(domainProjectCreateSchema)
+		.input(domainProjectInsertSchema)
 		.mutation(async ({ ctx, input }) => {
 			const { orgId } = await auth();
 			if (!orgId) {

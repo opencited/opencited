@@ -83,8 +83,8 @@ The db package (`packages/db`) provides Drizzle ORM with Neon Postgres (drizzle-
 - `src/index.ts` — Exports `db` (Drizzle client with Pool from `@neondatabase/serverless`)
 - `src/schema/index.ts` — Schema barrel export
 - `src/schema/common-fields.ts` — Reusable fields: `id` (UUID), `createdAt`, `updatedAt`
+- `src/schema/<feature>.ts` — One table per file. Named `<feature>Table`. Exports select, baseInsertSchema, insertSchema (extended), updateSchema. Auto-generated fields (id, createdAt, updatedAt) are omitted from insertSchema.
 - `drizzle.config.ts` — Drizzle Kit config (schema, out, dialect)
-- Create zod schema using `import { createSelectSchema, createInsertSchema, createUpdateSchema } from 'drizzle-orm/zod';`
 
 **Scripts:**
 ```sh

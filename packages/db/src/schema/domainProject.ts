@@ -1,27 +1,24 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import {
 	createSelectSchema,
 	createInsertSchema,
 	createUpdateSchema,
 } from "drizzle-orm/zod";
+import { id, createdAt, updatedAt } from "./common-fields";
 
 export const domainProjectTable = pgTable("domain_project", {
-	clerkOrganizationId: text("clerk_organization_id").primaryKey(),
+	id: id,
+	clerkOrganizationId: text("clerk_organization_id"),
 	domain: text("domain").notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true })
-		.notNull()
-		.defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true })
-		.notNull()
-		.defaultNow()
-		.$onUpdate(() => new Date()),
+	createdAt: createdAt,
+	updatedAt: updatedAt,
 });
 
 export const domainProjectSelectSchema = createSelectSchema(domainProjectTable);
-export const domainProjectInsertSchema = createInsertSchema(domainProjectTable);
-export const domainProjectUpdateSchema = createUpdateSchema(domainProjectTable);
-
-export const domainProjectCreateSchema = z.object({
+export const domainProjectBaseInsertSchema =
+	createInsertSchema(domainProjectTable);
+export const domainProjectInsertSchema = domainProjectBaseInsertSchema.extend({
 	domain: z.string().min(1),
 });
+export const domainProjectUpdateSchema = createUpdateSchema(domainProjectTable);

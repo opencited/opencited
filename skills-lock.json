@@ -155,6 +155,11 @@
 			"source": "pbakaus/impeccable",
 			"sourceType": "github",
 			"computedHash": "1cd76e560d1ba25b0bd5f7adfa2957a9f653a3ad0b031d467221154fcd1e0423"
+		},
+		"zod-v4": {
+			"source": "smithery.ai",
+			"sourceType": "well-known",
+			"computedHash": "528d1e2c0a7b078916f891181f91578b166942398f0b2d698c32cd8c0be6dc3c"
 		}
 	}
 }
