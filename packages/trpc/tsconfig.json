@@ -1,9 +1,8 @@
 {
-	"extends": "@opencited/typescript-config/react-library.json",
+	"extends": "@opencited/typescript-config/nextjs.json",
 	"compilerOptions": {
-		"module": "ESNext",
-		"moduleResolution": "Bundler",
-		"noEmit": true
+		"composite": false,
+		"moduleResolution": "bundler"
 	},
 	"include": ["src"],
 	"exclude": ["node_modules"]

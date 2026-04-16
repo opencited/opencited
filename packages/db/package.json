@@ -10,7 +10,8 @@
 		"migrate": "drizzle-kit migrate",
 		"push": "drizzle-kit push",
 		"dev": "bunx drizzle-kit studio",
-		"dev:turbo": "bunx drizzle-kit studio"
+		"dev:turbo": "bunx drizzle-kit studio",
+		"tsc": "tsc --noEmit"
 	},
 	"dependencies": {
 		"drizzle-orm": "catalog:",

@@ -27,8 +27,7 @@ export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
 	}
 	return next({
 		ctx: {
-			...ctx,
 			userId: ctx.userId,
-		},
+		} as const,
 	});
 });
