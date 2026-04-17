@@ -96,6 +96,11 @@
 			"sourceType": "github",
 			"computedHash": "a26b3dd377c4572b1c34c68f82ab9a1cb806f21c7157060327fe60e9b6d2e277"
 		},
+		"inkjs-design": {
+			"source": "akiojin/skills",
+			"sourceType": "github",
+			"computedHash": "6cea41cf9cf62f8ec857d506426524179ed8be11e897dc5cfb2290d38a079237"
+		},
 		"layout": {
 			"source": "pbakaus/impeccable",
 			"sourceType": "github",
@@ -115,11 +120,6 @@
 			"source": "vercel-labs/next-skills",
 			"sourceType": "github",
 			"computedHash": "f835d8226c28abf012cc013928e2627c8a7a046de61127ef229be1711bd1f255"
-		},
-		"opentui": {
-			"source": "msmps/opentui-skill",
-			"sourceType": "github",
-			"computedHash": "2915038bb3297e759f740f9e6bfa885ed80a4a7fe945825f5874b48db9ce0fd2"
 		},
 		"optimize": {
 			"source": "pbakaus/impeccable",

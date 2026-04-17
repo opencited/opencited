@@ -28,12 +28,19 @@ function parseChangefreq(value: unknown): Changefreq | null {
 }
 
 function parsePriority(value: unknown): string | null {
-	if (typeof value !== "string") return null;
-	const trimmed = value.trim();
-	if (!trimmed) return null;
-	const num = parseFloat(trimmed);
+	if (value == null) return null;
+	let strValue: string;
+	if (typeof value === "number") {
+		strValue = String(value);
+	} else if (typeof value === "string") {
+		strValue = value.trim();
+	} else {
+		return null;
+	}
+	if (!strValue) return null;
+	const num = parseFloat(strValue);
 	if (Number.isNaN(num) || num < 0 || num > 1) return null;
-	return trimmed;
+	return strValue;
 }
 
 interface SitemapUrl {
@@ -48,6 +55,10 @@ interface SitemapUrl {
 }
 
 interface Sitemap {
+	urlset?: {
+		url?: SitemapUrl | SitemapUrl[];
+		sitemap?: SitemapUrl | SitemapUrl[];
+	};
 	url?: SitemapUrl | SitemapUrl[];
 }
 
@@ -81,11 +92,19 @@ export async function crawlSitemap(sitemapUrl: string): Promise<CrawlResult> {
 		throw new Error("Failed to parse XML");
 	}
 
-	if (!parsed.url) {
-		throw new Error("Invalid sitemap: missing <url> elements");
+	let urlEntries: SitemapUrl[] = [];
+
+	if (parsed.url) {
+		urlEntries = Array.isArray(parsed.url) ? parsed.url : [parsed.url];
+	} else if (parsed.urlset?.url) {
+		urlEntries = Array.isArray(parsed.urlset.url)
+			? parsed.urlset.url
+			: [parsed.urlset.url];
 	}
 
-	const urlEntries = Array.isArray(parsed.url) ? parsed.url : [parsed.url];
+	if (urlEntries.length === 0) {
+		throw new Error("Invalid sitemap: missing <url> elements");
+	}
 
 	const urls: CrawledUrl[] = [];
 
