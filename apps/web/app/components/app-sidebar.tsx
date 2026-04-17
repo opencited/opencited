@@ -18,7 +18,7 @@ import {
 	useSidebar,
 } from "@opencited/ui";
 import { Skeleton } from "@opencited/ui";
-import { LayoutDashboard, PanelLeft } from "lucide-react";
+import { LayoutDashboard, PanelLeft, Database } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo } from "react";
@@ -38,6 +38,12 @@ export function AppSidebar() {
 				link: "/app/dashboard",
 				isActive: pathname.includes("dashboard"),
 				icon: <LayoutDashboard className="size-4" />,
+			},
+			{
+				name: "Sitemaps",
+				link: "/app/sitemaps",
+				isActive: pathname.includes("sitemaps"),
+				icon: <Database className="size-4" />,
 			},
 		],
 		[pathname],

@@ -4,3 +4,5 @@ export * from "./listAction";
 export * from "./deleteAction";
 export * from "./addUrlAction";
 export * from "./crawlAction";
+export * from "./previewSitemapAction";
+export * from "./listSitemapUrlsAction";

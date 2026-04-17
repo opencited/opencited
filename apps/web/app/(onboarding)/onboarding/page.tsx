@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { CreateOrganization } from "@clerk/nextjs";
-import { DomainForm } from "./_components/domain-form";
+import { OnboardingWizard } from "./_components/onboarding-wizard";
 import { trpc } from "@/app/_trpc/server";
 
 export default async function OnboardingPage() {
@@ -30,14 +30,14 @@ export default async function OnboardingPage() {
 	}
 
 	return (
-		<div className="flex flex-col items-center justify-center min-h-screen">
-			<h1 className="text-2xl font-bold mb-4">Set Up Your Project</h1>
-			<p className="text-muted-foreground mb-8">
-				Enter your website domain to get started.
-			</p>
-			<div className="w-full max-w-md">
-				<DomainForm />
+		<div className="flex flex-col items-center justify-center min-h-screen p-4">
+			<div className="w-full max-w-2xl mb-8 text-center">
+				<h1 className="text-3xl font-bold mb-2">Set Up Your Project</h1>
+				<p className="text-muted-foreground">
+					Enter your website domain to get started with sitemap analysis.
+				</p>
 			</div>
+			<OnboardingWizard />
 		</div>
 	);
 }

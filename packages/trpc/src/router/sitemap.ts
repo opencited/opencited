@@ -6,6 +6,9 @@ import {
 	deleteSitemapHandler,
 	addSitemapUrlHandler,
 	crawlSitemapHandler,
+	previewSitemapHandler,
+	listSitemapUrlsHandler,
+	getSitemapUrlCountHandler,
 } from "../actions/sitemap";
 import { createSitemapInputSchema } from "../actions/sitemap/createAction";
 import { getSitemapInputSchema } from "../actions/sitemap/getAction";
@@ -13,6 +16,8 @@ import { listSitemapInputSchema } from "../actions/sitemap/listAction";
 import { deleteSitemapInputSchema } from "../actions/sitemap/deleteAction";
 import { addSitemapUrlInputSchema } from "../actions/sitemap/addUrlAction";
 import { crawlSitemapInputSchema } from "../actions/sitemap/crawlAction";
+import { previewSitemapInputSchema } from "../actions/sitemap/previewSitemapAction";
+import { listSitemapUrlsInputSchema } from "../actions/sitemap/listSitemapUrlsAction";
 
 export const sitemapRouter = createTRPCRouter({
 	create: publicProcedure
@@ -48,4 +53,20 @@ export const sitemapRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			return crawlSitemapHandler({ input, ctx });
 		}),
+
+	preview: publicProcedure
+		.input(previewSitemapInputSchema)
+		.mutation(async ({ ctx, input }) => {
+			return previewSitemapHandler({ input, ctx });
+		}),
+
+	listUrls: publicProcedure
+		.input(listSitemapUrlsInputSchema)
+		.query(async ({ ctx, input }) => {
+			return listSitemapUrlsHandler({ input, ctx });
+		}),
+
+	getUrlCount: publicProcedure.query(async ({ ctx }) => {
+		return getSitemapUrlCountHandler({ ctx });
+	}),
 });

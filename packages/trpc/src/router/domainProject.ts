@@ -8,8 +8,10 @@ import {
 	listDomainProjectHandler,
 	updateDomainProjectHandler,
 	deleteDomainProjectHandler,
+	discoverSitemapsHandler,
 } from "../actions/domainProject";
 import { createDomainProjectInputSchema } from "../actions/domainProject/createAction";
+import { discoverSitemapsInputSchema } from "../actions/domainProject/discoverSitemapsAction";
 import { listDomainProjectInputSchema } from "../actions/domainProject/listAction";
 import { updateDomainProjectInputSchema } from "../actions/domainProject/updateAction";
 import { deleteDomainProjectInputSchema } from "../actions/domainProject/deleteAction";
@@ -91,5 +93,11 @@ export const domainProjectRouter = createTRPCRouter({
 				});
 			}
 			return deleteDomainProjectHandler({ ctx, clerkOrganizationId: orgId });
+		}),
+
+	discoverSitemaps: publicProcedure
+		.input(discoverSitemapsInputSchema)
+		.mutation(async ({ ctx, input }) => {
+			return discoverSitemapsHandler({ input, ctx });
 		}),
 });
