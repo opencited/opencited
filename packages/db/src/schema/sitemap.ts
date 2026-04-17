@@ -21,6 +21,6 @@ export const sitemapTable = pgTable("sitemap", {
 export const sitemapSelectSchema = createSelectSchema(sitemapTable);
 export const sitemapBaseInsertSchema = createInsertSchema(sitemapTable);
 export const sitemapInsertSchema = sitemapBaseInsertSchema.extend({
-	url: z.string().url(),
+	url: z.url(),
 });
 export const sitemapUpdateSchema = createUpdateSchema(sitemapTable);

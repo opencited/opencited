@@ -7,6 +7,7 @@ export {
 	mergeRouters,
 	publicProcedure,
 	protectedProcedure,
+	baseActionContextSchema,
 	t,
 } from "./src/trpc";
 export { authProtectedProcedure } from "./src/procedures/authProtectedProcedure";
