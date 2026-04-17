@@ -24,6 +24,6 @@ export const sitemapUrlTable = pgTable("sitemap_url", {
 export const sitemapUrlSelectSchema = createSelectSchema(sitemapUrlTable);
 export const sitemapUrlBaseInsertSchema = createInsertSchema(sitemapUrlTable);
 export const sitemapUrlInsertSchema = sitemapUrlBaseInsertSchema.extend({
-	url: z.url(),
+	url: z.string().url({ message: "Invalid URL format" }),
 });
 export const sitemapUrlUpdateSchema = createUpdateSchema(sitemapUrlTable);

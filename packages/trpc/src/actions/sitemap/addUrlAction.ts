@@ -1,15 +1,18 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { baseActionContextSchema } from "../../trpc";
-import {
-	sitemapUrlInsertSchema,
-	sitemapUrlSelectSchema,
-	sitemapUrlTable,
-} from "@opencited/db";
+import { sitemapUrlSelectSchema, sitemapUrlTable } from "@opencited/db";
+
+const sitemapUrlPayloadSchema = z.object({
+	url: z.url(),
+	lastmod: z.string().nullable().optional(),
+	changefreq: z.string().nullable().optional(),
+	priority: z.string().nullable().optional(),
+});
 
 export const addSitemapUrlInputSchema = z.object({
 	sitemapId: z.string(),
-	urls: z.array(sitemapUrlInsertSchema).min(1),
+	urls: z.array(sitemapUrlPayloadSchema).min(1),
 });
 export const addSitemapUrlOutputSchema = sitemapUrlSelectSchema.array();
 export const addSitemapUrlContextSchema = baseActionContextSchema;

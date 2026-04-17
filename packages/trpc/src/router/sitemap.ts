@@ -5,12 +5,14 @@ import {
 	listSitemapHandler,
 	deleteSitemapHandler,
 	addSitemapUrlHandler,
+	crawlSitemapHandler,
 } from "../actions/sitemap";
 import { createSitemapInputSchema } from "../actions/sitemap/createAction";
 import { getSitemapInputSchema } from "../actions/sitemap/getAction";
 import { listSitemapInputSchema } from "../actions/sitemap/listAction";
 import { deleteSitemapInputSchema } from "../actions/sitemap/deleteAction";
 import { addSitemapUrlInputSchema } from "../actions/sitemap/addUrlAction";
+import { crawlSitemapInputSchema } from "../actions/sitemap/crawlAction";
 
 export const sitemapRouter = createTRPCRouter({
 	create: publicProcedure
@@ -39,5 +41,11 @@ export const sitemapRouter = createTRPCRouter({
 		.input(addSitemapUrlInputSchema)
 		.mutation(async ({ ctx, input }) => {
 			return addSitemapUrlHandler({ input, ctx });
+		}),
+
+	crawl: publicProcedure
+		.input(crawlSitemapInputSchema)
+		.mutation(async ({ ctx, input }) => {
+			return crawlSitemapHandler({ input, ctx });
 		}),
 });
