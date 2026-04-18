@@ -20,6 +20,7 @@
 		"@trpc/tanstack-react-query": "catalog:",
 		"clsx": "catalog:",
 		"lucide-react": "^1.8.0",
+		"motion": "catalog:",
 		"next": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",

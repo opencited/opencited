@@ -8,6 +8,7 @@ import { Button } from "@opencited/ui";
 import { Input } from "@opencited/ui";
 import { Label } from "@opencited/ui";
 import { Checkbox } from "@opencited/ui";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
 	CheckCircle2,
 	Globe,
@@ -277,67 +278,98 @@ export function OnboardingWizard() {
 	const cleanedDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
 	const faviconUrl = `https://www.google.com/s2/favicons?domain=${cleanedDomain}&sz=32`;
 
+	const shouldReduceMotion = useReducedMotion();
+
 	return (
-		<div className="w-full max-w-3xl mx-auto">
+		<motion.div
+			className="w-full max-w-3xl mx-auto"
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			transition={{ duration: 0.3 }}
+		>
 			<header className="flex items-center justify-between mb-12">
 				<div className="flex items-center gap-4">
-					{step !== "domain" && (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={handleBack}
-							className="gap-2"
-						>
-							<ChevronLeft className="h-4 w-4" />
-							Back
-						</Button>
-					)}
+					<AnimatePresence>
+						{step !== "domain" && (
+							<motion.div
+								initial={{ opacity: 0, x: -10 }}
+								animate={{ opacity: 1, x: 0 }}
+								exit={{ opacity: 0, x: -10 }}
+								transition={{ duration: 0.2 }}
+							>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={handleBack}
+									className="gap-2"
+								>
+									<ChevronLeft className="h-4 w-4" />
+									Back
+								</Button>
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
 
 				<div className="flex items-center gap-2 text-sm text-muted-foreground">
 					{STEPS.map((s, i) => (
 						<React.Fragment key={s.id}>
-							<span
+							<motion.span
 								className={cn(
 									i === currentStepIndex && "text-foreground font-medium",
 								)}
+								animate={{
+									opacity: i === currentStepIndex ? 1 : 0.6,
+								}}
+								transition={{ duration: 0.2 }}
 							>
 								{s.label}
-							</span>
+							</motion.span>
 							{i < STEPS.length - 1 && <span>/</span>}
 						</React.Fragment>
 					))}
 				</div>
 
 				<div className="flex items-center gap-2 min-w-[120px] justify-end">
-					{step !== "domain" && cleanedDomain && (
-						<div className="flex items-center gap-2">
-							<img
-								src={faviconUrl}
-								alt=""
-								className="h-5 w-5 rounded"
-								onError={(e) => {
-									(e.target as HTMLImageElement).style.display = "none";
-								}}
-							/>
-							<span className="text-sm font-medium truncate max-w-[100px]">
-								{cleanedDomain}
-							</span>
-							<button
-								type="button"
-								onClick={() => {
-									setStep("domain");
-									setSitemaps([]);
-									setSelectedSitemapUrls(new Set());
-									setCrawlError("");
-								}}
-								className="text-muted-foreground hover:text-foreground transition-colors p-1"
-								aria-label="Edit domain"
+					<AnimatePresence>
+						{step !== "domain" && cleanedDomain && (
+							<motion.div
+								initial={{ opacity: 0, scale: 0.8 }}
+								animate={{ opacity: 1, scale: 1 }}
+								exit={{ opacity: 0, scale: 0.8 }}
+								transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+								className="flex items-center gap-2"
 							>
-								<Pencil className="h-3.5 w-3.5" />
-							</button>
-						</div>
-					)}
+								<img
+									src={faviconUrl}
+									alt=""
+									className="h-5 w-5 rounded"
+									onError={(e) => {
+										(e.target as HTMLImageElement).style.display = "none";
+									}}
+								/>
+								<span className="text-sm font-medium truncate max-w-[100px]">
+									{cleanedDomain}
+								</span>
+								<motion.button
+									type="button"
+									onClick={() => {
+										setStep("domain");
+										setSitemaps([]);
+										setSelectedSitemapUrls(new Set());
+										setCrawlError("");
+									}}
+									className="text-muted-foreground hover:text-foreground transition-colors p-1"
+									aria-label="Edit domain"
+									whileHover={{ scale: 1.1 }}
+									whileTap={{ scale: 0.95 }}
+									transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+								>
+									<Pencil className="h-3.5 w-3.5" />
+								</motion.button>
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
 			</header>
 
@@ -352,41 +384,101 @@ export function OnboardingWizard() {
 					const isComplete = i < currentStepIndex;
 					const isCurrent = i === currentStepIndex;
 					return (
-						<div
+						<motion.div
 							key={s.id}
 							className={cn(
-								"h-1.5 flex-1 rounded-full transition-all duration-500",
+								"h-1.5 flex-1 rounded-full",
 								isComplete && "bg-primary",
 								isCurrent && "bg-primary",
 								!isComplete && !isCurrent && "bg-muted",
 							)}
+							initial={{ scaleX: 0 }}
+							animate={{ scaleX: 1 }}
+							transition={{
+								duration: shouldReduceMotion ? 0.01 : 0.3,
+								ease: [0.25, 1, 0.5, 1],
+							}}
 							aria-current={isCurrent ? "step" : undefined}
 						/>
 					);
 				})}
 			</div>
 
-			<div className="animate-in fade-in slide-in-from-bottom-4 duration-400">
+			<AnimatePresence mode="wait">
 				{step === "domain" && (
-					<div className="space-y-8">
-						<div className="space-y-4">
+					<motion.div
+						key="domain"
+						className="space-y-8"
+						initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -10 }}
+						transition={{
+							duration: shouldReduceMotion ? 0.1 : 0.3,
+							ease: [0.25, 1, 0.5, 1],
+						}}
+					>
+						<motion.div
+							className="space-y-4"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							transition={{
+								delay: shouldReduceMotion ? 0 : 0.05,
+								duration: 0.2,
+							}}
+						>
 							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+								<motion.div
+									className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10"
+									initial={{ scale: 0.8 }}
+									animate={{ scale: 1 }}
+									transition={{
+										delay: shouldReduceMotion ? 0 : 0.1,
+										duration: 0.3,
+										ease: [0.25, 1, 0.5, 1],
+									}}
+								>
 									<Globe className="h-5 w-5 text-primary" />
-								</div>
+								</motion.div>
 								<div>
-									<h1 className="text-3xl font-semibold tracking-tight">
+									<motion.h1
+										className="text-3xl font-semibold tracking-tight"
+										initial={{ opacity: 0, x: -10 }}
+										animate={{ opacity: 1, x: 0 }}
+										transition={{
+											delay: shouldReduceMotion ? 0 : 0.15,
+											duration: 0.3,
+											ease: [0.25, 1, 0.5, 1],
+										}}
+									>
 										Set Up Your Project
-									</h1>
-									<p className="text-sm text-muted-foreground mt-1">
+									</motion.h1>
+									<motion.p
+										className="text-sm text-muted-foreground mt-1"
+										initial={{ opacity: 0 }}
+										animate={{ opacity: 1 }}
+										transition={{
+											delay: shouldReduceMotion ? 0 : 0.2,
+											duration: 0.3,
+										}}
+									>
 										Enter your website domain to get started with sitemap
 										analysis.
-									</p>
+									</motion.p>
 								</div>
 							</div>
-						</div>
+						</motion.div>
 
-						<form onSubmit={handleDomainSubmit} className="space-y-6">
+						<motion.form
+							onSubmit={handleDomainSubmit}
+							className="space-y-6"
+							initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{
+								delay: shouldReduceMotion ? 0 : 0.25,
+								duration: 0.3,
+								ease: [0.25, 1, 0.5, 1],
+							}}
+						>
 							<div className="space-y-2">
 								<Label htmlFor="domain" className="text-sm font-medium">
 									Website Domain
@@ -398,62 +490,139 @@ export function OnboardingWizard() {
 									value={domain}
 									onChange={(e) => setDomain(e.target.value)}
 									autoFocus
-									className="text-base"
+									className="text-base transition-all duration-200 focus:ring-2 focus:ring-primary/20"
 								/>
 								{domainError && (
-									<p className="text-sm text-destructive flex items-center gap-2">
+									<motion.p
+										className="text-sm text-destructive flex items-center gap-2"
+										initial={{ opacity: 0, height: 0 }}
+										animate={{ opacity: 1, height: "auto" }}
+										exit={{ opacity: 0, height: 0 }}
+										transition={{ duration: 0.2 }}
+									>
 										<AlertCircle className="h-4 w-4" />
 										{domainError}
-									</p>
+									</motion.p>
 								)}
 							</div>
 
-							<Button
-								type="submit"
-								size="lg"
-								disabled={isDiscovering || !domain.trim()}
+							<motion.div
+								whileHover={
+									!isDiscovering && !shouldReduceMotion ? { scale: 1.02 } : {}
+								}
+								whileTap={
+									!isDiscovering && !shouldReduceMotion ? { scale: 0.98 } : {}
+								}
+								transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
 							>
-								{isDiscovering ? (
-									<>
-										<Loader2 className="h-4 w-4 animate-spin" />
-										{discoveryStatus || "Discovering..."}
-									</>
-								) : (
-									<>Continue</>
-								)}
-							</Button>
-						</form>
-					</div>
+								<Button
+									type="submit"
+									size="lg"
+									disabled={isDiscovering || !domain.trim()}
+								>
+									{isDiscovering ? (
+										<>
+											<Loader2 className="h-4 w-4 animate-spin" />
+											{discoveryStatus || "Discovering..."}
+										</>
+									) : (
+										<>Continue</>
+									)}
+								</Button>
+							</motion.div>
+						</motion.form>
+					</motion.div>
 				)}
 
 				{step === "selection" && (
-					<div className="space-y-8">
-						<div className="flex items-center gap-3">
-							<img
+					<motion.div
+						key="selection"
+						className="space-y-8"
+						initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -10 }}
+						transition={{
+							duration: shouldReduceMotion ? 0.1 : 0.3,
+							ease: [0.25, 1, 0.5, 1],
+						}}
+					>
+						<motion.div
+							className="flex items-center gap-3"
+							initial={{ opacity: 0, x: -10 }}
+							animate={{ opacity: 1, x: 0 }}
+							transition={{
+								delay: shouldReduceMotion ? 0 : 0.05,
+								duration: 0.3,
+								ease: [0.25, 1, 0.5, 1],
+							}}
+						>
+							<motion.img
 								src={faviconUrl}
 								alt=""
 								className="h-8 w-8 rounded"
+								initial={{ scale: 0.8, opacity: 0 }}
+								animate={{ scale: 1, opacity: 1 }}
+								transition={{
+									delay: shouldReduceMotion ? 0 : 0.1,
+									duration: 0.3,
+									ease: [0.25, 1, 0.5, 1],
+								}}
 								onError={(e) => {
 									(e.target as HTMLImageElement).style.display = "none";
 								}}
 							/>
 							<div>
-								<h2 className="text-lg font-medium">{cleanedDomain}</h2>
-								<p className="text-sm text-muted-foreground">
+								<motion.h2
+									className="text-lg font-medium"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									transition={{
+										delay: shouldReduceMotion ? 0 : 0.15,
+										duration: 0.3,
+									}}
+								>
+									{cleanedDomain}
+								</motion.h2>
+								<motion.p
+									className="text-sm text-muted-foreground"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									transition={{
+										delay: shouldReduceMotion ? 0 : 0.2,
+										duration: 0.3,
+									}}
+								>
 									Select sitemaps to crawl for your project
-								</p>
+								</motion.p>
 							</div>
-						</div>
+						</motion.div>
 
-						{crawlError && (
-							<div className="p-4 rounded-lg bg-destructive/5 border border-destructive/20">
-								<p className="text-sm text-destructive whitespace-pre-wrap">
-									{crawlError}
-								</p>
-							</div>
-						)}
+						<AnimatePresence>
+							{crawlError && (
+								<motion.div
+									className="p-4 rounded-lg bg-destructive/5 border border-destructive/20"
+									initial={{ opacity: 0, height: 0 }}
+									animate={{ opacity: 1, height: "auto" }}
+									exit={{ opacity: 0, height: 0 }}
+									transition={{ duration: 0.2 }}
+								>
+									<p className="text-sm text-destructive whitespace-pre-wrap">
+										{crawlError}
+									</p>
+								</motion.div>
+							)}
+						</AnimatePresence>
 
-						<div className="space-y-2">
+						<motion.div
+							className="space-y-2"
+							initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{
+								delay: shouldReduceMotion ? 0 : 0.1,
+								duration: 0.3,
+								ease: [0.25, 1, 0.5, 1],
+							}}
+						>
 							<div className="flex items-center justify-between">
 								<p className="text-sm text-muted-foreground">
 									Sitemaps tell AI how your site is structured. We found these
@@ -461,59 +630,81 @@ export function OnboardingWizard() {
 								</p>
 								<div className="flex items-center gap-3">
 									{sitemaps.length > 1 && (
-										<button
+										<motion.button
 											type="button"
 											onClick={() => setSelectedSitemapUrls(new Set())}
 											className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+											whileHover={{ scale: 1.05 }}
+											whileTap={{ scale: 0.95 }}
+											transition={{ duration: 0.15 }}
 										>
 											Select none
-										</button>
+										</motion.button>
 									)}
-									<button
+									<motion.button
 										type="button"
 										onClick={() => setShowSitemapHelp(!showSitemapHelp)}
 										className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+										whileHover={{ scale: 1.05 }}
+										whileTap={{ scale: 0.95 }}
+										transition={{ duration: 0.15 }}
 									>
 										<HelpCircle className="h-3.5 w-3.5" />
 										What are these?
-										<ChevronDown
-											className={cn(
-												"h-3 w-3 transition-transform",
-												showSitemapHelp && "rotate-180",
-											)}
-										/>
-									</button>
+										<motion.span
+											animate={{ rotate: showSitemapHelp ? 180 : 0 }}
+											transition={{ duration: 0.2 }}
+										>
+											<ChevronDown className="h-3 w-3" />
+										</motion.span>
+									</motion.button>
 								</div>
 							</div>
-							{showSitemapHelp && (
-								<div className="p-3 rounded-lg bg-muted/50 border border-border text-sm space-y-2">
-									<p>
-										<strong>robots.txt</strong> — Sitemaps explicitly declared
-										in your site's robots.txt file. Usually the most accurate
-										source.
-									</p>
-									<p>
-										<strong>standard</strong> — Common sitemap locations we
-										checked directly (e.g., /sitemap.xml). Reliable fallback.
-									</p>
-									<p>
-										<strong>sitemap index</strong> — A file that lists other
-										sitemaps. Select it to include all child sitemaps.
-									</p>
-								</div>
-							)}
+							<AnimatePresence>
+								{showSitemapHelp && (
+									<motion.div
+										className="p-3 rounded-lg bg-muted/50 border border-border text-sm space-y-2"
+										initial={{ opacity: 0, height: 0 }}
+										animate={{ opacity: 1, height: "auto" }}
+										exit={{ opacity: 0, height: 0 }}
+										transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+									>
+										<p>
+											<strong>robots.txt</strong> — Sitemaps explicitly declared
+											in your site's robots.txt file. Usually the most accurate
+											source.
+										</p>
+										<p>
+											<strong>standard</strong> — Common sitemap locations we
+											checked directly (e.g., /sitemap.xml). Reliable fallback.
+										</p>
+										<p>
+											<strong>sitemap index</strong> — A file that lists other
+											sitemaps. Select it to include all child sitemaps.
+										</p>
+									</motion.div>
+								)}
+							</AnimatePresence>
 							{sitemaps.map((sitemap, index) => (
-								<div
+								<motion.div
 									key={sitemap.url}
 									onClick={() => toggleSitemap(sitemap.url)}
 									className={cn(
-										"w-full p-4 rounded-lg border text-left transition-all duration-150 cursor-pointer",
+										"w-full p-4 rounded-lg border text-left cursor-pointer",
 										"hover:bg-muted/50",
 										selectedSitemapUrls.has(sitemap.url)
 											? "border-primary bg-primary/5"
 											: "border-border",
 									)}
-									style={{ animationDelay: `${index * 50}ms` }}
+									initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{
+										delay: shouldReduceMotion ? 0 : index * 0.05,
+										duration: 0.3,
+										ease: [0.25, 1, 0.5, 1],
+									}}
+									whileHover={shouldReduceMotion ? {} : { scale: 1.01 }}
+									whileTap={shouldReduceMotion ? {} : { scale: 0.99 }}
 									onKeyDown={(e) => {
 										if (e.key === "Enter" || e.key === " ") {
 											e.preventDefault();
@@ -522,10 +713,19 @@ export function OnboardingWizard() {
 									}}
 								>
 									<div className="flex items-center gap-4">
-										<Checkbox
-											checked={selectedSitemapUrls.has(sitemap.url)}
-											className="shrink-0"
-										/>
+										<motion.div
+											animate={{
+												scale: selectedSitemapUrls.has(sitemap.url)
+													? [1, 1.1, 1]
+													: 1,
+											}}
+											transition={{ duration: 0.2 }}
+										>
+											<Checkbox
+												checked={selectedSitemapUrls.has(sitemap.url)}
+												className="shrink-0"
+											/>
+										</motion.div>
 										<div className="flex-1 min-w-0">
 											<div className="flex items-center gap-2 mb-1">
 												<span className="text-sm font-mono truncate">
@@ -551,66 +751,161 @@ export function OnboardingWizard() {
 											</p>
 										</div>
 									</div>
-								</div>
+								</motion.div>
 							))}
-						</div>
+						</motion.div>
 
-						<div className="flex items-center gap-3 pt-2">
-							<Button
-								onClick={handleContinueToPreview}
-								disabled={selectedSitemapUrls.size === 0 || isLoadingPreview}
-								size="lg"
+						<motion.div
+							className="flex items-center gap-3 pt-2"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							transition={{
+								delay: shouldReduceMotion ? 0 : 0.3,
+								duration: 0.3,
+							}}
+						>
+							<motion.div
+								whileHover={
+									selectedSitemapUrls.size > 0 &&
+									!isLoadingPreview &&
+									!shouldReduceMotion
+										? { scale: 1.02 }
+										: {}
+								}
+								whileTap={
+									selectedSitemapUrls.size > 0 &&
+									!isLoadingPreview &&
+									!shouldReduceMotion
+										? { scale: 0.98 }
+										: {}
+								}
+								transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
 							>
-								{isLoadingPreview ? (
-									<>
-										<Loader2 className="h-4 w-4 animate-spin" />
-										{discoveryStatus || "Loading..."}
-									</>
-								) : (
-									<>
-										Continue
-										<ArrowRight className="h-4 w-4" />
-									</>
-								)}
-							</Button>
-						</div>
-					</div>
+								<Button
+									onClick={handleContinueToPreview}
+									disabled={selectedSitemapUrls.size === 0 || isLoadingPreview}
+									size="lg"
+								>
+									{isLoadingPreview ? (
+										<>
+											<Loader2 className="h-4 w-4 animate-spin" />
+											{discoveryStatus || "Loading..."}
+										</>
+									) : (
+										<>
+											Continue
+											<ArrowRight className="h-4 w-4" />
+										</>
+									)}
+								</Button>
+							</motion.div>
+						</motion.div>
+					</motion.div>
 				)}
 
 				{step === "preview" && (
-					<div className="space-y-8">
-						<div className="flex items-center gap-3">
-							{crawledUrls.length > 0 ? (
-								<CheckCircle2 className="h-8 w-8 text-primary" />
-							) : (
-								<AlertCircle className="h-8 w-8 text-destructive" />
-							)}
+					<motion.div
+						key="preview"
+						className="space-y-8"
+						initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -10 }}
+						transition={{
+							duration: shouldReduceMotion ? 0.1 : 0.3,
+							ease: [0.25, 1, 0.5, 1],
+						}}
+					>
+						<motion.div
+							className="flex items-center gap-3"
+							initial={{ opacity: 0, scale: 0.9 }}
+							animate={{ opacity: 1, scale: 1 }}
+							transition={{
+								delay: shouldReduceMotion ? 0 : 0.05,
+								duration: 0.3,
+								ease: [0.25, 1, 0.5, 1],
+							}}
+						>
+							<motion.div
+								initial={{ scale: 0 }}
+								animate={{ scale: 1 }}
+								transition={{
+									delay: shouldReduceMotion ? 0 : 0.1,
+									type: "spring",
+									stiffness: 200,
+									damping: 15,
+								}}
+							>
+								{crawledUrls.length > 0 ? (
+									<CheckCircle2 className="h-8 w-8 text-primary" />
+								) : (
+									<AlertCircle className="h-8 w-8 text-destructive" />
+								)}
+							</motion.div>
 							<div>
-								<h2 className="text-lg font-medium">
+								<motion.h2
+									className="text-lg font-medium"
+									initial={{ opacity: 0, x: -10 }}
+									animate={{ opacity: 1, x: 0 }}
+									transition={{
+										delay: shouldReduceMotion ? 0 : 0.15,
+										duration: 0.3,
+									}}
+								>
 									{crawlError ? "Error" : "Preview"}
-								</h2>
-								<p className="text-sm text-muted-foreground">
+								</motion.h2>
+								<motion.p
+									className="text-sm text-muted-foreground"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									transition={{
+										delay: shouldReduceMotion ? 0 : 0.2,
+										duration: 0.3,
+									}}
+								>
 									{crawlError
 										? crawlError
 										: `Found ${crawledUrls.length.toLocaleString()} URLs from ${selectedSitemapUrls.size} sitemap${selectedSitemapUrls.size > 1 ? "s" : ""}`}
-								</p>
+								</motion.p>
 							</div>
-						</div>
+						</motion.div>
 
 						{crawlError ? (
-							<div className="flex items-center gap-3 pt-2">
-								<Button
-									variant="ghost"
-									size="lg"
-									onClick={() => setStep("selection")}
+							<motion.div
+								className="flex items-center gap-3 pt-2"
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								transition={{
+									delay: shouldReduceMotion ? 0 : 0.25,
+									duration: 0.3,
+								}}
+							>
+								<motion.div
+									whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
+									whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+									transition={{ duration: 0.15 }}
 								>
-									<ArrowLeft className="h-4 w-4" />
-									Back to Selection
-								</Button>
-							</div>
+									<Button
+										variant="ghost"
+										size="lg"
+										onClick={() => setStep("selection")}
+									>
+										<ArrowLeft className="h-4 w-4" />
+										Back to Selection
+									</Button>
+								</motion.div>
+							</motion.div>
 						) : (
 							<>
-								<div className="rounded-lg border border-border overflow-hidden">
+								<motion.div
+									className="rounded-lg border border-border overflow-hidden"
+									initial={{ opacity: 0, y: shouldReduceMotion ? 0 : 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{
+										delay: shouldReduceMotion ? 0 : 0.1,
+										duration: 0.3,
+										ease: [0.25, 1, 0.5, 1],
+									}}
+								>
 									<div className="bg-muted/30 px-4 py-3 border-b border-border">
 										<p className="text-sm text-muted-foreground">
 											Ready to crawl{" "}
@@ -638,24 +933,32 @@ export function OnboardingWizard() {
 											</thead>
 											<tbody className="divide-y divide-border">
 												{crawledUrls.slice(0, 50).map((urlItem, index) => (
-													<tr
+													<motion.tr
 														key={`${urlItem.url}-${index}`}
 														className="hover:bg-muted/30 transition-colors"
+														initial={{ opacity: 0 }}
+														animate={{ opacity: 1 }}
+														transition={{
+															delay: shouldReduceMotion ? 0 : index * 0.02,
+															duration: 0.2,
+														}}
 													>
 														<td className="px-4 py-2.5 text-sm font-mono truncate max-w-0">
 															{urlItem.url}
 														</td>
 														<td className="px-4 py-2.5 text-right">
-															<a
+															<motion.a
 																href={urlItem.url}
 																target="_blank"
 																rel="noopener noreferrer"
-																className="text-muted-foreground hover:text-primary transition-colors"
+																className="text-muted-foreground hover:text-primary transition-colors inline-flex"
+																whileHover={{ scale: 1.1 }}
+																transition={{ duration: 0.15 }}
 															>
 																<ExternalLink className="h-4 w-4" />
-															</a>
+															</motion.a>
 														</td>
-													</tr>
+													</motion.tr>
 												))}
 											</tbody>
 										</table>
@@ -668,32 +971,50 @@ export function OnboardingWizard() {
 											</p>
 										</div>
 									)}
-								</div>
+								</motion.div>
 
-								<div className="flex items-center gap-3 pt-2">
-									<Button
-										onClick={handleConfirmAndSave}
-										size="lg"
-										disabled={isSaving}
+								<motion.div
+									className="flex items-center gap-3 pt-2"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									transition={{
+										delay: shouldReduceMotion ? 0 : 0.3,
+										duration: 0.3,
+									}}
+								>
+									<motion.div
+										whileHover={
+											!isSaving && !shouldReduceMotion ? { scale: 1.02 } : {}
+										}
+										whileTap={
+											!isSaving && !shouldReduceMotion ? { scale: 0.98 } : {}
+										}
+										transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
 									>
-										{isSaving ? (
-											<>
-												<Loader2 className="h-4 w-4 animate-spin" />
-												Saving...
-											</>
-										) : (
-											<>
-												Confirm & Create Project
-												<ArrowRight className="h-4 w-4" />
-											</>
-										)}
-									</Button>
-								</div>
+										<Button
+											onClick={handleConfirmAndSave}
+											size="lg"
+											disabled={isSaving}
+										>
+											{isSaving ? (
+												<>
+													<Loader2 className="h-4 w-4 animate-spin" />
+													Saving...
+												</>
+											) : (
+												<>
+													Confirm & Create Project
+													<ArrowRight className="h-4 w-4" />
+												</>
+											)}
+										</Button>
+									</motion.div>
+								</motion.div>
 							</>
 						)}
-					</div>
+					</motion.div>
 				)}
-			</div>
-		</div>
+			</AnimatePresence>
+		</motion.div>
 	);
 }
