@@ -70,9 +70,7 @@ async function getRobotsTxtSitemaps(baseUrl: string): Promise<string[]> {
 	}
 }
 
-async function checkSitemapValidity(
-	url: string,
-): Promise<{
+async function checkSitemapValidity(url: string): Promise<{
 	valid: boolean;
 	type?: SitemapType;
 	count?: number;

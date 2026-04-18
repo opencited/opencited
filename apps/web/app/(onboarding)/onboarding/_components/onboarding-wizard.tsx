@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
@@ -17,6 +17,9 @@ import {
 	ArrowLeft,
 	ChevronLeft,
 	Loader2,
+	Pencil,
+	HelpCircle,
+	ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +67,8 @@ export function OnboardingWizard() {
 	const [isDiscovering, setIsDiscovering] = useState(false);
 	const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
+	const [discoveryStatus, setDiscoveryStatus] = useState("");
+	const [showSitemapHelp, setShowSitemapHelp] = useState(false);
 
 	const currentStepIndex = STEPS.findIndex((s) => s.id === step);
 
@@ -78,16 +83,20 @@ export function OnboardingWizard() {
 
 	const createMutation = useMutation(
 		trpc.domainProject.create.mutationOptions({
-			onError: () => {
-				setStep("preview");
+			onError: (error) => {
+				setCrawlError(
+					error.message || "Failed to create project. Please try again.",
+				);
 			},
 		}),
 	);
 
 	const sitemapCreateMutation = useMutation(
 		trpc.sitemap.create.mutationOptions({
-			onError: () => {
-				setStep("preview");
+			onError: (error) => {
+				setCrawlError(
+					error.message || "Failed to save sitemap. Please try again.",
+				);
 			},
 		}),
 	);
@@ -103,9 +112,10 @@ export function OnboardingWizard() {
 
 	const crawlMutation = useMutation(
 		trpc.sitemap.crawl.mutationOptions({
-			onError: () => {
-				setCrawlError("Failed to save sitemap URLs. Please try again.");
-				setStep("preview");
+			onError: (error) => {
+				setCrawlError(
+					error.message || "Failed to crawl sitemap. Please try again.",
+				);
 			},
 		}),
 	);
@@ -129,6 +139,7 @@ export function OnboardingWizard() {
 
 		setIsDiscovering(true);
 		setDomainError("");
+		setDiscoveryStatus("Checking robots.txt and standard locations...");
 
 		try {
 			const result = await discoverMutation.mutateAsync({
@@ -140,10 +151,12 @@ export function OnboardingWizard() {
 			if (result.sitemaps.length === 0) {
 				setDomainError("No sitemaps found. Please try a different domain.");
 				setIsDiscovering(false);
+				setDiscoveryStatus("");
 			} else {
 				setSelectedSitemapUrls(new Set(result.sitemaps.map((s) => s.url)));
 				setStep("selection");
 				setIsDiscovering(false);
+				setDiscoveryStatus("");
 			}
 		} catch {
 			setDomainError("Failed to discover sitemaps. Please try again.");
@@ -167,6 +180,9 @@ export function OnboardingWizard() {
 		setIsLoadingPreview(true);
 		setCrawlError("");
 		setCrawledUrls([]);
+		setDiscoveryStatus(
+			`Fetching URLs from ${selectedSitemapUrls.size} sitemap${selectedSitemapUrls.size > 1 ? "s" : ""}...`,
+		);
 
 		try {
 			const allUrls: CrawledUrl[] = [];
@@ -174,6 +190,7 @@ export function OnboardingWizard() {
 
 			for (const sitemapUrl of selectedSitemapUrls) {
 				try {
+					setDiscoveryStatus(`Fetching from ${sitemapUrl}...`);
 					const result = await previewMutation.mutateAsync({
 						sitemapUrl,
 					});
@@ -240,14 +257,22 @@ export function OnboardingWizard() {
 	const handleBack = () => {
 		if (step === "selection") {
 			setStep("domain");
-			setSitemaps([]);
-			setSelectedSitemapUrls(new Set());
 		} else if (step === "preview") {
 			setStep("selection");
 			setCrawledUrls([]);
 			setCrawlError("");
 		}
 	};
+
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Escape" && step !== "domain") {
+				handleBack();
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [step, handleBack]);
 
 	const cleanedDomain = domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
 	const faviconUrl = `https://www.google.com/s2/favicons?domain=${cleanedDomain}&sz=32`;
@@ -298,13 +323,26 @@ export function OnboardingWizard() {
 							<span className="text-sm font-medium truncate max-w-[100px]">
 								{cleanedDomain}
 							</span>
+							<button
+								type="button"
+								onClick={() => {
+									setStep("domain");
+									setSitemaps([]);
+									setSelectedSitemapUrls(new Set());
+									setCrawlError("");
+								}}
+								className="text-muted-foreground hover:text-foreground transition-colors p-1"
+								aria-label="Edit domain"
+							>
+								<Pencil className="h-3.5 w-3.5" />
+							</button>
 						</div>
 					)}
 				</div>
 			</header>
 
 			<div
-				className="flex gap-1 mb-8"
+				className="flex gap-1.5 mb-8"
 				role="progressbar"
 				aria-valuenow={currentStepIndex + 1}
 				aria-valuemin={0}
@@ -317,9 +355,9 @@ export function OnboardingWizard() {
 						<div
 							key={s.id}
 							className={cn(
-								"h-1 flex-1 rounded-full transition-all duration-300",
+								"h-1.5 flex-1 rounded-full transition-all duration-500",
 								isComplete && "bg-primary",
-								isCurrent && "bg-primary/60",
+								isCurrent && "bg-primary",
 								!isComplete && !isCurrent && "bg-muted",
 							)}
 							aria-current={isCurrent ? "step" : undefined}
@@ -378,7 +416,7 @@ export function OnboardingWizard() {
 								{isDiscovering ? (
 									<>
 										<Loader2 className="h-4 w-4 animate-spin" />
-										Discovering...
+										{discoveryStatus || "Discovering..."}
 									</>
 								) : (
 									<>Continue</>
@@ -416,19 +454,72 @@ export function OnboardingWizard() {
 						)}
 
 						<div className="space-y-2">
+							<div className="flex items-center justify-between">
+								<p className="text-sm text-muted-foreground">
+									Sitemaps tell AI how your site is structured. We found these
+									automatically from your domain.
+								</p>
+								<div className="flex items-center gap-3">
+									{sitemaps.length > 1 && (
+										<button
+											type="button"
+											onClick={() => setSelectedSitemapUrls(new Set())}
+											className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+										>
+											Select none
+										</button>
+									)}
+									<button
+										type="button"
+										onClick={() => setShowSitemapHelp(!showSitemapHelp)}
+										className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+									>
+										<HelpCircle className="h-3.5 w-3.5" />
+										What are these?
+										<ChevronDown
+											className={cn(
+												"h-3 w-3 transition-transform",
+												showSitemapHelp && "rotate-180",
+											)}
+										/>
+									</button>
+								</div>
+							</div>
+							{showSitemapHelp && (
+								<div className="p-3 rounded-lg bg-muted/50 border border-border text-sm space-y-2">
+									<p>
+										<strong>robots.txt</strong> — Sitemaps explicitly declared
+										in your site's robots.txt file. Usually the most accurate
+										source.
+									</p>
+									<p>
+										<strong>standard</strong> — Common sitemap locations we
+										checked directly (e.g., /sitemap.xml). Reliable fallback.
+									</p>
+									<p>
+										<strong>sitemap index</strong> — A file that lists other
+										sitemaps. Select it to include all child sitemaps.
+									</p>
+								</div>
+							)}
 							{sitemaps.map((sitemap, index) => (
-								<button
-									type="button"
+								<div
 									key={sitemap.url}
 									onClick={() => toggleSitemap(sitemap.url)}
 									className={cn(
-										"w-full p-4 rounded-lg border text-left transition-all duration-150",
+										"w-full p-4 rounded-lg border text-left transition-all duration-150 cursor-pointer",
 										"hover:bg-muted/50",
 										selectedSitemapUrls.has(sitemap.url)
 											? "border-primary bg-primary/5"
 											: "border-border",
 									)}
 									style={{ animationDelay: `${index * 50}ms` }}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											toggleSitemap(sitemap.url);
+										}
+									}}
 								>
 									<div className="flex items-center gap-4">
 										<Checkbox
@@ -444,10 +535,10 @@ export function OnboardingWizard() {
 													className={cn(
 														"shrink-0 px-2 py-0.5 rounded text-xs font-medium",
 														sitemap.source === "robots.txt"
-															? "bg-blue-100 text-blue-700"
+															? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
 															: sitemap.source === "standard"
-																? "bg-green-100 text-green-700"
-																: "bg-purple-100 text-purple-700",
+																? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+																: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
 													)}
 												>
 													{SOURCE_LABELS[sitemap.source]}
@@ -460,7 +551,7 @@ export function OnboardingWizard() {
 											</p>
 										</div>
 									</div>
-								</button>
+								</div>
 							))}
 						</div>
 
@@ -473,7 +564,7 @@ export function OnboardingWizard() {
 								{isLoadingPreview ? (
 									<>
 										<Loader2 className="h-4 w-4 animate-spin" />
-										Loading...
+										{discoveryStatus || "Loading..."}
 									</>
 								) : (
 									<>
@@ -520,7 +611,22 @@ export function OnboardingWizard() {
 						) : (
 							<>
 								<div className="rounded-lg border border-border overflow-hidden">
-									<div className="max-h-80 overflow-y-auto">
+									<div className="bg-muted/30 px-4 py-3 border-b border-border">
+										<p className="text-sm text-muted-foreground">
+											Ready to crawl{" "}
+											<span className="font-medium text-foreground">
+												{crawledUrls.length.toLocaleString()} URLs
+											</span>{" "}
+											from{" "}
+											<span className="font-medium text-foreground">
+												{selectedSitemapUrls.size} sitemap
+												{selectedSitemapUrls.size > 1 ? "s" : ""}
+											</span>
+											. This will create a project and begin tracking these
+											URLs.
+										</p>
+									</div>
+									<div className="max-h-64 overflow-y-auto">
 										<table className="w-full">
 											<thead className="bg-muted/50 sticky top-0">
 												<tr>
@@ -531,7 +637,7 @@ export function OnboardingWizard() {
 												</tr>
 											</thead>
 											<tbody className="divide-y divide-border">
-												{crawledUrls.slice(0, 100).map((urlItem, index) => (
+												{crawledUrls.slice(0, 50).map((urlItem, index) => (
 													<tr
 														key={`${urlItem.url}-${index}`}
 														className="hover:bg-muted/30 transition-colors"
@@ -554,10 +660,10 @@ export function OnboardingWizard() {
 											</tbody>
 										</table>
 									</div>
-									{crawledUrls.length > 100 && (
+									{crawledUrls.length > 50 && (
 										<div className="px-4 py-3 bg-muted/50 text-center border-t border-border">
 											<p className="text-sm text-muted-foreground">
-												And {(crawledUrls.length - 100).toLocaleString()} more
+												And {(crawledUrls.length - 50).toLocaleString()} more
 												URLs...
 											</p>
 										</div>
