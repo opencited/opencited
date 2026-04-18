@@ -1,6 +1,8 @@
 export { Button, buttonVariants } from "./button";
 export type { ButtonProps } from "./button";
 
+export { Kbd, KbdGroup } from "./kbd";
+
 export {
 	Card,
 	CardHeader,
