@@ -32,7 +32,7 @@ function QueryCell<TData, TError = unknown>({
 			<div className="flex items-center justify-center py-12 text-destructive">
 				{query.error instanceof Error
 					? query.error.message
-					: "An error occurred"}
+					: "Something went wrong. Try refreshing."}
 			</div>
 		);
 	}

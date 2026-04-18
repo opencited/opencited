@@ -23,7 +23,7 @@ export default function Home() {
 			</main>
 
 			<footer className="py-6 text-center text-xs text-muted-foreground">
-				<p>OpenCited — Built for developers, by developers</p>
+				<p>OpenCited — Built for developers</p>
 			</footer>
 		</div>
 	);

@@ -9,7 +9,7 @@ import { QueryCell } from "@/app/components/query-cell";
 import { Globe } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
-import { timeAgo } from "@/lib/time-ago";
+import { TimeAgo } from "@/app/components/time-ago";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type SitemapList = RouterOutput["sitemap"]["list"];
@@ -26,7 +26,7 @@ function SitemapCard({ sitemap }: { sitemap: SitemapList[number] }) {
 				</CardHeader>
 				<CardContent>
 					<p className="text-xs text-muted-foreground">
-						Updated {timeAgo(sitemap.updatedAt)}
+						Updated <TimeAgo date={sitemap.updatedAt} />
 					</p>
 				</CardContent>
 			</Card>
@@ -51,7 +51,7 @@ export default function SitemapsPage() {
 				error={(_error) => (
 					<Card>
 						<CardContent className="py-8 text-center text-destructive">
-							Failed to load sitemaps
+							Couldn't load sitemaps. Try again.
 						</CardContent>
 					</Card>
 				)}
@@ -60,7 +60,7 @@ export default function SitemapsPage() {
 						return (
 							<Card>
 								<CardContent className="py-8 text-center text-muted-foreground">
-									You haven&apos;t added any sitemaps to your project yet.
+									No sitemaps yet. Add your first sitemap to get started.
 								</CardContent>
 							</Card>
 						);

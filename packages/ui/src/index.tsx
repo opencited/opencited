@@ -19,6 +19,9 @@ export { Label } from "./label";
 export { Badge, badgeVariants } from "./badge";
 export type { BadgeProps } from "./badge";
 
+export { PriorityBadge, priorityDotVariants } from "./priority-badge";
+export type { PriorityBadgeProps } from "./priority-badge";
+
 export {
 	EntityCard,
 	EntityCardHeader,
@@ -83,3 +86,23 @@ export {
 
 export { ThemeProvider, useTheme } from "./theme-provider";
 export { ThemeToggle } from "./theme-toggle";
+
+export {
+	Accordion,
+	AccordionItem,
+	AccordionTrigger,
+	AccordionContent,
+} from "./accordion";
+
+export {
+	Table,
+	TableHeader,
+	TableBody,
+	TableFooter,
+	TableHead,
+	TableRow,
+	TableCell,
+	TableCaption,
+} from "./table";
+
+export { ScrollArea, ScrollBar } from "./scroll-area";

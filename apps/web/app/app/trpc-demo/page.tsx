@@ -11,7 +11,7 @@ export default function TrpcDemoPage() {
 	return (
 		<PageShell title="tRPC Demo">
 			{isLoading ? (
-				<p className="text-muted-foreground">Loading...</p>
+				<p className="text-muted-foreground">Loading user data...</p>
 			) : (
 				<div className="space-y-2">
 					<p className="text-sm text-muted-foreground">

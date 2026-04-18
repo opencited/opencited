@@ -4,10 +4,27 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
-import { Button } from "@opencited/ui";
-import { Input } from "@opencited/ui";
-import { Label } from "@opencited/ui";
-import { Checkbox } from "@opencited/ui";
+import {
+	Button,
+	Input,
+	Label,
+	Checkbox,
+	Progress,
+	Badge,
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+	Table,
+	TableHeader,
+	TableBody,
+	TableHead,
+	TableRow,
+	TableCell,
+	ScrollArea,
+	PriorityBadge,
+} from "@opencited/ui";
+import { TimeAgo } from "@/app/components/time-ago";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import {
 	CheckCircle2,
@@ -19,8 +36,6 @@ import {
 	ChevronLeft,
 	Loader2,
 	Pencil,
-	HelpCircle,
-	ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,14 +84,13 @@ export function OnboardingWizard() {
 	const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
 	const [discoveryStatus, setDiscoveryStatus] = useState("");
-	const [showSitemapHelp, setShowSitemapHelp] = useState(false);
 
 	const currentStepIndex = STEPS.findIndex((s) => s.id === step);
 
 	const discoverMutation = useMutation(
 		trpc.domainProject.discoverSitemaps.mutationOptions({
 			onError: () => {
-				setDomainError("Failed to discover sitemaps. Please try again.");
+				setDomainError("Couldn't find sitemaps. Try again.");
 				setIsDiscovering(false);
 			},
 		}),
@@ -85,9 +99,7 @@ export function OnboardingWizard() {
 	const createMutation = useMutation(
 		trpc.domainProject.create.mutationOptions({
 			onError: (error) => {
-				setCrawlError(
-					error.message || "Failed to create project. Please try again.",
-				);
+				setCrawlError(error.message || "Couldn't create project. Try again.");
 			},
 		}),
 	);
@@ -95,9 +107,7 @@ export function OnboardingWizard() {
 	const sitemapCreateMutation = useMutation(
 		trpc.sitemap.create.mutationOptions({
 			onError: (error) => {
-				setCrawlError(
-					error.message || "Failed to save sitemap. Please try again.",
-				);
+				setCrawlError(error.message || "Couldn't save sitemap. Try again.");
 			},
 		}),
 	);
@@ -105,7 +115,7 @@ export function OnboardingWizard() {
 	const previewMutation = useMutation(
 		trpc.sitemap.preview.mutationOptions({
 			onError: () => {
-				setCrawlError("Failed to fetch sitemap URLs. Please try again.");
+				setCrawlError("Couldn't fetch URLs. Try again.");
 				setIsLoadingPreview(false);
 			},
 		}),
@@ -114,9 +124,7 @@ export function OnboardingWizard() {
 	const crawlMutation = useMutation(
 		trpc.sitemap.crawl.mutationOptions({
 			onError: (error) => {
-				setCrawlError(
-					error.message || "Failed to crawl sitemap. Please try again.",
-				);
+				setCrawlError(error.message || "Couldn't crawl sitemap. Try again.");
 			},
 		}),
 	);
@@ -125,7 +133,7 @@ export function OnboardingWizard() {
 		const cleaned = value.replace(/^https?:\/\//, "").replace(/\/$/, "");
 		const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}$/;
 		if (!cleaned || !domainRegex.test(cleaned)) {
-			setDomainError("Please enter a valid domain (e.g., example.com)");
+			setDomainError("Enter a valid domain like example.com");
 			return false;
 		}
 		setDomainError("");
@@ -140,7 +148,7 @@ export function OnboardingWizard() {
 
 		setIsDiscovering(true);
 		setDomainError("");
-		setDiscoveryStatus("Checking robots.txt and standard locations...");
+		setDiscoveryStatus("Checking robots.txt...");
 
 		try {
 			const result = await discoverMutation.mutateAsync({
@@ -150,7 +158,7 @@ export function OnboardingWizard() {
 			setSitemaps(result.sitemaps);
 
 			if (result.sitemaps.length === 0) {
-				setDomainError("No sitemaps found. Please try a different domain.");
+				setDomainError("No sitemaps found. Try a different domain.");
 				setIsDiscovering(false);
 				setDiscoveryStatus("");
 			} else {
@@ -160,7 +168,7 @@ export function OnboardingWizard() {
 				setDiscoveryStatus("");
 			}
 		} catch {
-			setDomainError("Failed to discover sitemaps. Please try again.");
+			setDomainError("Couldn't find sitemaps. Try again.");
 			setIsDiscovering(false);
 		}
 	};
@@ -206,7 +214,7 @@ export function OnboardingWizard() {
 			}
 
 			if (allUrls.length === 0 && errors.length > 0) {
-				setCrawlError(`Failed to fetch sitemaps:\n${errors.join("\n")}`);
+				setCrawlError(`Couldn't fetch sitemaps:\n${errors.join("\n")}`);
 				setIsLoadingPreview(false);
 				return;
 			}
@@ -217,7 +225,7 @@ export function OnboardingWizard() {
 			setCrawlError(
 				err instanceof Error
 					? err.message
-					: "Failed to fetch sitemaps. Please try again.",
+					: "Couldn't fetch sitemaps. Try again.",
 			);
 		} finally {
 			setIsLoadingPreview(false);
@@ -247,9 +255,7 @@ export function OnboardingWizard() {
 			router.push("/app/dashboard");
 		} catch (err) {
 			setCrawlError(
-				err instanceof Error
-					? err.message
-					: "Failed to save. Please try again.",
+				err instanceof Error ? err.message : "Couldn't save. Try again.",
 			);
 			setIsSaving(false);
 		}
@@ -373,36 +379,10 @@ export function OnboardingWizard() {
 				</div>
 			</header>
 
-			<div
-				className="flex gap-1.5 mb-8"
-				role="progressbar"
-				aria-valuenow={currentStepIndex + 1}
-				aria-valuemin={0}
-				aria-valuemax={STEPS.length}
-			>
-				{STEPS.map((s, i) => {
-					const isComplete = i < currentStepIndex;
-					const isCurrent = i === currentStepIndex;
-					return (
-						<motion.div
-							key={s.id}
-							className={cn(
-								"h-1.5 flex-1 rounded-full",
-								isComplete && "bg-primary",
-								isCurrent && "bg-primary",
-								!isComplete && !isCurrent && "bg-muted",
-							)}
-							initial={{ scaleX: 0 }}
-							animate={{ scaleX: 1 }}
-							transition={{
-								duration: shouldReduceMotion ? 0.01 : 0.3,
-								ease: [0.25, 1, 0.5, 1],
-							}}
-							aria-current={isCurrent ? "step" : undefined}
-						/>
-					);
-				})}
-			</div>
+			<Progress
+				value={((currentStepIndex + 1) / STEPS.length) * 100}
+				className="h-1.5 mb-8"
+			/>
 
 			<AnimatePresence mode="wait">
 				{step === "domain" && (
@@ -461,8 +441,7 @@ export function OnboardingWizard() {
 											duration: 0.3,
 										}}
 									>
-										Enter your website domain to get started with sitemap
-										analysis.
+										Enter your website domain to get started.
 									</motion.p>
 								</div>
 							</div>
@@ -486,7 +465,7 @@ export function OnboardingWizard() {
 								<Input
 									id="domain"
 									type="text"
-									placeholder="example.com"
+									placeholder="yoursite.com"
 									value={domain}
 									onChange={(e) => setDomain(e.target.value)}
 									autoFocus
@@ -506,30 +485,20 @@ export function OnboardingWizard() {
 								)}
 							</div>
 
-							<motion.div
-								whileHover={
-									!isDiscovering && !shouldReduceMotion ? { scale: 1.02 } : {}
-								}
-								whileTap={
-									!isDiscovering && !shouldReduceMotion ? { scale: 0.98 } : {}
-								}
-								transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+							<Button
+								type="submit"
+								size="lg"
+								disabled={isDiscovering || !domain.trim()}
 							>
-								<Button
-									type="submit"
-									size="lg"
-									disabled={isDiscovering || !domain.trim()}
-								>
-									{isDiscovering ? (
-										<>
-											<Loader2 className="h-4 w-4 animate-spin" />
-											{discoveryStatus || "Discovering..."}
-										</>
-									) : (
-										<>Continue</>
-									)}
-								</Button>
-							</motion.div>
+								{isDiscovering ? (
+									<>
+										<Loader2 className="h-4 w-4 animate-spin" />
+										{discoveryStatus || "Discovering..."}
+									</>
+								) : (
+									<>Continue</>
+								)}
+							</Button>
 						</motion.form>
 					</motion.div>
 				)}
@@ -641,50 +610,33 @@ export function OnboardingWizard() {
 											Select none
 										</motion.button>
 									)}
-									<motion.button
-										type="button"
-										onClick={() => setShowSitemapHelp(!showSitemapHelp)}
-										className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-										whileHover={{ scale: 1.05 }}
-										whileTap={{ scale: 0.95 }}
-										transition={{ duration: 0.15 }}
-									>
-										<HelpCircle className="h-3.5 w-3.5" />
-										What are these?
-										<motion.span
-											animate={{ rotate: showSitemapHelp ? 180 : 0 }}
-											transition={{ duration: 0.2 }}
-										>
-											<ChevronDown className="h-3 w-3" />
-										</motion.span>
-									</motion.button>
 								</div>
 							</div>
-							<AnimatePresence>
-								{showSitemapHelp && (
-									<motion.div
-										className="p-3 rounded-lg bg-muted/50 border border-border text-sm space-y-2"
-										initial={{ opacity: 0, height: 0 }}
-										animate={{ opacity: 1, height: "auto" }}
-										exit={{ opacity: 0, height: 0 }}
-										transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
-									>
-										<p>
-											<strong>robots.txt</strong> — Sitemaps explicitly declared
-											in your site's robots.txt file. Usually the most accurate
-											source.
-										</p>
-										<p>
-											<strong>standard</strong> — Common sitemap locations we
-											checked directly (e.g., /sitemap.xml). Reliable fallback.
-										</p>
-										<p>
-											<strong>sitemap index</strong> — A file that lists other
-											sitemaps. Select it to include all child sitemaps.
-										</p>
-									</motion.div>
-								)}
-							</AnimatePresence>
+							<Accordion type="single" collapsible className="w-full">
+								<AccordionItem value="sitemap-help" className="border-none">
+									<AccordionTrigger className="py-2 px-3 hover:no-underline hover:bg-muted/50 rounded-lg text-xs text-muted-foreground">
+										What are these?
+									</AccordionTrigger>
+									<AccordionContent className="px-3">
+										<div className="p-3 rounded-lg bg-muted/50 border border-border text-sm space-y-2">
+											<p>
+												<strong>robots.txt</strong> — Sitemaps explicitly
+												declared in your site's robots.txt file. Usually the
+												most accurate source.
+											</p>
+											<p>
+												<strong>standard</strong> — Common sitemap locations we
+												checked directly (e.g., /sitemap.xml). Reliable
+												fallback.
+											</p>
+											<p>
+												<strong>sitemap index</strong> — A file that lists other
+												sitemaps. Select it to include all child sitemaps.
+											</p>
+										</div>
+									</AccordionContent>
+								</AccordionItem>
+							</Accordion>
 							{sitemaps.map((sitemap, index) => (
 								<motion.div
 									key={sitemap.url}
@@ -731,18 +683,18 @@ export function OnboardingWizard() {
 												<span className="text-sm font-mono truncate">
 													{sitemap.url}
 												</span>
-												<span
-													className={cn(
-														"shrink-0 px-2 py-0.5 rounded text-xs font-medium",
+												<Badge
+													variant={
 														sitemap.source === "robots.txt"
-															? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+															? "default"
 															: sitemap.source === "standard"
-																? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-																: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-													)}
+																? "secondary"
+																: "outline"
+													}
+													className="shrink-0"
 												>
 													{SOURCE_LABELS[sitemap.source]}
-												</span>
+												</Badge>
 											</div>
 											<p className="text-xs text-muted-foreground">
 												{sitemap.type === "sitemapindex"
@@ -764,41 +716,23 @@ export function OnboardingWizard() {
 								duration: 0.3,
 							}}
 						>
-							<motion.div
-								whileHover={
-									selectedSitemapUrls.size > 0 &&
-									!isLoadingPreview &&
-									!shouldReduceMotion
-										? { scale: 1.02 }
-										: {}
-								}
-								whileTap={
-									selectedSitemapUrls.size > 0 &&
-									!isLoadingPreview &&
-									!shouldReduceMotion
-										? { scale: 0.98 }
-										: {}
-								}
-								transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+							<Button
+								onClick={handleContinueToPreview}
+								disabled={selectedSitemapUrls.size === 0 || isLoadingPreview}
+								size="lg"
 							>
-								<Button
-									onClick={handleContinueToPreview}
-									disabled={selectedSitemapUrls.size === 0 || isLoadingPreview}
-									size="lg"
-								>
-									{isLoadingPreview ? (
-										<>
-											<Loader2 className="h-4 w-4 animate-spin" />
-											{discoveryStatus || "Loading..."}
-										</>
-									) : (
-										<>
-											Continue
-											<ArrowRight className="h-4 w-4" />
-										</>
-									)}
-								</Button>
-							</motion.div>
+								{isLoadingPreview ? (
+									<>
+										<Loader2 className="h-4 w-4 animate-spin" />
+										{discoveryStatus || "Loading..."}
+									</>
+								) : (
+									<>
+										Continue
+										<ArrowRight className="h-4 w-4" />
+									</>
+								)}
+							</Button>
 						</motion.div>
 					</motion.div>
 				)}
@@ -921,21 +855,23 @@ export function OnboardingWizard() {
 											URLs.
 										</p>
 									</div>
-									<div className="max-h-64 overflow-y-auto">
-										<table className="w-full">
-											<thead className="bg-muted/50 sticky top-0">
-												<tr>
-													<th className="text-left text-xs font-medium text-muted-foreground px-4 py-2">
+									<ScrollArea className="h-64">
+										<Table className="table-fixed">
+											<TableHeader>
+												<TableRow>
+													<TableHead className="w-[350px] max-w-[350px]">
 														URL
-													</th>
-													<th className="text-right text-xs font-medium text-muted-foreground px-4 py-2 w-10" />
-												</tr>
-											</thead>
-											<tbody className="divide-y divide-border">
+													</TableHead>
+													<TableHead className="w-[100px]">Last Mod</TableHead>
+													<TableHead className="w-[100px]">Frequency</TableHead>
+													<TableHead className="w-[100px]">Priority</TableHead>
+													<TableHead className="w-[40px]" />
+												</TableRow>
+											</TableHeader>
+											<TableBody>
 												{crawledUrls.slice(0, 50).map((urlItem, index) => (
 													<motion.tr
 														key={`${urlItem.url}-${index}`}
-														className="hover:bg-muted/30 transition-colors"
 														initial={{ opacity: 0 }}
 														animate={{ opacity: 1 }}
 														transition={{
@@ -943,10 +879,22 @@ export function OnboardingWizard() {
 															duration: 0.2,
 														}}
 													>
-														<td className="px-4 py-2.5 text-sm font-mono truncate max-w-0">
+														<TableCell
+															className="font-mono text-sm whitespace-nowrap overflow-x-auto"
+															style={{ scrollbarWidth: "thin" }}
+														>
 															{urlItem.url}
-														</td>
-														<td className="px-4 py-2.5 text-right">
+														</TableCell>
+														<TableCell className="text-muted-foreground">
+															<TimeAgo date={urlItem.lastmod} />
+														</TableCell>
+														<TableCell className="text-muted-foreground">
+															{urlItem.changefreq ?? "Unknown"}
+														</TableCell>
+														<TableCell>
+															<PriorityBadge priority={urlItem.priority} />
+														</TableCell>
+														<TableCell className="text-right">
 															<motion.a
 																href={urlItem.url}
 																target="_blank"
@@ -957,12 +905,12 @@ export function OnboardingWizard() {
 															>
 																<ExternalLink className="h-4 w-4" />
 															</motion.a>
-														</td>
+														</TableCell>
 													</motion.tr>
 												))}
-											</tbody>
-										</table>
-									</div>
+											</TableBody>
+										</Table>
+									</ScrollArea>
 									{crawledUrls.length > 50 && (
 										<div className="px-4 py-3 bg-muted/50 text-center border-t border-border">
 											<p className="text-sm text-muted-foreground">
@@ -982,33 +930,23 @@ export function OnboardingWizard() {
 										duration: 0.3,
 									}}
 								>
-									<motion.div
-										whileHover={
-											!isSaving && !shouldReduceMotion ? { scale: 1.02 } : {}
-										}
-										whileTap={
-											!isSaving && !shouldReduceMotion ? { scale: 0.98 } : {}
-										}
-										transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+									<Button
+										onClick={handleConfirmAndSave}
+										size="lg"
+										disabled={isSaving}
 									>
-										<Button
-											onClick={handleConfirmAndSave}
-											size="lg"
-											disabled={isSaving}
-										>
-											{isSaving ? (
-												<>
-													<Loader2 className="h-4 w-4 animate-spin" />
-													Saving...
-												</>
-											) : (
-												<>
-													Confirm & Create Project
-													<ArrowRight className="h-4 w-4" />
-												</>
-											)}
-										</Button>
-									</motion.div>
+										{isSaving ? (
+											<>
+												<Loader2 className="h-4 w-4 animate-spin" />
+												Saving...
+											</>
+										) : (
+											<>
+												Confirm & Create Project
+												<ArrowRight className="h-4 w-4" />
+											</>
+										)}
+									</Button>
 								</motion.div>
 							</>
 						)}

@@ -3,9 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import { PageShell } from "@/app/components/page-shell";
-import { DataList, DataListAction, MetadataGroup } from "@opencited/ui";
+import { DataList, DataListAction } from "@opencited/ui";
+import { PriorityBadge } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
-import { Calendar, RefreshCw, Hash, ExternalLink } from "lucide-react";
+import { TimeAgo } from "@/app/components/time-ago";
+import { ChangeFreqBadge } from "@/app/components/change-freq-badge";
+import { ExternalLink } from "lucide-react";
 import { useParams } from "next/navigation";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
@@ -45,27 +48,18 @@ export default function SitemapDetailPage() {
 										<span className="text-sm font-mono truncate">
 											{urlItem.url}
 										</span>
-										<MetadataGroup
-											items={
-												[
-													urlItem.lastmod && {
-														icon: <Calendar className="h-3 w-3" />,
-														label: urlItem.lastmod,
-													},
-													urlItem.changefreq && {
-														icon: <RefreshCw className="h-3 w-3" />,
-														label: urlItem.changefreq,
-													},
-													urlItem.priority && {
-														icon: <Hash className="h-3 w-3" />,
-														label: urlItem.priority,
-													},
-												].filter(Boolean) as Array<{
-													icon: React.ReactNode;
-													label: string;
-												}>
-											}
-										/>
+										<div className="flex flex-wrap items-center gap-3">
+											{urlItem.lastmod && (
+												<TimeAgo date={urlItem.lastmod} label="Modified" />
+											)}
+											{urlItem.priority && (
+												<PriorityBadge priority={urlItem.priority} />
+											)}
+											<TimeAgo date={urlItem.updatedAt} label="Crawled" />
+											{urlItem.changefreq && (
+												<ChangeFreqBadge value={urlItem.changefreq} />
+											)}
+										</div>
 									</div>
 									<DataListAction
 										href={urlItem.url}
@@ -78,8 +72,9 @@ export default function SitemapDetailPage() {
 								</div>
 							)}
 							emptyState={{
-								title: "No URLs Found",
-								description: "This sitemap doesn't contain any URLs yet.",
+								title: "No URLs found",
+								description:
+									"This sitemap has no URLs. It may still be crawling or the sitemap is empty.",
 							}}
 						/>
 					</div>

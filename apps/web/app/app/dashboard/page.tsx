@@ -19,7 +19,7 @@ import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
 import Link from "next/link";
 import { PageShell } from "@/app/components/page-shell";
-import { timeAgo } from "@/lib/time-ago";
+import { TimeAgo } from "@/app/components/time-ago";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type DomainProject = RouterOutput["domainProject"]["get"];
@@ -139,13 +139,13 @@ export default function DashboardPage() {
 											</span>
 										</div>
 										<span className="text-xs text-muted-foreground shrink-0">
-											{timeAgo(sitemap.createdAt)}
+											<TimeAgo date={sitemap.createdAt} />
 										</span>
 									</Link>
 								)}
 								emptyState={{
 									title: "No sitemaps yet",
-									description: "Go to onboarding to add one.",
+									description: "Add a sitemap to start tracking.",
 								}}
 							/>
 						)}

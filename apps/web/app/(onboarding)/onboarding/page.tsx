@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { CreateOrganization } from "@clerk/nextjs";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
 import { trpc } from "@/app/_trpc/server";
+import { TooltipProvider } from "@opencited/ui";
 
 export default async function OnboardingPage() {
 	const { userId, orgId } = await auth();
@@ -31,7 +32,9 @@ export default async function OnboardingPage() {
 
 	return (
 		<main className="min-h-screen flex items-start justify-center p-8">
-			<OnboardingWizard />
+			<TooltipProvider>
+				<OnboardingWizard />
+			</TooltipProvider>
 		</main>
 	);
 }
