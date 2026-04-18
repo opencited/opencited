@@ -32,8 +32,10 @@ export default async function OnboardingPage() {
 	return (
 		<div className="flex flex-col items-center justify-center min-h-screen p-4">
 			<div className="w-full max-w-2xl mb-8 text-center">
-				<h1 className="text-3xl font-bold mb-2">Set Up Your Project</h1>
-				<p className="text-muted-foreground">
+				<h1 className="text-2xl font-semibold tracking-tight mb-2">
+					Set Up Your Project
+				</h1>
+				<p className="text-sm text-muted-foreground">
 					Enter your website domain to get started with sitemap analysis.
 				</p>
 			</div>

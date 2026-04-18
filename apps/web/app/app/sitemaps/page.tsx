@@ -2,91 +2,85 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { PageShell } from "../../components/page-shell";
+import { PageShell } from "@/app/components/page-shell";
 import { useTRPC } from "@/app/_trpc/client";
-import { Button } from "@opencited/ui";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@opencited/ui";
-import { ExternalLink, Globe, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@opencited/ui";
+import { QueryCell } from "@/app/components/query-cell";
+import { Globe } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
+import { timeAgo } from "@/lib/time-ago";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type SitemapList = RouterOutput["sitemap"]["list"];
 
+function SitemapCard({ sitemap }: { sitemap: SitemapList[number] }) {
+	return (
+		<Link href={`/app/sitemaps/${sitemap.id}`}>
+			<Card className="h-full transition-colors hover:bg-muted/50">
+				<CardHeader className="pb-2">
+					<CardTitle className="flex items-center gap-2 text-sm font-medium">
+						<Globe className="h-4 w-4 text-muted-foreground shrink-0" />
+						<span className="truncate font-mono">{sitemap.url}</span>
+					</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<p className="text-xs text-muted-foreground">
+						Updated {timeAgo(sitemap.updatedAt)}
+					</p>
+				</CardContent>
+			</Card>
+		</Link>
+	);
+}
+
 export default function SitemapsPage() {
 	const trpc = useTRPC();
 
-	const { data: sitemaps, isLoading } = useQuery(
-		trpc.sitemap.list.queryOptions({}),
-	);
-
-	if (isLoading) {
-		return (
-			<PageShell title="Sitemaps">
-				<div className="flex items-center justify-center py-12">
-					<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-				</div>
-			</PageShell>
-		);
-	}
-
-	const sitemapList = sitemaps as SitemapList | undefined;
-
-	if (!sitemapList || sitemapList.length === 0) {
-		return (
-			<PageShell title="Sitemaps">
-				<Card>
-					<CardHeader>
-						<CardTitle>No Sitemaps Yet</CardTitle>
-						<CardDescription>
-							You haven&apos;t added any sitemaps to your project yet.
-						</CardDescription>
-					</CardHeader>
-				</Card>
-			</PageShell>
-		);
-	}
+	const sitemapsQuery = useQuery(trpc.sitemap.list.queryOptions({}));
 
 	return (
 		<PageShell title="Sitemaps">
-			<div className="space-y-4">
-				<p className="text-sm text-muted-foreground">
-					{sitemapList.length} sitemap{sitemapList.length !== 1 ? "s" : ""} in
-					your project
-				</p>
-				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{sitemapList.map((sitemap: SitemapList[number]) => (
-						<Card
-							key={sitemap.id}
-							className="hover:bg-muted/50 transition-colors"
-						>
-							<CardHeader className="pb-2">
-								<CardTitle className="text-base flex items-center gap-2">
-									<Globe className="h-4 w-4" />
-									<span className="truncate">{sitemap.url}</span>
-								</CardTitle>
-								<CardDescription className="truncate">
-									{sitemap.id}
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<Button asChild className="w-full">
-									<Link href={`/app/sitemaps/${sitemap.id}`}>
-										View URLs
-										<ExternalLink className="ml-2 h-4 w-4" />
-									</Link>
-								</Button>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			</div>
+			<QueryCell
+				query={sitemapsQuery}
+				loading={
+					<div className="flex items-center justify-center py-12 text-muted-foreground">
+						Loading sitemaps...
+					</div>
+				}
+				error={(_error) => (
+					<Card>
+						<CardContent className="py-8 text-center text-destructive">
+							Failed to load sitemaps
+						</CardContent>
+					</Card>
+				)}
+				success={(sitemapList) => {
+					if (!sitemapList || sitemapList.length === 0) {
+						return (
+							<Card>
+								<CardContent className="py-8 text-center text-muted-foreground">
+									You haven&apos;t added any sitemaps to your project yet.
+								</CardContent>
+							</Card>
+						);
+					}
+
+					return (
+						<div className="space-y-4">
+							<p className="text-sm text-muted-foreground">
+								{sitemapList.length} sitemap
+								{sitemapList.length !== 1 ? "s" : ""} in your project
+							</p>
+							<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+								{sitemapList.map((sitemap: SitemapList[number]) => (
+									<SitemapCard key={sitemap.id} sitemap={sitemap} />
+								))}
+							</div>
+						</div>
+					);
+				}}
+			/>
 		</PageShell>
 	);
 }

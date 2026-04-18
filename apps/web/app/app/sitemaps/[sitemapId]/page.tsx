@@ -3,9 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import { PageShell } from "@/app/components/page-shell";
-import { Card, CardDescription, CardHeader, CardTitle } from "@opencited/ui";
-import { Badge } from "@opencited/ui";
-import { ExternalLink, Loader2, Calendar, RefreshCw, Hash } from "lucide-react";
+import { DataList, DataListAction, MetadataGroup } from "@opencited/ui";
+import { QueryCell } from "@/app/components/query-cell";
+import { Calendar, RefreshCw, Hash, ExternalLink } from "lucide-react";
 import { useParams } from "next/navigation";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
@@ -18,21 +18,9 @@ export default function SitemapDetailPage() {
 	const params = useParams();
 	const sitemapId = params.sitemapId as string;
 
-	const { data: urls, isLoading } = useQuery(
+	const urlListQuery = useQuery(
 		trpc.sitemap.listUrls.queryOptions({ sitemapId }),
 	);
-
-	if (isLoading) {
-		return (
-			<PageShell title="Sitemap URLs">
-				<div className="flex items-center justify-center py-12">
-					<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-				</div>
-			</PageShell>
-		);
-	}
-
-	const urlList = urls as SitemapUrlList | undefined;
 
 	return (
 		<PageShell
@@ -40,73 +28,63 @@ export default function SitemapDetailPage() {
 			backHref="/app/sitemaps"
 			backLabel="Back to Sitemaps"
 		>
-			<div className="space-y-4">
-				<p className="text-sm text-muted-foreground">
-					{urlList?.length ?? 0} URL{urlList?.length !== 1 ? "s" : ""} in this
-					sitemap
-				</p>
-
-				{!urlList || urlList.length === 0 ? (
-					<Card>
-						<CardHeader>
-							<CardTitle>No URLs Found</CardTitle>
-							<CardDescription>
-								This sitemap doesn&apos;t contain any URLs yet.
-							</CardDescription>
-						</CardHeader>
-					</Card>
-				) : (
-					<div className="border rounded-lg divide-y">
-						{urlList.map((urlItem: SitemapUrlList[number]) => (
-							<div
-								key={urlItem.id}
-								className="p-4 flex items-start justify-between gap-4"
-							>
-								<div className="flex-1 min-w-0">
-									<div className="flex items-center gap-2 mb-1">
-										<a
-											href={urlItem.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="text-sm font-mono truncate hover:text-primary"
-										>
+			<QueryCell<SitemapUrlList>
+				query={urlListQuery}
+				success={(urlList) => (
+					<div className="space-y-4">
+						<p className="text-sm text-muted-foreground">
+							{urlList.length} URL{urlList.length !== 1 ? "s" : ""} in this
+							sitemap
+						</p>
+						<DataList<SitemapUrlList[number]>
+							items={urlList}
+							keyExtractor={(url) => url.id}
+							renderItem={(urlItem) => (
+								<div className="flex items-start justify-between gap-4 w-full">
+									<div className="flex flex-col flex-1 min-w-0 gap-1">
+										<span className="text-sm font-mono truncate">
 											{urlItem.url}
-										</a>
-										<a
-											href={urlItem.url}
-											target="_blank"
-											rel="noopener noreferrer"
-											className="text-muted-foreground hover:text-primary shrink-0"
-										>
-											<ExternalLink className="h-4 w-4" />
-										</a>
+										</span>
+										<MetadataGroup
+											items={
+												[
+													urlItem.lastmod && {
+														icon: <Calendar className="h-3 w-3" />,
+														label: urlItem.lastmod,
+													},
+													urlItem.changefreq && {
+														icon: <RefreshCw className="h-3 w-3" />,
+														label: urlItem.changefreq,
+													},
+													urlItem.priority && {
+														icon: <Hash className="h-3 w-3" />,
+														label: urlItem.priority,
+													},
+												].filter(Boolean) as Array<{
+													icon: React.ReactNode;
+													label: string;
+												}>
+											}
+										/>
 									</div>
-									<div className="flex flex-wrap gap-2 mt-2">
-										{urlItem.lastmod && (
-											<Badge variant="secondary" className="text-xs gap-1">
-												<Calendar className="h-3 w-3" />
-												{urlItem.lastmod}
-											</Badge>
-										)}
-										{urlItem.changefreq && (
-											<Badge variant="secondary" className="text-xs gap-1">
-												<RefreshCw className="h-3 w-3" />
-												{urlItem.changefreq}
-											</Badge>
-										)}
-										{urlItem.priority && (
-											<Badge variant="secondary" className="text-xs gap-1">
-												<Hash className="h-3 w-3" />
-												{urlItem.priority}
-											</Badge>
-										)}
-									</div>
+									<DataListAction
+										href={urlItem.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										icon={<ExternalLink className="h-4 w-4" />}
+									>
+										Open
+									</DataListAction>
 								</div>
-							</div>
-						))}
+							)}
+							emptyState={{
+								title: "No URLs Found",
+								description: "This sitemap doesn't contain any URLs yet.",
+							}}
+						/>
 					</div>
 				)}
-			</div>
+			/>
 		</PageShell>
 	);
 }

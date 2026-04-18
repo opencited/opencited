@@ -12,7 +12,7 @@ export type Context = {
 export const baseActionContextSchema = z.object({
 	userId: z.string().nullable(),
 	isAuthenticated: z.boolean(),
-	db: z.any(),
+	db: z.custom<typeof db>(),
 });
 
 export const createTRPCContext = async (): Promise<Context> => {

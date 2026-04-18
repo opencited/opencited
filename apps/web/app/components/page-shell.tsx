@@ -18,7 +18,7 @@ export function PageShell({
 	return (
 		<div className="flex h-full flex-col">
 			{title && (
-				<div className="mb-6 border-b border-muted-foreground/30 px-2 py-4">
+				<div className="mb-6 border-b border-border px-2 py-4">
 					{backHref && (
 						<div className="mb-2">
 							<Link

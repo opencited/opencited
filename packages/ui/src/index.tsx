@@ -16,6 +16,18 @@ export { Badge, badgeVariants } from "./badge";
 export type { BadgeProps } from "./badge";
 
 export {
+	EntityCard,
+	EntityCardHeader,
+	EntityCardTitle,
+	EntityCardValue,
+	EntityCardContent,
+	EntityCardFooter,
+} from "./entity-card";
+
+export { DataList, DataListLink, DataListAction } from "./data-list";
+export { MetadataItem, MetadataGroup } from "./metadata";
+
+export {
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
@@ -64,3 +76,6 @@ export {
 	TooltipProvider,
 	TooltipTrigger,
 } from "./tooltip";
+
+export { ThemeProvider, useTheme } from "./theme-provider";
+export { ThemeToggle } from "./theme-toggle";

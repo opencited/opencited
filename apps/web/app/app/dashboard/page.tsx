@@ -1,78 +1,112 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { PageShell } from "../../components/page-shell";
 import { useTRPC } from "@/app/_trpc/client";
-import { Button } from "@opencited/ui";
-import { Card, CardContent, CardHeader, CardTitle } from "@opencited/ui";
-import { Database, Globe, Hash, ExternalLink, ArrowRight } from "lucide-react";
+import {
+	Button,
+	Skeleton,
+	EntityCard,
+	EntityCardHeader,
+	EntityCardTitle,
+	EntityCardValue,
+	EntityCardContent,
+	EntityCardFooter,
+} from "@opencited/ui";
+import { DataList } from "@opencited/ui";
+import { QueryCell } from "@/app/components/query-cell";
+import { Globe, Database, Hash, ArrowRight } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
+import Link from "next/link";
+import { PageShell } from "@/app/components/page-shell";
+import { timeAgo } from "@/lib/time-ago";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type DomainProject = RouterOutput["domainProject"]["get"];
 type SitemapList = RouterOutput["sitemap"]["list"];
 type UrlCount = RouterOutput["sitemap"]["getUrlCount"];
 
+function StatCard({
+	icon: Icon,
+	label,
+	value,
+	description,
+	isLoading,
+}: {
+	icon: React.ElementType;
+	label: string;
+	value: React.ReactNode;
+	description?: string;
+	isLoading?: boolean;
+}) {
+	return (
+		<EntityCard size="md">
+			<EntityCardContent size="md">
+				<EntityCardHeader
+					icon={<Icon className="h-4 w-4" />}
+					iconPosition="right"
+				>
+					<EntityCardTitle>{label}</EntityCardTitle>
+				</EntityCardHeader>
+				{isLoading ? (
+					<Skeleton className="h-8 w-20 mt-3" />
+				) : (
+					<EntityCardValue size="md">{value}</EntityCardValue>
+				)}
+			</EntityCardContent>
+			{description && (
+				<EntityCardFooter size="md">{description}</EntityCardFooter>
+			)}
+		</EntityCard>
+	);
+}
+
 export default function DashboardPage() {
 	const trpc = useTRPC();
 
-	const { data: domainProject } = useQuery(
-		trpc.domainProject.get.queryOptions(),
-	);
-
-	const { data: sitemaps } = useQuery(trpc.sitemap.list.queryOptions({}));
-
-	const { data: urlCount } = useQuery(trpc.sitemap.getUrlCount.queryOptions());
+	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
+	const sitemapsQuery = useQuery(trpc.sitemap.list.queryOptions({}));
+	const urlCountQuery = useQuery(trpc.sitemap.getUrlCount.queryOptions());
 
 	return (
 		<PageShell title="Dashboard">
 			<div className="space-y-6">
 				<div>
 					<h2 className="text-lg font-medium mb-2">Project Overview</h2>
-					<div className="grid gap-4 md:grid-cols-3">
-						<Card>
-							<CardHeader className="pb-2">
-								<CardTitle className="text-sm font-medium flex items-center gap-2">
-									<Globe className="h-4 w-4" />
-									Domain
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold">
-									{(domainProject as DomainProject)?.domain || "N/A"}
-								</div>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader className="pb-2">
-								<CardTitle className="text-sm font-medium flex items-center gap-2">
-									<Database className="h-4 w-4" />
-									Sitemaps
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold">
-									{(sitemaps as SitemapList)?.length ?? 0}
-								</div>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader className="pb-2">
-								<CardTitle className="text-sm font-medium flex items-center gap-2">
-									<Hash className="h-4 w-4" />
-									Total URLs
-								</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold">
-									{(urlCount as UrlCount)?.count.toLocaleString() ?? 0}
-								</div>
-							</CardContent>
-						</Card>
+					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(5,200px)]">
+						<QueryCell
+							query={domainProjectQuery}
+							success={(domainProject) => (
+								<StatCard
+									icon={Globe}
+									label="Domain"
+									value={(domainProject as DomainProject)?.domain || "N/A"}
+									description="Your project domain"
+								/>
+							)}
+						/>
+						<QueryCell
+							query={sitemapsQuery}
+							success={(sitemaps) => (
+								<StatCard
+									icon={Database}
+									label="Sitemaps"
+									value={(sitemaps as SitemapList)?.length ?? 0}
+									description="Sitemaps indexed"
+								/>
+							)}
+						/>
+						<QueryCell
+							query={urlCountQuery}
+							success={(urlCount) => (
+								<StatCard
+									icon={Hash}
+									label="Total URLs"
+									value={(urlCount as UrlCount)?.count.toLocaleString() ?? 0}
+									description="URLs discovered"
+								/>
+							)}
+						/>
 					</div>
 				</div>
 
@@ -87,37 +121,35 @@ export default function DashboardPage() {
 						</Button>
 					</div>
 
-					{sitemaps && (sitemaps as SitemapList).length > 0 ? (
-						<div className="border rounded-lg divide-y">
-							{(sitemaps as SitemapList)
-								.slice(0, 5)
-								.map((sitemap: SitemapList[number]) => (
-									<div
-										key={sitemap.id}
-										className="p-4 flex items-center justify-between"
+					<QueryCell<SitemapList>
+						query={sitemapsQuery}
+						success={(sitemaps) => (
+							<DataList
+								items={sitemaps.slice(0, 5)}
+								keyExtractor={(sitemap) => sitemap.id}
+								renderItem={(sitemap) => (
+									<Link
+										href={`/app/sitemaps/${sitemap.id}`}
+										className="flex items-center justify-between gap-4 w-full"
 									>
 										<div className="flex items-center gap-3 min-w-0">
 											<Globe className="h-5 w-5 text-muted-foreground shrink-0" />
-											<span className="font-mono text-sm truncate">
+											<span className="font-mono text-sm truncate text-foreground">
 												{sitemap.url}
 											</span>
 										</div>
-										<Button variant="ghost" size="sm" asChild>
-											<Link href={`/app/sitemaps/${sitemap.id}`}>
-												View URLs
-												<ExternalLink className="ml-1 h-4 w-4" />
-											</Link>
-										</Button>
-									</div>
-								))}
-						</div>
-					) : (
-						<Card>
-							<CardContent className="py-8 text-center text-muted-foreground">
-								No sitemaps yet. Go to onboarding to add one.
-							</CardContent>
-						</Card>
-					)}
+										<span className="text-xs text-muted-foreground shrink-0">
+											{timeAgo(sitemap.createdAt)}
+										</span>
+									</Link>
+								)}
+								emptyState={{
+									title: "No sitemaps yet",
+									description: "Go to onboarding to add one.",
+								}}
+							/>
+						)}
+					/>
 				</div>
 			</div>
 		</PageShell>

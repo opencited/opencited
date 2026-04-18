@@ -10,6 +10,7 @@ if (!databaseUrl) {
 
 const pool = new Pool({ connectionString: databaseUrl });
 const db = drizzle({ client: pool, schema });
+export type Db = typeof db;
 
 export { db, schema };
 export {

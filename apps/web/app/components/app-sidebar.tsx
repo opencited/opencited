@@ -15,6 +15,7 @@ import {
 	SidebarMenuItem,
 	SidebarRail,
 	SidebarSeparator,
+	ThemeToggle,
 	useSidebar,
 } from "@opencited/ui";
 import { Skeleton } from "@opencited/ui";
@@ -65,9 +66,12 @@ export function AppSidebar() {
 								<PanelLeft className="size-5" />
 							</SidebarMenuButton>
 						) : (
-							<SidebarMenuButton asChild>
-								<BrandNameLink className="text-xl lg:text-2xl" />
-							</SidebarMenuButton>
+							<div className="flex items-center justify-between">
+								<SidebarMenuButton asChild>
+									<BrandNameLink className="text-xl lg:text-2xl" />
+								</SidebarMenuButton>
+								<ThemeToggle />
+							</div>
 						)}
 					</SidebarMenuItem>
 					{!isCollapsed && (
@@ -77,7 +81,7 @@ export function AppSidebar() {
 								isCollapsed ? "flex-col items-start pe-0" : "pe-2",
 							)}
 						>
-							<SidebarMenuButton asChild>
+							<SidebarMenuButton>
 								<OrganizationSwitcher
 									afterSelectOrganizationUrl="/app/dashboard"
 									hidePersonal

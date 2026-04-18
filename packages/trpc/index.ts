@@ -1,6 +1,5 @@
 export { type AppRouter, appRouter } from "./src/router/root";
 export {
-	type Context,
 	type TRPCContext,
 	createTRPCContext,
 	createTRPCRouter,
