@@ -191,6 +191,13 @@ export function AppSidebar() {
 			</SidebarHeader>
 			<SidebarSeparator />
 			<SidebarContent>
+				{!isCollapsed && (
+					<SidebarGroup>
+						<SidebarMenuItem>
+							<DomainDisplay />
+						</SidebarMenuItem>
+					</SidebarGroup>
+				)}
 				<SidebarGroup>
 					<SidebarGroupLabel className={cn(isCollapsed && "sr-only")}>
 						Navigation
@@ -227,9 +234,6 @@ export function AppSidebar() {
 			{!isCollapsed && (
 				<SidebarFooter>
 					<SidebarMenu>
-						<SidebarMenuItem>
-							<DomainDisplay />
-						</SidebarMenuItem>
 						<SidebarMenuItem>
 							<button
 								type="button"

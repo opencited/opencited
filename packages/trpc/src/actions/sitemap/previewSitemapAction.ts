@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { baseActionContextSchema } from "../../trpc";
-import { crawlSitemap } from "@opencited/crawler";
+import { getSitemapUrls } from "@opencited/crawler";
 
 export const previewSitemapInputSchema = z.object({
 	sitemapUrl: z.string().url(),
@@ -24,7 +24,7 @@ export const previewSitemapAction = async (params: {
 }) => {
 	const { input } = params;
 
-	const result = await crawlSitemap(input.sitemapUrl);
+	const result = await getSitemapUrls(input.sitemapUrl);
 
 	if (result.urls.length === 0) {
 		throw new TRPCError({

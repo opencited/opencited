@@ -1,6 +1,8 @@
 export { Button, buttonVariants } from "./button";
 export type { ButtonProps } from "./button";
 
+export { Checkbox } from "./checkbox";
+
 export { Kbd, KbdGroup } from "./kbd";
 
 export {

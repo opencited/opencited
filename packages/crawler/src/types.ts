@@ -20,3 +20,12 @@ export interface CrawlResult {
 export interface CrawlError {
 	message: string;
 }
+
+export type SitemapType = "urlset" | "sitemapindex";
+
+export interface SitemapInfo {
+	url: string;
+	type: SitemapType;
+	urlCount: number;
+	source: "robots.txt" | "standard" | "sitemap-index";
+}

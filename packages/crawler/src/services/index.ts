@@ -1,1 +1,1 @@
-export { crawlSitemap } from "./sitemap";
+export { crawlSitemap, getSitemapInfo, getSitemapUrls } from "./sitemap";
