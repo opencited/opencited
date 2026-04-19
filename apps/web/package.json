@@ -13,6 +13,7 @@
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
 		"@opencited/trpc": "workspace:*",
+		"date-fns": "catalog:",
 		"@opencited/ui": "*",
 		"@tanstack/react-query": "catalog:",
 		"@trpc/client": "catalog:",
@@ -20,6 +21,7 @@
 		"@trpc/tanstack-react-query": "catalog:",
 		"clsx": "catalog:",
 		"lucide-react": "^1.8.0",
+		"motion": "catalog:",
 		"next": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",

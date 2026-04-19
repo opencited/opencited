@@ -1,0 +1,1 @@
+ALTER TABLE "domain_project" ADD COLUMN "logo_url" text;

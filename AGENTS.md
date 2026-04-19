@@ -42,6 +42,7 @@ Runs on every `git commit` via Husky. The `prepare` script in root `package.json
 | `packages/ui` | `@opencited/ui` | React component library (shadcn, Tailwind v4) |
 | `packages/trpc` | `@opencited/trpc` | tRPC server & client (routers, procedures, context) |
 | `packages/db` | `@opencited/db` | Drizzle ORM + Neon Postgres (used only by tRPC) |
+| `packages/crawler` | `@opencited/crawler` | Sitemap fetching and parsing (used by tRPC) |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
 | `packages/typescript-config` | `@opencited/typescript-config` | Shared tsconfigs |
 
@@ -83,8 +84,8 @@ The db package (`packages/db`) provides Drizzle ORM with Neon Postgres (drizzle-
 - `src/index.ts` — Exports `db` (Drizzle client with Pool from `@neondatabase/serverless`)
 - `src/schema/index.ts` — Schema barrel export
 - `src/schema/common-fields.ts` — Reusable fields: `id` (UUID), `createdAt`, `updatedAt`
+- `src/schema/<feature>.ts` — One table per file. Named `<feature>Table`. Exports select, baseInsertSchema, insertSchema (extended), updateSchema. Auto-generated fields (id, createdAt, updatedAt) are omitted from insertSchema.
 - `drizzle.config.ts` — Drizzle Kit config (schema, out, dialect)
-- Create zod schema using `import { createSelectSchema, createInsertSchema, createUpdateSchema } from 'drizzle-orm/zod';`
 
 **Scripts:**
 ```sh

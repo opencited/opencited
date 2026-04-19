@@ -96,6 +96,11 @@
 			"sourceType": "github",
 			"computedHash": "a26b3dd377c4572b1c34c68f82ab9a1cb806f21c7157060327fe60e9b6d2e277"
 		},
+		"inkjs-design": {
+			"source": "akiojin/skills",
+			"sourceType": "github",
+			"computedHash": "6cea41cf9cf62f8ec857d506426524179ed8be11e897dc5cfb2290d38a079237"
+		},
 		"layout": {
 			"source": "pbakaus/impeccable",
 			"sourceType": "github",
@@ -136,6 +141,11 @@
 			"sourceType": "github",
 			"computedHash": "2c20b12bb4ece445d45fc63bda020aecf78b3cdf6d593beb59c273f658293130"
 		},
+		"remotion-best-practices": {
+			"source": "remotion-dev/skills",
+			"sourceType": "github",
+			"computedHash": "df654933e451556147e384078c3fbdbac997cb0fe4d2f2db7642000c239304c5"
+		},
 		"shadcn": {
 			"source": "shadcn/ui",
 			"sourceType": "github",
@@ -155,6 +165,31 @@
 			"source": "pbakaus/impeccable",
 			"sourceType": "github",
 			"computedHash": "1cd76e560d1ba25b0bd5f7adfa2957a9f653a3ad0b031d467221154fcd1e0423"
+		},
+		"vercel-composition-patterns": {
+			"source": "vercel-labs/agent-skills",
+			"sourceType": "github",
+			"computedHash": "575757e3e25761c8c562d6e395d29f0b76c98b1273c0bd72d88e6ab1bc9c7d42"
+		},
+		"vercel-react-best-practices": {
+			"source": "vercel-labs/agent-skills",
+			"sourceType": "github",
+			"computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
+		},
+		"vercel-react-view-transitions": {
+			"source": "vercel-labs/agent-skills",
+			"sourceType": "github",
+			"computedHash": "c8952fc9127fa0564d0cb71dccb4215a5608ac933b5831104f09173a97a46f85"
+		},
+		"web-design-guidelines": {
+			"source": "vercel-labs/agent-skills",
+			"sourceType": "github",
+			"computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+		},
+		"zod-v4": {
+			"source": "smithery.ai",
+			"sourceType": "well-known",
+			"computedHash": "528d1e2c0a7b078916f891181f91578b166942398f0b2d698c32cd8c0be6dc3c"
 		}
 	}
 }

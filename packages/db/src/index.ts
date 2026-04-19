@@ -10,12 +10,27 @@ if (!databaseUrl) {
 
 const pool = new Pool({ connectionString: databaseUrl });
 const db = drizzle({ client: pool, schema });
+export type Db = typeof db;
 
 export { db, schema };
 export {
 	domainProjectTable,
 	domainProjectSelectSchema,
+	domainProjectBaseInsertSchema,
 	domainProjectInsertSchema,
 	domainProjectUpdateSchema,
-	domainProjectCreateSchema,
 } from "./schema/domainProject";
+export {
+	sitemapTable,
+	sitemapSelectSchema,
+	sitemapBaseInsertSchema,
+	sitemapInsertSchema,
+	sitemapUpdateSchema,
+} from "./schema/sitemap";
+export {
+	sitemapUrlTable,
+	sitemapUrlSelectSchema,
+	sitemapUrlBaseInsertSchema,
+	sitemapUrlInsertSchema,
+	sitemapUrlUpdateSchema,
+} from "./schema/sitemapUrl";

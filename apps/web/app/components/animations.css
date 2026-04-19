@@ -1,0 +1,90 @@
+@keyframes fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes scale-in {
+	from {
+		opacity: 0;
+		transform: scale(0.85);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes check-draw {
+	from {
+		stroke-dashoffset: 24;
+	}
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes pulse-subtle {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.7;
+	}
+}
+
+.animate-fade-up {
+	animation: fade-up 500ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1))
+		both;
+}
+
+.animate-fade-in {
+	animation: fade-in 400ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1))
+		both;
+}
+
+.animate-scale-in {
+	animation: scale-in 400ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1))
+		both;
+}
+
+.animate-check-draw {
+	animation: check-draw 400ms
+		var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1)) forwards;
+}
+
+.animate-pulse-subtle {
+	animation: pulse-subtle 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.animate-fade-up,
+	.animate-fade-in,
+	.animate-scale-in {
+		animation-duration: 200ms;
+		animation-fill-mode: both;
+	}
+
+	.animate-fade-up {
+		transform: none;
+	}
+
+	.animate-pulse-subtle {
+		animation-duration: 2s;
+	}
+}

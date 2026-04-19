@@ -9,6 +9,9 @@
 		".": "./index.ts",
 		"./server": "./index.ts"
 	},
+	"scripts": {
+		"tsc": "tsc --noEmit"
+	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
 		"@clerk/nextjs": "catalog:",
@@ -16,6 +19,7 @@
 	},
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
+		"@opencited/crawler": "workspace:*",
 		"@opencited/db": "workspace:*",
 		"@trpc/server": "catalog:",
 		"@trpc/client": "catalog:",

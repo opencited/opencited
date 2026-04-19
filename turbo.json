@@ -30,6 +30,16 @@
 				"^tsc"
 			]
 		},
+		"migrate": {
+			"dependsOn": [
+				"^migrate"
+			]
+		},
+		"generate": {
+			"dependsOn": [
+				"^generate"
+			]
+		},
 		"dev": {
 			"cache": false,
 			"persistent": true

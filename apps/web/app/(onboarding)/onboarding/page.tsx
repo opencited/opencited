@@ -1,8 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { CreateOrganization } from "@clerk/nextjs";
-import { DomainForm } from "./_components/domain-form";
+import { OnboardingWizard } from "./_components/onboarding-wizard";
 import { trpc } from "@/app/_trpc/server";
+import { TooltipProvider } from "@opencited/ui";
 
 export default async function OnboardingPage() {
 	const { userId, orgId } = await auth();
@@ -30,14 +31,10 @@ export default async function OnboardingPage() {
 	}
 
 	return (
-		<div className="flex flex-col items-center justify-center min-h-screen">
-			<h1 className="text-2xl font-bold mb-4">Set Up Your Project</h1>
-			<p className="text-muted-foreground mb-8">
-				Enter your website domain to get started.
-			</p>
-			<div className="w-full max-w-md">
-				<DomainForm />
-			</div>
-		</div>
+		<main className="min-h-screen flex items-start justify-center p-8">
+			<TooltipProvider>
+				<OnboardingWizard />
+			</TooltipProvider>
+		</main>
 	);
 }
