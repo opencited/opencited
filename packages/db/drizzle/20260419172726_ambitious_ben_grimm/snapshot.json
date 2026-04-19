@@ -1,8 +1,8 @@
 {
 	"version": "8",
 	"dialect": "postgres",
-	"id": "5d601066-7e07-499d-9259-f17712871cf0",
-	"prevIds": ["93931b4b-4602-4f94-b596-2361d9e35a58"],
+	"id": "48bec6b2-40fb-4763-8e9e-02b873118737",
+	"prevIds": ["00000000-0000-0000-0000-000000000000"],
 	"ddl": [
 		{
 			"isRlsEnabled": false,
@@ -174,6 +174,19 @@
 			"generated": null,
 			"identity": null,
 			"name": "last_crawl_error",
+			"entityType": "columns",
+			"schema": "public",
+			"table": "sitemap"
+		},
+		{
+			"type": "text",
+			"typeSchema": null,
+			"notNull": true,
+			"dimensions": 0,
+			"default": "'manual'",
+			"generated": null,
+			"identity": null,
+			"name": "source",
 			"entityType": "columns",
 			"schema": "public",
 			"table": "sitemap"

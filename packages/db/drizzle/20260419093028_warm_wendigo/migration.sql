@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX "sitemap_domain_project_url_unique" ON "sitemap" ("domain_project_id","url");
