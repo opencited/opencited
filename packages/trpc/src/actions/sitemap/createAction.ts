@@ -41,6 +41,8 @@ export const createSitemapAction = async (params: {
 		.values({
 			domainProjectId: input.domainProjectId,
 			url: input.url,
+			status: "pending",
+			urlCount: 0,
 		})
 		.returning();
 

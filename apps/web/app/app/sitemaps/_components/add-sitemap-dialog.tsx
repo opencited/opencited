@@ -353,7 +353,7 @@ export function AddSitemapDialog({
 						Add Sitemap
 					</DialogTitle>
 					<DialogDescription>
-						Discover sitemaps from a domain or enter a URL manually.
+						Discover sitemaps for your domain or add a sitemap URL manually.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -402,47 +402,21 @@ export function AddSitemapDialog({
 								animate={{ opacity: 1 }}
 								exit={{ opacity: 0 }}
 							>
-								<div className="space-y-2">
-									<Label
-										htmlFor="discover-domain"
-										className="text-sm font-medium"
-									>
-										Domain
-									</Label>
-									<div className="flex gap-2">
-										<Input
-											id="discover-domain"
-											type="text"
-											placeholder="yoursite.com"
-											value={discoverDomain}
-											onChange={(e) => setDiscoverDomain(e.target.value)}
-											className="flex-1"
-										/>
-										<Button
-											onClick={handleDiscover}
-											disabled={isDiscovering || !discoverDomain.trim()}
-											className="shrink-0"
-										>
-											{isDiscovering ? (
-												<>
-													<Loader2 className="h-4 w-4 animate-spin" />
-													{discoveryStatus || "Searching..."}
-												</>
-											) : (
-												<>
-													<Search className="h-4 w-4" />
-													Discover
-												</>
-											)}
-										</Button>
-									</div>
-									{discoverError && (
-										<p className="text-sm text-destructive flex items-center gap-2">
-											<AlertCircle className="h-4 w-4" />
-											{discoverError}
-										</p>
-									)}
+								<div className="flex items-center gap-2">
+									<span className="text-sm text-muted-foreground">
+										Discovering sitemaps for
+									</span>
+									<span className="text-sm font-medium font-mono">
+										{discoverDomain}
+									</span>
 								</div>
+
+								{discoverError && (
+									<p className="text-sm text-destructive flex items-center gap-2">
+										<AlertCircle className="h-4 w-4" />
+										{discoverError}
+									</p>
+								)}
 
 								<Accordion type="single" collapsible className="w-full">
 									<AccordionItem
@@ -456,8 +430,8 @@ export function AddSitemapDialog({
 											<div className="p-3 rounded-lg bg-muted/50 border border-border text-sm space-y-2">
 												<p>
 													<strong>robots.txt</strong> — Sitemaps explicitly
-													declared in your site's robots.txt file. Usually the
-													most accurate source.
+													declared in your site&apos;s robots.txt file. Usually
+													the most accurate source.
 												</p>
 												<p>
 													<strong>standard</strong> — Common sitemap locations

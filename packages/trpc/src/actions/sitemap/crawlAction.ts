@@ -1,8 +1,9 @@
-import { TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../../trpc";
 import { addSitemapUrlAction } from "./addUrlAction";
 import { crawlSitemap } from "@opencited/crawler";
+import { sitemapTable } from "@opencited/db";
 
 export const crawlSitemapInputSchema = z.object({
 	sitemapId: z.string(),
@@ -22,10 +23,15 @@ export const crawlSitemapAction = async (params: {
 	const result = await crawlSitemap(input.sitemapUrl);
 
 	if (result.urls.length === 0) {
-		throw new TRPCError({
-			code: "BAD_REQUEST",
-			message: "No URLs found in sitemap",
-		});
+		await ctx.db
+			.update(sitemapTable)
+			.set({
+				status: "error",
+				lastCrawlError: "No URLs found in sitemap",
+			})
+			.where(eq(sitemapTable.id, input.sitemapId));
+
+		return { urlsAdded: 0 };
 	}
 
 	const persisted = await addSitemapUrlAction({
@@ -40,6 +46,15 @@ export const crawlSitemapAction = async (params: {
 		},
 		ctx,
 	});
+
+	await ctx.db
+		.update(sitemapTable)
+		.set({
+			status: "indexed",
+			urlCount: persisted.length,
+			lastCrawlError: null,
+		})
+		.where(eq(sitemapTable.id, input.sitemapId));
 
 	return { urlsAdded: persisted.length };
 };

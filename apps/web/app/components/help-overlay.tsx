@@ -34,6 +34,10 @@ const shortcuts: Shortcut[] = [
 		keys: ["S"],
 		description: "Go to Sitemaps",
 	},
+	{
+		keys: ["N"],
+		description: "Add new sitemap",
+	},
 ];
 
 interface HelpOverlayProps {

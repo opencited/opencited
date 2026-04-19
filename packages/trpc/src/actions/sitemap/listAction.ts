@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { baseActionContextSchema } from "../../trpc";
@@ -6,10 +6,15 @@ import {
 	sitemapSelectSchema,
 	sitemapTable,
 	domainProjectTable,
+	sitemapUrlTable,
 } from "@opencited/db";
 
 export const listSitemapInputSchema = z.object({});
-export const listSitemapOutputSchema = sitemapSelectSchema.array();
+export const listSitemapOutputSchema = sitemapSelectSchema
+	.extend({
+		urlCount: z.number(),
+	})
+	.array();
 export const listSitemapContextSchema = baseActionContextSchema;
 
 export const listSitemapAction = async (params: {
@@ -19,11 +24,19 @@ export const listSitemapAction = async (params: {
 	const { ctx, domainProjectId } = params;
 
 	const result = await ctx.db
-		.select()
+		.select({
+			sitemap: sitemapTable,
+			urlCount: count(sitemapUrlTable.id).as("url_count"),
+		})
 		.from(sitemapTable)
-		.where(eq(sitemapTable.domainProjectId, domainProjectId));
+		.leftJoin(sitemapUrlTable, eq(sitemapUrlTable.sitemapId, sitemapTable.id))
+		.where(eq(sitemapTable.domainProjectId, domainProjectId))
+		.groupBy(sitemapTable.id);
 
-	return result;
+	return result.map((row) => ({
+		...row.sitemap,
+		urlCount: Number(row.urlCount),
+	}));
 };
 
 export const listSitemapHandler = async (params: {
