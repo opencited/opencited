@@ -30,7 +30,14 @@ import {
 } from "@opencited/ui";
 import { TimeAgo } from "@/app/components/time-ago";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { AlertCircle, Loader2, Search, Plus, Link2 } from "lucide-react";
+import {
+	AlertCircle,
+	Loader2,
+	Search,
+	Plus,
+	Link2,
+	ChevronRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type DiscoveredSitemap = {
@@ -38,6 +45,13 @@ type DiscoveredSitemap = {
 	type: "urlset" | "sitemapindex";
 	urlCount: number;
 	source: "robots.txt" | "standard" | "sitemap-index";
+};
+
+type SitemapSource = "robots.txt" | "standard" | "manual" | "sitemap-index";
+
+type SitemapIndexItem = {
+	url: string;
+	childSitemaps: string[];
 };
 
 type CrawledUrl = {
@@ -93,6 +107,7 @@ export function AddSitemapDialog({
 	const [manualError, setManualError] = useState("");
 
 	const [sitemaps, setSitemaps] = useState<DiscoveredSitemap[]>([]);
+	const [sitemapIndexes, setSitemapIndexes] = useState<SitemapIndexItem[]>([]);
 	const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
 	const [crawledUrls, setCrawledUrls] = useState<CrawledUrl[]>([]);
 	const [previewError, setPreviewError] = useState("");
@@ -140,6 +155,7 @@ export function AddSitemapDialog({
 	const resetState = () => {
 		setStep("idle");
 		setSitemaps([]);
+		setSitemapIndexes([]);
 		setSelectedUrls(new Set());
 		setCrawledUrls([]);
 		setDiscoverError("");
@@ -170,6 +186,7 @@ export function AddSitemapDialog({
 		setDiscoverError("");
 		setDiscoveryStatus("Searching...");
 		setSitemaps([]);
+		setSitemapIndexes([]);
 		setSelectedUrls(new Set());
 
 		try {
@@ -181,13 +198,26 @@ export function AddSitemapDialog({
 				(s) => !existingSitemapUrls.has(s.url),
 			);
 
-			if (newSitemaps.length === 0) {
+			const filteredIndexes = result.sitemapIndexes
+				?.map((index) => ({
+					url: index.url,
+					childSitemaps: index.childSitemaps.filter(
+						(childUrl) => !existingSitemapUrls.has(childUrl),
+					),
+				}))
+				.filter((index) => index.childSitemaps.length > 0);
+
+			if (
+				newSitemaps.length === 0 &&
+				(!filteredIndexes || filteredIndexes.length === 0)
+			) {
 				setDiscoverError("No new sitemaps found. Try entering a URL manually.");
 				setIsDiscovering(false);
 				return;
 			}
 
 			setSitemaps(newSitemaps);
+			setSitemapIndexes(filteredIndexes ?? []);
 			setSelectedUrls(new Set(newSitemaps.map((s) => s.url)));
 			setStep("discovered");
 		} catch {
@@ -197,7 +227,7 @@ export function AddSitemapDialog({
 		}
 	};
 
-	const handleManualUrl = () => {
+	const handleManualUrl = async () => {
 		const cleanedUrl = manualUrl.trim();
 
 		if (!cleanedUrl) {
@@ -218,9 +248,33 @@ export function AddSitemapDialog({
 		}
 
 		setManualError("");
-		setSelectedUrls(new Set([cleanedUrl]));
-		setStep("previewing");
-		loadPreview([cleanedUrl]);
+		setIsPreviewing(true);
+		setDiscoveryStatus("Checking sitemap...");
+
+		try {
+			const result = await previewMutation.mutateAsync({
+				sitemapUrl: cleanedUrl,
+			});
+
+			if (result.type === "sitemapindex") {
+				setManualError(
+					"This is a sitemap index. Please add individual sitemaps instead.",
+				);
+				setIsPreviewing(false);
+				return;
+			}
+
+			setSelectedUrls(new Set([cleanedUrl]));
+			setStep("previewing");
+			loadPreview([cleanedUrl]);
+		} catch (err) {
+			setManualError(
+				err instanceof Error
+					? err.message
+					: "Couldn't verify sitemap. Try again.",
+			);
+			setIsPreviewing(false);
+		}
 	};
 
 	const toggleSitemap = (url: string) => {
@@ -231,6 +285,17 @@ export function AddSitemapDialog({
 			newSelected.add(url);
 		}
 		setSelectedUrls(newSelected);
+	};
+
+	const toggleSelectAll = () => {
+		const allChildUrls = sitemapIndexes.flatMap((index) => index.childSitemaps);
+		const allUrls = [...sitemaps.map((s) => s.url), ...allChildUrls];
+
+		if (selectedUrls.size === allUrls.length) {
+			setSelectedUrls(new Set());
+		} else {
+			setSelectedUrls(new Set(allUrls));
+		}
 	};
 
 	const loadPreview = async (urls: string[]) => {
@@ -248,6 +313,11 @@ export function AddSitemapDialog({
 					const result = await previewMutation.mutateAsync({
 						sitemapUrl,
 					});
+
+					if (result.type === "sitemapindex") {
+						continue;
+					}
+
 					allUrls.push(...result.urls);
 				} catch {
 					// Skip failed sitemaps
@@ -275,21 +345,32 @@ export function AddSitemapDialog({
 		loadPreview(Array.from(selectedUrls));
 	};
 
+	const getSourceForUrl = (url: string): SitemapSource => {
+		const sitemap = sitemaps.find((s) => s.url === url);
+		return sitemap?.source ?? "manual";
+	};
+
 	const handleConfirmAndSave = async () => {
 		setIsSaving(true);
 		setPreviewError("");
 
 		try {
 			for (const sitemapUrl of selectedUrls) {
+				const source = getSourceForUrl(sitemapUrl);
+
 				const sitemap = await sitemapCreateMutation.mutateAsync({
 					domainProjectId,
 					url: sitemapUrl,
+					source,
 				});
 
-				await crawlMutation.mutateAsync({
+				const crawlResult = await crawlMutation.mutateAsync({
 					sitemapId: sitemap.id,
 					sitemapUrl,
 				});
+
+				if (crawlResult.skipped) {
+				}
 			}
 
 			onSuccess();
@@ -306,6 +387,7 @@ export function AddSitemapDialog({
 		if (step === "discovered") {
 			setStep("idle");
 			setSitemaps([]);
+			setSitemapIndexes([]);
 			setSelectedUrls(new Set());
 		} else if (step === "previewing" || step === "previewed") {
 			setStep("discovered");
@@ -440,7 +522,7 @@ export function AddSitemapDialog({
 												</p>
 												<p>
 													<strong>sitemap index</strong> — A file that lists
-													other sitemaps. Select it to include all child
+													other sitemaps. Expand to select individual child
 													sitemaps.
 												</p>
 											</div>
@@ -458,24 +540,54 @@ export function AddSitemapDialog({
 								animate={{ opacity: 1 }}
 								exit={{ opacity: 0 }}
 							>
-								<div className="space-y-2">
+								<div className="space-y-3">
 									<div className="flex items-center justify-between">
 										<p className="text-sm text-muted-foreground">
-											Found {sitemaps.length} sitemap
-											{sitemaps.length !== 1 ? "s" : ""} for{" "}
+											Found{" "}
+											{sitemaps.length +
+												sitemapIndexes.reduce(
+													(acc, idx) => acc + idx.childSitemaps.length,
+													0,
+												)}{" "}
+											sitemap
+											{sitemaps.length +
+												sitemapIndexes.reduce(
+													(acc, idx) => acc + idx.childSitemaps.length,
+													0,
+												) !==
+											1
+												? "s"
+												: ""}
+											{sitemapIndexes.length > 0 &&
+												` and ${sitemapIndexes.length} sitemap index${
+													sitemapIndexes.length !== 1 ? "es" : ""
+												}`}
+											{" for "}
 											<span className="font-medium text-foreground">
 												{discoverDomain.replace(/^https?:\/\//, "")}
 											</span>
 										</p>
-										<button
-											type="button"
-											onClick={() =>
-												setSelectedUrls(new Set(sitemaps.map((s) => s.url)))
-											}
-											className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-										>
-											Select all
-										</button>
+										{(() => {
+											const allChildUrls = sitemapIndexes.flatMap(
+												(index) => index.childSitemaps,
+											);
+											const allUrls = [
+												...sitemaps.map((s) => s.url),
+												...allChildUrls,
+											];
+											return (
+												<button
+													type="button"
+													onClick={toggleSelectAll}
+													className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+												>
+													{selectedUrls.size === allUrls.length &&
+													allUrls.length > 0
+														? "Select none"
+														: "Select all"}
+												</button>
+											);
+										})()}
 									</div>
 
 									<div className="space-y-1.5">
@@ -515,15 +627,75 @@ export function AddSitemapDialog({
 															</Badge>
 														</div>
 														<p className="text-xs text-muted-foreground">
-															{sitemap.type === "sitemapindex"
-																? `${sitemap.urlCount} sitemaps`
-																: `${sitemap.urlCount} URLs`}
+															{sitemap.urlCount} URLs
 														</p>
 													</div>
 												</div>
 											</motion.button>
 										))}
 									</div>
+
+									{sitemapIndexes.length > 0 && (
+										<Accordion type="multiple" className="w-full">
+											{sitemapIndexes.map((index) => (
+												<AccordionItem
+													key={index.url}
+													value={index.url}
+													className="border border-border rounded-lg px-3 py-2"
+												>
+													<AccordionTrigger className="hover:no-underline">
+														<div className="flex items-center gap-2">
+															<ChevronRight className="h-4 w-4 text-muted-foreground" />
+															<span className="text-sm font-mono text-muted-foreground truncate max-w-[300px]">
+																{(() => {
+																	try {
+																		return new URL(index.url).pathname;
+																	} catch {
+																		return index.url;
+																	}
+																})()}
+															</span>
+															<Badge
+																variant="outline"
+																className="shrink-0 text-xs"
+															>
+																{index.childSitemaps.length} sitemaps
+															</Badge>
+														</div>
+													</AccordionTrigger>
+													<AccordionContent>
+														<div className="space-y-1.5 pt-2 pl-6">
+															{index.childSitemaps.map((childUrl) => (
+																<motion.button
+																	key={childUrl}
+																	type="button"
+																	onClick={() => toggleSitemap(childUrl)}
+																	className={cn(
+																		"w-full p-3 rounded-lg border text-left cursor-pointer transition-colors",
+																		selectedUrls.has(childUrl)
+																			? "border-primary bg-primary/5"
+																			: "border-border hover:bg-muted/50",
+																	)}
+																>
+																	<div className="flex items-center gap-3">
+																		<Checkbox
+																			checked={selectedUrls.has(childUrl)}
+																			className="shrink-0"
+																		/>
+																		<div className="flex-1 min-w-0">
+																			<span className="text-sm font-mono truncate block">
+																				{childUrl}
+																			</span>
+																		</div>
+																	</div>
+																</motion.button>
+															))}
+														</div>
+													</AccordionContent>
+												</AccordionItem>
+											))}
+										</Accordion>
+									)}
 								</div>
 
 								{previewError && (
@@ -564,7 +736,7 @@ export function AddSitemapDialog({
 											{isPreviewing ? (
 												<>
 													<Loader2 className="h-4 w-4 animate-spin" />
-													Loading...
+													Checking...
 												</>
 											) : (
 												<>

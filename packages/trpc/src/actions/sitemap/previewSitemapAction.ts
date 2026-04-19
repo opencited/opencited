@@ -7,6 +7,7 @@ export const previewSitemapInputSchema = z.object({
 	sitemapUrl: z.string().url(),
 });
 export const previewSitemapOutputSchema = z.object({
+	type: z.enum(["urlset", "sitemapindex"]),
 	urls: z.array(
 		z.object({
 			url: z.string(),
@@ -33,7 +34,7 @@ export const previewSitemapAction = async (params: {
 		});
 	}
 
-	return { urls: result.urls };
+	return { type: result.type, urls: result.urls };
 };
 
 export const previewSitemapHandler = async (params: {

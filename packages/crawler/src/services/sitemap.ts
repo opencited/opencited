@@ -275,3 +275,36 @@ export async function getSitemapUrls(sitemapUrl: string): Promise<{
 
 	return { type, urls };
 }
+
+export async function getSitemapChildUrls(
+	sitemapUrl: string,
+): Promise<{ type: SitemapType; childSitemaps: string[] }> {
+	const response = await fetch(sitemapUrl, {
+		signal: AbortSignal.timeout(10000),
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch sitemap: ${response.status}`);
+	}
+
+	const contentType = response.headers.get("content-type") ?? "";
+	if (!contentType.includes("xml") && !contentType.includes("text/plain")) {
+		throw new Error(`Invalid content type: ${contentType}`);
+	}
+
+	const xmlText = await response.text();
+	const { type, entries } = parseSitemapXml(xmlText);
+
+	const childSitemaps: string[] = [];
+
+	if (type === "sitemapindex") {
+		for (const entry of entries) {
+			const loc = extractLoc(entry);
+			if (loc) {
+				childSitemaps.push(loc);
+			}
+		}
+	}
+
+	return { type, childSitemaps };
+}

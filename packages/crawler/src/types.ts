@@ -27,5 +27,6 @@ export interface SitemapInfo {
 	url: string;
 	type: SitemapType;
 	urlCount: number;
-	source: "robots.txt" | "standard" | "sitemap-index";
 }
+
+export type SitemapSource = "robots.txt" | "standard" | "sitemap-index";

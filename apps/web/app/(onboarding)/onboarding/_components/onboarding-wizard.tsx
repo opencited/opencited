@@ -34,6 +34,7 @@ import {
 	ArrowRight,
 	ArrowLeft,
 	ChevronLeft,
+	ChevronRight,
 	Loader2,
 	Pencil,
 } from "lucide-react";
@@ -47,6 +48,13 @@ interface DiscoveredSitemap {
 	urlCount: number;
 	source: "robots.txt" | "standard" | "sitemap-index";
 }
+
+interface SitemapIndexItem {
+	url: string;
+	childSitemaps: string[];
+}
+
+type SitemapSource = "robots.txt" | "standard" | "manual" | "sitemap-index";
 
 interface CrawledUrl {
 	url: string;
@@ -75,6 +83,7 @@ export function OnboardingWizard() {
 	const [domain, setDomain] = useState("");
 	const [domainError, setDomainError] = useState("");
 	const [sitemaps, setSitemaps] = useState<DiscoveredSitemap[]>([]);
+	const [sitemapIndexes, setSitemapIndexes] = useState<SitemapIndexItem[]>([]);
 	const [selectedSitemapUrls, setSelectedSitemapUrls] = useState<Set<string>>(
 		new Set(),
 	);
@@ -156,8 +165,16 @@ export function OnboardingWizard() {
 			});
 
 			setSitemaps(result.sitemaps);
+			setSitemapIndexes(result.sitemapIndexes ?? []);
 
-			if (result.sitemaps.length === 0) {
+			const totalSitemaps =
+				result.sitemaps.length +
+				(result.sitemapIndexes?.reduce(
+					(acc, idx) => acc + idx.childSitemaps.length,
+					0,
+				) ?? 0);
+
+			if (totalSitemaps === 0) {
 				setDomainError("No sitemaps found. Try a different domain.");
 				setIsDiscovering(false);
 				setDiscoveryStatus("");
@@ -183,6 +200,22 @@ export function OnboardingWizard() {
 		setSelectedSitemapUrls(newSelected);
 	};
 
+	const toggleSelectAll = () => {
+		const allChildUrls = sitemapIndexes.flatMap((index) => index.childSitemaps);
+		const allUrls = [...sitemaps.map((s) => s.url), ...allChildUrls];
+
+		if (selectedSitemapUrls.size === allUrls.length) {
+			setSelectedSitemapUrls(new Set());
+		} else {
+			setSelectedSitemapUrls(new Set(allUrls));
+		}
+	};
+
+	const getSourceForUrl = (url: string): SitemapSource => {
+		const sitemap = sitemaps.find((s) => s.url === url);
+		return sitemap?.source ?? "manual";
+	};
+
 	const handleContinueToPreview = async () => {
 		if (selectedSitemapUrls.size === 0) return;
 
@@ -203,6 +236,11 @@ export function OnboardingWizard() {
 					const result = await previewMutation.mutateAsync({
 						sitemapUrl,
 					});
+
+					if (result.type === "sitemapindex") {
+						continue;
+					}
+
 					allUrls.push(...result.urls);
 				} catch (err) {
 					errors.push(
@@ -247,9 +285,11 @@ export function OnboardingWizard() {
 			});
 
 			for (const sitemapUrl of selectedSitemapUrls) {
+				const source = getSourceForUrl(sitemapUrl);
 				const sitemap = await sitemapCreateMutation.mutateAsync({
 					domainProjectId: domainProject.id,
 					url: sitemapUrl,
+					source,
 				});
 
 				await crawlMutation.mutateAsync({
@@ -600,23 +640,46 @@ export function OnboardingWizard() {
 						>
 							<div className="flex items-center justify-between">
 								<p className="text-sm text-muted-foreground">
-									Sitemaps tell AI how your site is structured. We found these
-									automatically from your domain.
+									{(() => {
+										const totalSitemaps =
+											sitemaps.length +
+											sitemapIndexes.reduce(
+												(acc, idx) => acc + idx.childSitemaps.length,
+												0,
+											);
+										return (
+											<>
+												Found {totalSitemaps} sitemap
+												{totalSitemaps !== 1 ? "s" : ""}
+												{sitemapIndexes.length > 0 &&
+													` and ${sitemapIndexes.length} sitemap index${
+														sitemapIndexes.length !== 1 ? "es" : ""
+													}`}
+											</>
+										);
+									})()}
 								</p>
-								<div className="flex items-center gap-3">
-									{sitemaps.length > 1 && (
-										<motion.button
+								{(() => {
+									const allChildUrls = sitemapIndexes.flatMap(
+										(index) => index.childSitemaps,
+									);
+									const allUrls = [
+										...sitemaps.map((s) => s.url),
+										...allChildUrls,
+									];
+									return (
+										<button
 											type="button"
-											onClick={() => setSelectedSitemapUrls(new Set())}
+											onClick={toggleSelectAll}
 											className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-											whileHover={{ scale: 1.05 }}
-											whileTap={{ scale: 0.95 }}
-											transition={{ duration: 0.15 }}
 										>
-											Select none
-										</motion.button>
-									)}
-								</div>
+											{selectedSitemapUrls.size === allUrls.length &&
+											allUrls.length > 0
+												? "Select none"
+												: "Select all"}
+										</button>
+									);
+								})()}
 							</div>
 							<Accordion type="single" collapsible className="w-full">
 								<AccordionItem value="sitemap-help" className="border-none">
@@ -711,6 +774,63 @@ export function OnboardingWizard() {
 									</div>
 								</motion.div>
 							))}
+
+							{sitemapIndexes.length > 0 && (
+								<Accordion type="multiple" className="w-full">
+									{sitemapIndexes.map((index) => (
+										<AccordionItem
+											key={index.url}
+											value={index.url}
+											className="border border-border rounded-lg px-3 py-2"
+										>
+											<AccordionTrigger className="hover:no-underline">
+												<div className="flex items-center gap-2">
+													<ChevronRight className="h-4 w-4 text-muted-foreground" />
+													<span className="text-sm font-mono text-muted-foreground truncate max-w-[300px]">
+														{(() => {
+															try {
+																return new URL(index.url).pathname;
+															} catch {
+																return index.url;
+															}
+														})()}
+													</span>
+													<Badge variant="outline" className="shrink-0 text-xs">
+														{index.childSitemaps.length} sitemaps
+													</Badge>
+												</div>
+											</AccordionTrigger>
+											<AccordionContent>
+												<div className="space-y-1.5 pt-2 pl-6">
+													{index.childSitemaps.map((childUrl) => (
+														<motion.div
+															key={childUrl}
+															onClick={() => toggleSitemap(childUrl)}
+															className={cn(
+																"w-full p-3 rounded-lg border text-left cursor-pointer",
+																"hover:bg-muted/50",
+																selectedSitemapUrls.has(childUrl)
+																	? "border-primary bg-primary/5"
+																	: "border-border",
+															)}
+														>
+															<div className="flex items-center gap-3">
+																<Checkbox
+																	checked={selectedSitemapUrls.has(childUrl)}
+																	className="shrink-0"
+																/>
+																<span className="text-sm font-mono truncate">
+																	{childUrl}
+																</span>
+															</div>
+														</motion.div>
+													))}
+												</div>
+											</AccordionContent>
+										</AccordionItem>
+									))}
+								</Accordion>
+							)}
 						</motion.div>
 
 						<motion.div

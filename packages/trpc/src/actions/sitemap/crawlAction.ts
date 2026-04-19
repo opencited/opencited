@@ -11,6 +11,8 @@ export const crawlSitemapInputSchema = z.object({
 });
 export const crawlSitemapOutputSchema = z.object({
 	urlsAdded: z.number(),
+	skipped: z.boolean().default(false),
+	reason: z.string().optional(),
 });
 export const crawlSitemapContextSchema = baseActionContextSchema;
 
@@ -24,14 +26,10 @@ export const crawlSitemapAction = async (params: {
 
 	if (result.urls.length === 0) {
 		await ctx.db
-			.update(sitemapTable)
-			.set({
-				status: "error",
-				lastCrawlError: "No URLs found in sitemap",
-			})
+			.delete(sitemapTable)
 			.where(eq(sitemapTable.id, input.sitemapId));
 
-		return { urlsAdded: 0 };
+		return { urlsAdded: 0, skipped: true, reason: "empty_or_index" };
 	}
 
 	const persisted = await addSitemapUrlAction({
@@ -56,7 +54,7 @@ export const crawlSitemapAction = async (params: {
 		})
 		.where(eq(sitemapTable.id, input.sitemapId));
 
-	return { urlsAdded: persisted.length };
+	return { urlsAdded: persisted.length, skipped: false };
 };
 
 export const crawlSitemapHandler = async (params: {

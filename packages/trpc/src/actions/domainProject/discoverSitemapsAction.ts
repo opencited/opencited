@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { baseActionContextSchema } from "../../trpc";
-import { getSitemapInfo, type SitemapType } from "@opencited/crawler";
+import {
+	getSitemapInfo,
+	getSitemapChildUrls,
+	type SitemapType,
+} from "@opencited/crawler";
 
 export const discoverSitemapsInputSchema = z.object({
 	domain: z.string().min(1),
@@ -14,6 +18,14 @@ export const discoverSitemapsOutputSchema = z.object({
 			source: z.enum(["robots.txt", "standard", "sitemap-index"]),
 		}),
 	),
+	sitemapIndexes: z
+		.array(
+			z.object({
+				url: z.string(),
+				childSitemaps: z.array(z.string()),
+			}),
+		)
+		.optional(),
 });
 export const discoverSitemapsContextSchema = baseActionContextSchema;
 
@@ -87,6 +99,72 @@ async function checkSitemapValidity(url: string): Promise<{
 	}
 }
 
+interface DiscoveredSitemap {
+	url: string;
+	type: SitemapType;
+	urlCount: number;
+	source: "robots.txt" | "standard" | "sitemap-index";
+}
+
+async function discoverChildSitemaps(
+	parentUrl: string,
+	_source: "robots.txt" | "standard" | "sitemap-index",
+	visited: Set<string>,
+): Promise<{
+	urlsetSitemaps: DiscoveredSitemap[];
+	sitemapIndexes: { url: string; childSitemaps: string[] }[];
+}> {
+	if (visited.has(parentUrl)) {
+		return { urlsetSitemaps: [], sitemapIndexes: [] };
+	}
+	visited.add(parentUrl);
+
+	const urlsetSitemaps: DiscoveredSitemap[] = [];
+	const sitemapIndexes: { url: string; childSitemaps: string[] }[] = [];
+
+	try {
+		const childResult = await getSitemapChildUrls(parentUrl);
+
+		if (
+			childResult.type === "sitemapindex" &&
+			childResult.childSitemaps.length > 0
+		) {
+			sitemapIndexes.push({
+				url: parentUrl,
+				childSitemaps: childResult.childSitemaps,
+			});
+
+			for (const childUrl of childResult.childSitemaps) {
+				if (visited.has(childUrl)) continue;
+
+				const childCheck = await checkSitemapValidity(childUrl);
+				if (!childCheck.valid || !childCheck.type) continue;
+
+				if (childCheck.type === "sitemapindex") {
+					const childResult = await discoverChildSitemaps(
+						childUrl,
+						"sitemap-index",
+						visited,
+					);
+					urlsetSitemaps.push(...childResult.urlsetSitemaps);
+					sitemapIndexes.push(...childResult.sitemapIndexes);
+				} else {
+					urlsetSitemaps.push({
+						url: childUrl,
+						type: "urlset",
+						urlCount: childCheck.count ?? 0,
+						source: "sitemap-index",
+					});
+				}
+			}
+		}
+	} catch {
+		// Skip if we can't fetch child sitemaps
+	}
+
+	return { urlsetSitemaps, sitemapIndexes };
+}
+
 export const discoverSitemapsAction = async (params: {
 	input: z.infer<typeof discoverSitemapsInputSchema>;
 	ctx: z.infer<typeof discoverSitemapsContextSchema>;
@@ -121,31 +199,60 @@ export const discoverSitemapsAction = async (params: {
 		}
 	}
 
-	const validatedSitemaps: Array<{
-		url: string;
-		type: SitemapType;
-		urlCount: number;
-		source: "robots.txt" | "standard" | "sitemap-index";
-	}> = [];
+	const validatedSitemaps: DiscoveredSitemap[] = [];
+	const discoveredSitemapIndexes: { url: string; childSitemaps: string[] }[] =
+		[];
+	const visited = new Set<string>();
+	const childSitemapUrls = new Set<string>();
 
 	for (const [url, source] of discoveredUrls) {
+		if (visited.has(url)) continue;
+
 		const result = await checkSitemapValidity(url);
-		if (result.valid && result.type && result.count !== undefined) {
+		if (!result.valid || !result.type) continue;
+
+		if (result.type === "sitemapindex") {
+			const children = await discoverChildSitemaps(url, source, visited);
+
+			for (const child of children.urlsetSitemaps) {
+				childSitemapUrls.add(child.url);
+			}
+
+			for (const index of children.sitemapIndexes) {
+				for (const childUrl of index.childSitemaps) {
+					childSitemapUrls.add(childUrl);
+				}
+			}
+
+			validatedSitemaps.push(...children.urlsetSitemaps);
+			discoveredSitemapIndexes.push(...children.sitemapIndexes);
+		} else {
 			validatedSitemaps.push({
 				url,
 				type: result.type,
-				urlCount: result.count,
+				urlCount: result.count ?? 0,
 				source,
 			});
 		}
 	}
 
-	validatedSitemaps.sort((a, b) => {
+	const filteredSitemaps = validatedSitemaps.filter(
+		(s) =>
+			s.type === "urlset" && s.urlCount > 0 && !childSitemapUrls.has(s.url),
+	);
+
+	filteredSitemaps.sort((a, b) => {
 		const sourceOrder = { "robots.txt": 0, standard: 1, "sitemap-index": 2 };
 		return sourceOrder[a.source] - sourceOrder[b.source];
 	});
 
-	return { sitemaps: validatedSitemaps };
+	return {
+		sitemaps: filteredSitemaps,
+		sitemapIndexes:
+			discoveredSitemapIndexes.length > 0
+				? discoveredSitemapIndexes
+				: undefined,
+	};
 };
 
 export const discoverSitemapsHandler = async (params: {

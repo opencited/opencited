@@ -9,6 +9,12 @@ import { id, createdAt, updatedAt } from "./common-fields";
 import { domainProjectTable } from "./domainProject";
 
 export const sitemapStatusEnum = z.enum(["pending", "indexed", "error"]);
+export const sitemapSourceEnum = z.enum([
+	"robots.txt",
+	"standard",
+	"manual",
+	"sitemap-index",
+]);
 
 export const sitemapTable = pgTable(
 	"sitemap",
@@ -21,6 +27,7 @@ export const sitemapTable = pgTable(
 		status: text("status").notNull().default("pending"),
 		urlCount: integer("url_count").notNull().default(0),
 		lastCrawlError: text("last_crawl_error"),
+		source: text("source").notNull().default("manual"),
 		createdAt: createdAt,
 		updatedAt: updatedAt,
 	},
@@ -38,5 +45,6 @@ export const sitemapInsertSchema = sitemapBaseInsertSchema.extend({
 	url: z.string().url(),
 	status: sitemapStatusEnum.optional(),
 	urlCount: z.number().int().nonnegative().optional(),
+	source: sitemapSourceEnum.optional(),
 });
 export const sitemapUpdateSchema = createUpdateSchema(sitemapTable);

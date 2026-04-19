@@ -1,1 +1,6 @@
-export { crawlSitemap, getSitemapInfo, getSitemapUrls } from "./sitemap";
+export {
+	crawlSitemap,
+	getSitemapInfo,
+	getSitemapUrls,
+	getSitemapChildUrls,
+} from "./sitemap";

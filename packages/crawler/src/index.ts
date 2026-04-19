@@ -1,4 +1,9 @@
-export { crawlSitemap, getSitemapInfo, getSitemapUrls } from "./services";
+export {
+	crawlSitemap,
+	getSitemapInfo,
+	getSitemapUrls,
+	getSitemapChildUrls,
+} from "./services";
 export type {
 	CrawledUrl,
 	CrawlResult,

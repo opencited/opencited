@@ -43,6 +43,7 @@ export const createSitemapAction = async (params: {
 			url: input.url,
 			status: "pending",
 			urlCount: 0,
+			source: input.source ?? "manual",
 		})
 		.returning();
 
