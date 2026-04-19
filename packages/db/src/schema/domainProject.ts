@@ -11,6 +11,7 @@ export const domainProjectTable = pgTable("domain_project", {
 	id: id,
 	clerkOrganizationId: text("clerk_organization_id"),
 	domain: text("domain").notNull(),
+	logoUrl: text("logo_url"),
 	createdAt: createdAt,
 	updatedAt: updatedAt,
 });
@@ -20,5 +21,6 @@ export const domainProjectBaseInsertSchema =
 	createInsertSchema(domainProjectTable);
 export const domainProjectInsertSchema = domainProjectBaseInsertSchema.extend({
 	domain: z.string().min(1),
+	logoUrl: z.string().url().optional(),
 });
 export const domainProjectUpdateSchema = createUpdateSchema(domainProjectTable);

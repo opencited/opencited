@@ -191,14 +191,12 @@ export function AppSidebar() {
 			</SidebarHeader>
 			<SidebarSeparator />
 			<SidebarContent>
-				{!isCollapsed && (
-					<SidebarGroup>
-						<SidebarMenuItem>
-							<DomainDisplay />
-						</SidebarMenuItem>
-					</SidebarGroup>
-				)}
 				<SidebarGroup>
+					{!isCollapsed && (
+						<SidebarMenuItem>
+							<DomainDisplay className="text-lg" iconClassName="size-5" />
+						</SidebarMenuItem>
+					)}
 					<SidebarGroupLabel className={cn(isCollapsed && "sr-only")}>
 						Navigation
 					</SidebarGroupLabel>

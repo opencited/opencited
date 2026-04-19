@@ -22,6 +22,7 @@ export const createDomainProjectAction = async (params: {
 		.values({
 			clerkOrganizationId: input.clerkOrganizationId,
 			domain: input.domain,
+			logoUrl: input.logoUrl,
 		})
 		.returning();
 

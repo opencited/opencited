@@ -22,7 +22,6 @@ import { PageShell } from "@/app/components/page-shell";
 import { TimeAgo } from "@/app/components/time-ago";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
-type DomainProject = RouterOutput["domainProject"]["get"];
 type SitemapList = RouterOutput["sitemap"]["list"];
 type UrlCount = RouterOutput["sitemap"]["getUrlCount"];
 
@@ -64,7 +63,6 @@ function StatCard({
 export default function DashboardPage() {
 	const trpc = useTRPC();
 
-	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
 	const sitemapsQuery = useQuery(trpc.sitemap.list.queryOptions({}));
 	const urlCountQuery = useQuery(trpc.sitemap.getUrlCount.queryOptions());
 
@@ -74,17 +72,6 @@ export default function DashboardPage() {
 				<div>
 					<h2 className="text-lg font-medium mb-2">Project Overview</h2>
 					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(5,200px)]">
-						<QueryCell
-							query={domainProjectQuery}
-							success={(domainProject) => (
-								<StatCard
-									icon={Globe}
-									label="Domain"
-									value={(domainProject as DomainProject)?.domain || "N/A"}
-									description="Your project domain"
-								/>
-							)}
-						/>
 						<QueryCell
 							query={sitemapsQuery}
 							success={(sitemaps) => (

@@ -236,8 +236,14 @@ export function OnboardingWizard() {
 		setIsSaving(true);
 
 		try {
+			const cleanedDomain = domain
+				.replace(/^https?:\/\//, "")
+				.replace(/\/$/, "");
+			const faviconUrl = `https://www.google.com/s2/favicons?domain=${cleanedDomain}&sz=32`;
+
 			const domainProject = await createMutation.mutateAsync({
-				domain: domain.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+				domain: cleanedDomain,
+				logoUrl: faviconUrl,
 			});
 
 			for (const sitemapUrl of selectedSitemapUrls) {
