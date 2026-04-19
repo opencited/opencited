@@ -1,4 +1,4 @@
-import { pgTable, text } from "drizzle-orm/pg-core";
+import { pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import {
 	createSelectSchema,
@@ -8,15 +8,24 @@ import {
 import { id, createdAt, updatedAt } from "./common-fields";
 import { domainProjectTable } from "./domainProject";
 
-export const sitemapTable = pgTable("sitemap", {
-	id: id,
-	domainProjectId: text("domain_project_id")
-		.references(() => domainProjectTable.id)
-		.notNull(),
-	url: text("url").notNull(),
-	createdAt: createdAt,
-	updatedAt: updatedAt,
-});
+export const sitemapTable = pgTable(
+	"sitemap",
+	{
+		id: id,
+		domainProjectId: text("domain_project_id")
+			.references(() => domainProjectTable.id)
+			.notNull(),
+		url: text("url").notNull(),
+		createdAt: createdAt,
+		updatedAt: updatedAt,
+	},
+	(table) => [
+		uniqueIndex("sitemap_domain_project_url_unique").on(
+			table.domainProjectId,
+			table.url,
+		),
+	],
+);
 
 export const sitemapSelectSchema = createSelectSchema(sitemapTable);
 export const sitemapBaseInsertSchema = createInsertSchema(sitemapTable);

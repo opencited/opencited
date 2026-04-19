@@ -1,3 +1,4 @@
+import { eq, and } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { z } from "zod";
 import { baseActionContextSchema } from "../../trpc";
@@ -16,6 +17,24 @@ export const createSitemapAction = async (params: {
 	ctx: z.infer<typeof createSitemapContextSchema>;
 }) => {
 	const { input, ctx } = params;
+
+	const existing = await ctx.db
+		.select()
+		.from(sitemapTable)
+		.where(
+			and(
+				eq(sitemapTable.domainProjectId, input.domainProjectId),
+				eq(sitemapTable.url, input.url),
+			),
+		)
+		.limit(1);
+
+	if (existing[0]) {
+		throw new TRPCError({
+			code: "CONFLICT",
+			message: "This sitemap URL already exists in your project.",
+		});
+	}
 
 	const result = await ctx.db
 		.insert(sitemapTable)

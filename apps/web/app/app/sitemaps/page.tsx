@@ -2,14 +2,17 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useState } from "react";
 import { PageShell } from "@/app/components/page-shell";
 import { useTRPC } from "@/app/_trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
-import { Globe } from "lucide-react";
+import { Globe, Plus } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
 import { TimeAgo } from "@/app/components/time-ago";
+import { AddSitemapDialog } from "./_components/add-sitemap-dialog";
+import { Button } from "@opencited/ui";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type SitemapList = RouterOutput["sitemap"]["list"];
@@ -36,11 +39,30 @@ function SitemapCard({ sitemap }: { sitemap: SitemapList[number] }) {
 
 export default function SitemapsPage() {
 	const trpc = useTRPC();
+	const [showAddDialog, setShowAddDialog] = useState(false);
 
 	const sitemapsQuery = useQuery(trpc.sitemap.list.queryOptions({}));
 
+	const existingSitemapUrls = new Set(
+		sitemapsQuery.data?.map((s) => s.url) ?? [],
+	);
+
+	const domainProjectId = sitemapsQuery.data?.[0]?.domainProjectId ?? "";
+	const domain = sitemapsQuery.data?.[0]?.url
+		? (sitemapsQuery.data[0].url.replace(/^https?:\/\//, "").split("/")[0] ??
+			"")
+		: "";
+
 	return (
-		<PageShell title="Sitemaps">
+		<PageShell
+			title="Sitemaps"
+			action={
+				<Button onClick={() => setShowAddDialog(true)} className="gap-2">
+					<Plus className="h-4 w-4" />
+					Add Sitemap
+				</Button>
+			}
+		>
 			<QueryCell
 				query={sitemapsQuery}
 				loading={
@@ -81,6 +103,19 @@ export default function SitemapsPage() {
 					);
 				}}
 			/>
+
+			{domainProjectId && (
+				<AddSitemapDialog
+					open={showAddDialog}
+					onOpenChange={setShowAddDialog}
+					domainProjectId={domainProjectId}
+					domain={domain}
+					existingSitemapUrls={existingSitemapUrls}
+					onSuccess={() => {
+						sitemapsQuery.refetch();
+					}}
+				/>
+			)}
 		</PageShell>
 	);
 }

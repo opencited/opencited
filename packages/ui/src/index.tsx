@@ -106,3 +106,16 @@ export {
 } from "./table";
 
 export { ScrollArea, ScrollBar } from "./scroll-area";
+
+export {
+	Dialog,
+	DialogPortal,
+	DialogOverlay,
+	DialogTrigger,
+	DialogClose,
+	DialogContent,
+	DialogHeader,
+	DialogFooter,
+	DialogTitle,
+	DialogDescription,
+} from "./dialog";
