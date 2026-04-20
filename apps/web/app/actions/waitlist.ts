@@ -1,29 +1,23 @@
 "use server";
 
-function getDomainFromPublishableKey(publishableKey: string): string {
-	// Strip the prefix (pk_test_ or pk_live_)
-	const base64Part = publishableKey.replace(/^pk_(test|live)_/, "");
-
-	// Base64-decode it (remove trailing $ stop character)
-	return atob(base64Part).replace(/\$$/, "");
-}
-
 export async function joinWaitlist(email: string) {
 	const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 	if (!publishableKey) {
 		return { error: "Clerk key not configured" };
 	}
 
-	const domain = getDomainFromPublishableKey(publishableKey);
-	const url = `https://${domain}/v1/waitlist`;
+	const url = `https://api.clerk.com/v1/waitlist_entries`;
 
 	try {
 		const res = await fetch(url, {
 			method: "POST",
 			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
 			},
-			body: new URLSearchParams({ email_address: email }),
+			body: JSON.stringify({
+				email_address: email,
+			}),
 		});
 
 		if (!res.ok) {
@@ -40,6 +34,7 @@ export async function joinWaitlist(email: string) {
 
 		return { success: true };
 	} catch (_error) {
+		console.log("\n\n error", _error);
 		return { error: "Something went wrong. Please try again." };
 	}
 }
