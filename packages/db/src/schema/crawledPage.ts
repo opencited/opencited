@@ -1,4 +1,4 @@
-import { pgTable, text, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import {
 	createSelectSchema,
@@ -16,21 +16,29 @@ export const crawlStatusEnum = z.enum([
 ]);
 export type CrawlStatus = z.infer<typeof crawlStatusEnum>;
 
-export const crawledPageTable = pgTable("crawled_page", {
-	id: id,
-	sitemapUrlId: text("sitemap_url_id")
-		.references(() => sitemapUrlTable.id)
-		.notNull(),
-	url: text("url").notNull(),
-	httpStatus: integer("http_status"),
-	contentLength: integer("content_length"),
-	fetchedAt: text("fetched_at"),
-	contentHash: text("content_hash"),
-	crawlStatus: text("crawl_status").notNull().default("pending"),
-	fetchError: text("fetch_error"),
-	createdAt: createdAt,
-	updatedAt: updatedAt,
-});
+export const crawledPageTable = pgTable(
+	"crawled_page",
+	{
+		id: id,
+		sitemapUrlId: text("sitemap_url_id")
+			.references(() => sitemapUrlTable.id)
+			.notNull(),
+		url: text("url").notNull(),
+		httpStatus: integer("http_status"),
+		contentLength: integer("content_length"),
+		fetchedAt: text("fetched_at"),
+		contentHash: text("content_hash"),
+		crawlStatus: text("crawl_status").notNull().default("pending"),
+		fetchError: text("fetch_error"),
+		createdAt: createdAt,
+		updatedAt: updatedAt,
+	},
+	(table) => ({
+		sitemapUrlIdUnique: uniqueIndex("crawled_page_sitemap_url_id_unique").on(
+			table.sitemapUrlId,
+		),
+	}),
+);
 
 export const crawledPageSelectSchema = createSelectSchema(crawledPageTable);
 export const crawledPageBaseInsertSchema = createInsertSchema(crawledPageTable);

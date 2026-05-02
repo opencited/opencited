@@ -1,8 +1,6 @@
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { authProtectedProcedure } from "../procedures/authProtectedProcedure";
 import {
-	storeCrawlHandler,
-	storeCrawlInputSchema,
 	getCrawledPageHandler,
 	getCrawledPageInputSchema,
 	listCrawledPagesHandler,
@@ -16,12 +14,6 @@ import {
 } from "../actions/crawl";
 
 export const crawlRouter = createTRPCRouter({
-	store: publicProcedure
-		.input(storeCrawlInputSchema)
-		.mutation(async ({ ctx, input }) => {
-			return storeCrawlHandler({ input, ctx });
-		}),
-
 	get: publicProcedure
 		.input(getCrawledPageInputSchema)
 		.query(async ({ ctx, input }) => {

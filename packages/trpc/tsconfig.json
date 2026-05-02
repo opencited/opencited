@@ -1,11 +1,7 @@
 {
 	"extends": "@opencited/typescript-config/nextjs.json",
 	"compilerOptions": {
-		"composite": false,
-		"paths": {
-			"@opencited/crawler-workflows": ["../crawler-workflows/src/index.ts"],
-			"@opencited/crawler-workflows/*": ["../crawler-workflows/src/*"]
-		}
+		"composite": false
 	},
 	"include": ["src"],
 	"exclude": ["node_modules"]

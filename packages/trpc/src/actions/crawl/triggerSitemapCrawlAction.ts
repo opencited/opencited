@@ -3,10 +3,11 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { start } from "workflow/api";
 import { baseActionContextSchema } from "../../trpc";
-import { storeCrawlAction } from "./storeCrawlAction";
 import { listSitemapUrlsAction } from "../sitemap/listSitemapUrlsAction";
-import { crawlSitemapWorkflow } from "@opencited/crawler-workflows";
-import type { CrawlSitemapResult } from "@opencited/crawler-workflows";
+import {
+	crawlSitemapWorkflow,
+	type CrawlSitemapResult,
+} from "../../workflows/crawl-sitemap";
 import { sitemapTable } from "@opencited/db";
 
 export const triggerSitemapCrawlInputSchema = z.object({
@@ -84,19 +85,6 @@ export const triggerSitemapCrawlAction = async (params: {
 				err instanceof Error
 					? err.message
 					: "Failed to run sitemap crawl workflow",
-		});
-	}
-
-	try {
-		await storeCrawlAction({
-			input: { results: workflowResult.pages },
-			ctx,
-		});
-	} catch (err) {
-		throw new TRPCError({
-			code: "INTERNAL_SERVER_ERROR",
-			message:
-				err instanceof Error ? err.message : "Failed to store crawl results",
 		});
 	} finally {
 		if (runId) {

@@ -76,18 +76,6 @@
         "typescript": "catalog:",
       },
     },
-    "packages/crawler-workflows": {
-      "name": "@opencited/crawler-workflows",
-      "version": "0.0.0",
-      "dependencies": {
-        "@opencited/crawler": "workspace:*",
-        "workflow": "catalog:",
-      },
-      "devDependencies": {
-        "@opencited/typescript-config": "workspace:*",
-        "typescript": "catalog:",
-      },
-    },
     "packages/db": {
       "name": "@opencited/db",
       "version": "0.0.1",
@@ -117,7 +105,6 @@
       "dependencies": {
         "@clerk/nextjs": "catalog:",
         "@opencited/crawler": "workspace:*",
-        "@opencited/crawler-workflows": "workspace:*",
         "@opencited/db": "workspace:*",
         "@trpc/client": "catalog:",
         "@trpc/server": "catalog:",
@@ -652,8 +639,6 @@
     "@opencited/cli": ["@opencited/cli@workspace:apps/cli"],
 
     "@opencited/crawler": ["@opencited/crawler@workspace:packages/crawler"],
-
-    "@opencited/crawler-workflows": ["@opencited/crawler-workflows@workspace:packages/crawler-workflows"],
 
     "@opencited/db": ["@opencited/db@workspace:packages/db"],
 

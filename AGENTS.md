@@ -43,7 +43,6 @@ Runs on every `git commit` via Husky. The `prepare` script in root `package.json
 | `packages/trpc` | `@opencited/trpc` | tRPC server & client (routers, procedures, context) |
 | `packages/db` | `@opencited/db` | Drizzle ORM + Neon Postgres (used only by tRPC) |
 | `packages/crawler` | `@opencited/crawler` | Sitemap fetching and parsing (used by tRPC) |
-| `packages/crawler-workflows` | `@opencited/crawler-workflows` | Workflow SDK orchestration for page crawling |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
 | `packages/typescript-config` | `@opencited/typescript-config` | Shared tsconfigs |
 
@@ -151,10 +150,18 @@ Keys are declared in `turbo.json` `globalEnv` so they are available during build
 | Package | Role |
 |---------|------|
 | `packages/crawler` | Core engine — `fetchPage()`, `extractContent()`, `analyzeWithLLM()` (framework-agnostic) |
-| `packages/crawler-workflows` | Workflow SDK orchestration — `crawlPageWorkflow`, `crawlSitemapWorkflow` |
-| `packages/trpc/src/actions/crawl/` | tRPC actions — trigger crawls, store results, list pages |
+| `packages/trpc/src/workflows/` | Workflow SDK orchestration — `crawlPageWorkflow`, `crawlSitemapWorkflow` |
+| `packages/trpc/src/actions/crawl/` | tRPC actions — trigger crawls, upsert results, list pages |
 | `packages/db/src/schema/crawledPage.ts` | Crawled page records (URL, HTTP status, content hash) |
 | `packages/db/src/schema/pageAnalysis.ts` | Page analysis (Content & SEO metrics + LLM insights) |
+
+### Crawl Flow
+
+1. tRPC action triggers workflow (`triggerSitemapCrawlAction` → `crawlSitemapWorkflow`)
+2. Workflow crawls pages in batches (10 at a time with 500ms delay)
+3. After each batch, workflow saves results to DB via `upsertCrawledPageBatchAction` + `upsertPageAnalysisBatchAction`
+4. Results are persisted incrementally — if crawl fails mid-way, already-saved batches aren't lost
+5. Workflow returns `{ total, succeeded, failed }` counts to the action
 
 ### Workflow Run Tracking
 
@@ -178,9 +185,12 @@ Located in `apps/web/app/(onboarding)/onboarding/_components/onboarding-wizard.t
 
 | File | Purpose |
 |------|---------|
+| `packages/trpc/src/workflows/crawl-sitemap.ts` | Sitemap crawl workflow — batches pages, saves results after each batch |
+| `packages/trpc/src/workflows/crawl-page.ts` | Single page crawl workflow — fetches, extracts content, analyzes with LLM |
 | `packages/trpc/src/actions/crawl/triggerSitemapCrawlAction.ts` | Starts `crawlSitemapWorkflow`, sets/clears `activeCrawlRunId` |
 | `packages/trpc/src/actions/crawl/triggerSingleCrawlAction.ts` | Starts `crawlPageWorkflow` for a single URL, sets/clears `activeCrawlRunId` |
-| `packages/trpc/src/actions/crawl/storeCrawlAction.ts` | Stores crawl results to `crawledPage` + `pageAnalysis` tables |
+| `packages/trpc/src/actions/crawl/upsertCrawledPageBatchAction.ts` | Upserts crawled page records to DB |
+| `packages/trpc/src/actions/crawl/upsertPageAnalysisBatchAction.ts` | Upserts page analysis records to DB |
 | `apps/web/app/components/crawl-all-button.tsx` | "Crawl All" button for sitemap |
 | `apps/web/app/components/run-button.tsx` | "Run" button for individual URL |
 | `apps/web/app/components/crawl-status-badge.tsx` | Badge showing Pending/Fetched/Analyzed/Error |

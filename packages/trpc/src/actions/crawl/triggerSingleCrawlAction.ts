@@ -3,10 +3,13 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { start } from "workflow/api";
 import { baseActionContextSchema } from "../../trpc";
-import { storeCrawlAction } from "./storeCrawlAction";
-import { crawlPageWorkflow } from "@opencited/crawler-workflows";
-import type { CrawlPageResult } from "@opencited/crawler-workflows";
+import {
+	crawlPageWorkflow,
+	type CrawlPageResult,
+} from "../../workflows/crawl-page";
 import { sitemapUrlTable, sitemapTable } from "@opencited/db";
+import { upsertCrawledPageBatchAction } from "./upsertCrawledPageBatchAction";
+import { upsertPageAnalysisBatchAction } from "./upsertPageAnalysisBatchAction";
 
 export const triggerSingleCrawlInputSchema = z.object({
 	sitemapUrlId: z.string().uuid(),
@@ -71,8 +74,62 @@ export const triggerSingleCrawlAction = async (params: {
 		});
 	}
 
+	const crawlStatus = result.fetchError
+		? "error"
+		: result.content
+			? "analyzed"
+			: "fetched";
+
 	try {
-		await storeCrawlAction({ input: { results: [result] }, ctx });
+		const { saved } = await upsertCrawledPageBatchAction({
+			input: {
+				pages: [
+					{
+						sitemapUrlId: result.sitemapUrlId,
+						url: result.url,
+						httpStatus: result.httpStatus,
+						contentLength: result.contentLength,
+						contentHash: result.contentHash,
+						fetchError: result.fetchError,
+						crawlStatus,
+						fetchedAt: new Date().toISOString(),
+					},
+				],
+			},
+			ctx,
+		});
+
+		const firstSaved = saved[0];
+		if (firstSaved && (result.content || result.llmInsights)) {
+			await upsertPageAnalysisBatchAction({
+				input: {
+					analyses: [
+						{
+							crawledPageId: firstSaved.id,
+							wordCount: result.content?.wordCount ?? null,
+							textHtmlRatio: result.content?.textHtmlRatio ?? null,
+							headingStructure: result.content?.headingStructure ?? null,
+							imagesTotal: result.content?.imagesTotal ?? null,
+							imagesWithAlt: result.content?.imagesWithAlt ?? null,
+							internalLinks: result.content?.internalLinks ?? null,
+							externalLinks: result.content?.externalLinks ?? null,
+							domDepthAvg: result.content?.domDepthAvg ?? null,
+							tone: result.llmInsights?.tone ?? null,
+							sentiment: result.llmInsights?.sentiment ?? null,
+							sentimentScore: result.llmInsights?.sentimentScore ?? null,
+							subjectivity: result.llmInsights?.subjectivity ?? null,
+							perceivedPageType: result.llmInsights?.perceivedPageType ?? null,
+							perceivedIntent: result.llmInsights?.perceivedIntent ?? null,
+							perceivedAudience: result.llmInsights?.perceivedAudience ?? null,
+							namedEntities: result.llmInsights?.namedEntities ?? null,
+							verbTense: result.llmInsights?.verbTense ?? null,
+							extractedText: result.content?.extractedText ?? null,
+						},
+					],
+				},
+				ctx,
+			});
+		}
 	} catch (err) {
 		throw new TRPCError({
 			code: "INTERNAL_SERVER_ERROR",
@@ -90,11 +147,7 @@ export const triggerSingleCrawlAction = async (params: {
 
 	return {
 		success: true,
-		crawlStatus: result.fetchError
-			? "error"
-			: result.content
-				? "analyzed"
-				: "fetched",
+		crawlStatus,
 	};
 };
 
