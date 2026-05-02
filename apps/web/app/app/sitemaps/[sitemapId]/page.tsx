@@ -8,6 +8,9 @@ import { PriorityBadge } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
 import { TimeAgo } from "@/app/components/time-ago";
 import { ChangeFreqBadge } from "@/app/components/change-freq-badge";
+import { CrawlStatusBadge } from "@/app/components/crawl-status-badge";
+import { CrawlAllButton } from "@/app/components/crawl-all-button";
+import { RunButton } from "@/app/components/run-button";
 import { ExternalLink } from "lucide-react";
 import { useParams } from "next/navigation";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -15,6 +18,8 @@ import type { AppRouter } from "@opencited/trpc";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type SitemapUrlList = RouterOutput["sitemap"]["listUrls"];
+type SitemapUrlItem = SitemapUrlList["urls"][number];
+type CrawlStatus = "pending" | "fetched" | "analyzed" | "error";
 
 export default function SitemapDetailPage() {
 	const trpc = useTRPC();
@@ -35,13 +40,19 @@ export default function SitemapDetailPage() {
 				query={urlListQuery}
 				success={(urlList) => (
 					<div className="space-y-4">
-						<p className="text-sm text-muted-foreground">
-							{urlList.length} URL{urlList.length !== 1 ? "s" : ""} in this
-							sitemap
-						</p>
-						<DataList<SitemapUrlList[number]>
-							items={urlList}
-							keyExtractor={(url) => url.id}
+						<div className="flex items-center justify-between">
+							<p className="text-sm text-muted-foreground">
+								{urlList.urls.length} URL{urlList.urls.length !== 1 ? "s" : ""}{" "}
+								in this sitemap
+							</p>
+							<CrawlAllButton
+								sitemapId={sitemapId}
+								sitemapActiveCrawlRunId={urlList.sitemapActiveCrawlRunId}
+							/>
+						</div>
+						<DataList<SitemapUrlItem>
+							items={urlList.urls}
+							keyExtractor={(urlItem) => urlItem.id}
 							renderItem={(urlItem) => (
 								<div className="flex items-start justify-between gap-4 w-full">
 									<div className="flex flex-col flex-1 min-w-0 gap-1">
@@ -55,20 +66,35 @@ export default function SitemapDetailPage() {
 											{urlItem.priority && (
 												<PriorityBadge priority={urlItem.priority} />
 											)}
-											<TimeAgo date={urlItem.updatedAt} label="Crawled" />
 											{urlItem.changefreq && (
 												<ChangeFreqBadge value={urlItem.changefreq} />
 											)}
+											<CrawlStatusBadge
+												status={urlItem.crawlStatus as CrawlStatus | null}
+											/>
+											<TimeAgo
+												date={urlItem.fetchedAt ?? urlItem.updatedAt}
+												label="Crawled"
+											/>
 										</div>
 									</div>
-									<DataListAction
-										href={urlItem.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										icon={<ExternalLink className="h-4 w-4" />}
-									>
-										Open
-									</DataListAction>
+									<div className="flex items-center gap-2 shrink-0">
+										<RunButton
+											sitemapUrlId={urlItem.id}
+											url={urlItem.url}
+											sitemapId={sitemapId}
+											activeCrawlRunId={urlItem.activeCrawlRunId}
+											sitemapActiveCrawlRunId={urlList.sitemapActiveCrawlRunId}
+										/>
+										<DataListAction
+											href={urlItem.url}
+											target="_blank"
+											rel="noopener noreferrer"
+											icon={<ExternalLink className="h-4 w-4" />}
+										>
+											Open
+										</DataListAction>
+									</div>
 								</div>
 							)}
 							emptyState={{

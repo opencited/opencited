@@ -28,6 +28,7 @@ export const sitemapTable = pgTable(
 		urlCount: integer("url_count").notNull().default(0),
 		lastCrawlError: text("last_crawl_error"),
 		source: text("source").notNull().default("manual"),
+		activeCrawlRunId: text("active_crawl_run_id"),
 		createdAt: createdAt,
 		updatedAt: updatedAt,
 	},

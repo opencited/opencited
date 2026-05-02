@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { Pool } from "@neondatabase/serverless";
 import * as schema from "./schema";
+import { z } from "zod";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -11,6 +12,7 @@ if (!databaseUrl) {
 const pool = new Pool({ connectionString: databaseUrl });
 const db = drizzle({ client: pool, schema });
 export type Db = typeof db;
+export const dbSchema = z.custom<Db>();
 
 export { db, schema };
 export {
@@ -34,3 +36,18 @@ export {
 	sitemapUrlInsertSchema,
 	sitemapUrlUpdateSchema,
 } from "./schema/sitemapUrl";
+export {
+	crawledPageTable,
+	crawledPageSelectSchema,
+	crawledPageBaseInsertSchema,
+	crawledPageInsertSchema,
+	crawledPageUpdateSchema,
+	crawlStatusEnum,
+} from "./schema/crawledPage";
+export {
+	pageAnalysisTable,
+	pageAnalysisSelectSchema,
+	pageAnalysisBaseInsertSchema,
+	pageAnalysisInsertSchema,
+	pageAnalysisUpdateSchema,
+} from "./schema/pageAnalysis";

@@ -26,6 +26,7 @@ coverage
 out/
 build
 dist
+.swc/
 
 
 # Debug
@@ -39,3 +40,10 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Workflow
+.workflow-data
+.workflow-vitest
+
+# Agents
+.omc

@@ -6,6 +6,11 @@
 			"sourceType": "github",
 			"computedHash": "65085998d643c3b64ff323ca74d76496b47484046b030730c00c03a0208bf410"
 		},
+		"ai-sdk": {
+			"source": "vercel/ai",
+			"sourceType": "github",
+			"computedHash": "81af098a4ce6f0e323c1bd02b8e79df3bbaed57cbf1c4060f58ddc95de5545a1"
+		},
 		"animate": {
 			"source": "pbakaus/impeccable",
 			"sourceType": "github",
@@ -90,6 +95,11 @@
 			"source": "pbakaus/impeccable",
 			"sourceType": "github",
 			"computedHash": "669a671f855be8773e4c2936e54d4243fbd1d273f87633158544efe3dbc4d825"
+		},
+		"emil-design-eng": {
+			"source": "emilkowalski/skill",
+			"sourceType": "github",
+			"computedHash": "8bdf9e4e6de7a4969147bf4828a4ad2c5aacd9fba4b690b250a85e0467ca387d"
 		},
 		"impeccable": {
 			"source": "pbakaus/impeccable",
@@ -185,6 +195,16 @@
 			"source": "vercel-labs/agent-skills",
 			"sourceType": "github",
 			"computedHash": "f3bc47f890f42a44db1007ab390709ec368e4b8c089baee6b0007182236ac474"
+		},
+		"workflow": {
+			"source": "vercel/workflow",
+			"sourceType": "github",
+			"computedHash": "d870ac314303f0b28cfeb8533567ac18df24f6e4d6b874e9f5261b5fddc29210"
+		},
+		"workflow-init": {
+			"source": "vercel/workflow",
+			"sourceType": "github",
+			"computedHash": "bced8450380b6d88543a0672c4543e3217a2da3a982eda8be204c41624d85881"
 		},
 		"zod-v4": {
 			"source": "smithery.ai",

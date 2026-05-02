@@ -43,6 +43,7 @@ Runs on every `git commit` via Husky. The `prepare` script in root `package.json
 | `packages/trpc` | `@opencited/trpc` | tRPC server & client (routers, procedures, context) |
 | `packages/db` | `@opencited/db` | Drizzle ORM + Neon Postgres (used only by tRPC) |
 | `packages/crawler` | `@opencited/crawler` | Sitemap fetching and parsing (used by tRPC) |
+| `packages/crawler-workflows` | `@opencited/crawler-workflows` | Workflow SDK orchestration for page crawling |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
 | `packages/typescript-config` | `@opencited/typescript-config` | Shared tsconfigs |
 
@@ -142,3 +143,44 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 | `.env.local` | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` |
 
 Keys are declared in `turbo.json` `globalEnv` so they are available during builds.
+
+## Page Crawler Engine
+
+### Architecture
+
+| Package | Role |
+|---------|------|
+| `packages/crawler` | Core engine — `fetchPage()`, `extractContent()`, `analyzeWithLLM()` (framework-agnostic) |
+| `packages/crawler-workflows` | Workflow SDK orchestration — `crawlPageWorkflow`, `crawlSitemapWorkflow` |
+| `packages/trpc/src/actions/crawl/` | tRPC actions — trigger crawls, store results, list pages |
+| `packages/db/src/schema/crawledPage.ts` | Crawled page records (URL, HTTP status, content hash) |
+| `packages/db/src/schema/pageAnalysis.ts` | Page analysis (Content & SEO metrics + LLM insights) |
+
+### Workflow Run Tracking
+
+`activeCrawlRunId` columns on `sitemap` and `sitemap_url` tables track running workflows:
+- Set before `start()` call, cleared in `finally` block
+- UI buttons (`CrawlAllButton`, `RunButton`) disable based on presence of this value
+- `listSitemapUrlsAction` returns `{ urls: [...], sitemapActiveCrawlRunId }` — each URL item includes its own `activeCrawlRunId`
+- No polling needed — status comes from the existing query
+
+### Auto-Crawl on Onboarding
+
+After onboarding completes (user confirms project in wizard):
+1. Creates `domainProject`, sitemaps, parses sitemap XML (existing flow)
+2. Fires `triggerSitemapCrawl` for each created sitemap (fire-and-forget)
+3. Redirects to `/app/dashboard` immediately — crawl runs in background
+4. User sees "Running..." state on `CrawlAllButton`; can retry manually if crawl fails
+
+Located in `apps/web/app/(onboarding)/onboarding/_components/onboarding-wizard.tsx` → `handleConfirmAndSave`.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `packages/trpc/src/actions/crawl/triggerSitemapCrawlAction.ts` | Starts `crawlSitemapWorkflow`, sets/clears `activeCrawlRunId` |
+| `packages/trpc/src/actions/crawl/triggerSingleCrawlAction.ts` | Starts `crawlPageWorkflow` for a single URL, sets/clears `activeCrawlRunId` |
+| `packages/trpc/src/actions/crawl/storeCrawlAction.ts` | Stores crawl results to `crawledPage` + `pageAnalysis` tables |
+| `apps/web/app/components/crawl-all-button.tsx` | "Crawl All" button for sitemap |
+| `apps/web/app/components/run-button.tsx` | "Run" button for individual URL |
+| `apps/web/app/components/crawl-status-badge.tsx` | Badge showing Pending/Fetched/Analyzed/Error |

@@ -1,4 +1,4 @@
-import { eq, count, inArray } from "drizzle-orm";
+import { eq, count, inArray, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { baseActionContextSchema } from "../../trpc";
@@ -7,12 +7,25 @@ import {
 	sitemapUrlTable,
 	sitemapTable,
 	domainProjectTable,
+	crawledPageTable,
+	crawlStatusEnum,
 } from "@opencited/db";
 
 export const listSitemapUrlsInputSchema = z.object({
 	sitemapId: z.string(),
 });
-export const listSitemapUrlsOutputSchema = sitemapUrlSelectSchema.array();
+
+export const listSitemapUrlsOutputSchema = z.object({
+	urls: sitemapUrlSelectSchema
+		.extend({
+			crawlStatus: crawlStatusEnum.nullable(),
+			fetchedAt: z.string().nullable(),
+			httpStatus: z.number().int().nullable(),
+		})
+		.array(),
+	sitemapActiveCrawlRunId: z.string().nullable(),
+});
+
 export const listSitemapUrlsContextSchema = baseActionContextSchema;
 
 export const listSitemapUrlsAction = async (params: {
@@ -35,11 +48,32 @@ export const listSitemapUrlsAction = async (params: {
 	}
 
 	const result = await ctx.db
-		.select()
+		.select({
+			id: sitemapUrlTable.id,
+			sitemapId: sitemapUrlTable.sitemapId,
+			url: sitemapUrlTable.url,
+			lastmod: sitemapUrlTable.lastmod,
+			changefreq: sitemapUrlTable.changefreq,
+			priority: sitemapUrlTable.priority,
+			activeCrawlRunId: sitemapUrlTable.activeCrawlRunId,
+			createdAt: sitemapUrlTable.createdAt,
+			updatedAt: sitemapUrlTable.updatedAt,
+			crawlStatus: crawledPageTable.crawlStatus,
+			fetchedAt: crawledPageTable.fetchedAt,
+			httpStatus: crawledPageTable.httpStatus,
+		})
 		.from(sitemapUrlTable)
+		.leftJoin(
+			crawledPageTable,
+			eq(crawledPageTable.sitemapUrlId, sitemapUrlTable.id),
+		)
+		.orderBy(desc(sitemapUrlTable.updatedAt))
 		.where(eq(sitemapUrlTable.sitemapId, input.sitemapId));
 
-	return result;
+	return {
+		urls: result,
+		sitemapActiveCrawlRunId: sitemap[0].activeCrawlRunId,
+	};
 };
 
 export const listSitemapUrlsHandler = async (params: {
