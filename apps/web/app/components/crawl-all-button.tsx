@@ -5,18 +5,22 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import { Button } from "@opencited/ui";
 import { Play, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { useConfirmation } from "@/app/hooks/use-confirmation";
 
 interface CrawlAllButtonProps {
 	sitemapId: string;
 	sitemapActiveCrawlRunId: string | null;
+	isBusy?: boolean;
 }
 
 export function CrawlAllButton({
 	sitemapId,
 	sitemapActiveCrawlRunId,
+	isBusy,
 }: CrawlAllButtonProps) {
 	const trpc = useTRPC();
 	const queryClient = useQueryClient();
+	const { confirm, dialog } = useConfirmation();
 	const [error, setError] = useState<string | null>(null);
 	const [result, setResult] = useState<{
 		succeeded: number;
@@ -39,15 +43,23 @@ export function CrawlAllButton({
 		}),
 	);
 
-	const isBlocked = mutation.isPending || sitemapActiveCrawlRunId !== null;
+	const isBlocked =
+		mutation.isPending || sitemapActiveCrawlRunId !== null || isBusy;
 
 	return (
 		<div className="flex flex-col gap-1">
+			{dialog}
 			<Button
 				variant="default"
 				size="sm"
 				disabled={isBlocked}
-				onClick={() => {
+				onClick={async () => {
+					const isConfirmed = await confirm({
+						title: "Crawl all URLs?",
+						description:
+							"Are you sure you want to crawl all URLs in this sitemap?",
+					});
+					if (!isConfirmed) return;
 					setError(null);
 					setResult(null);
 					mutation.mutate({ sitemapId });

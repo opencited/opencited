@@ -11,8 +11,10 @@ import { ChangeFreqBadge } from "@/app/components/change-freq-badge";
 import { CrawlStatusBadge } from "@/app/components/crawl-status-badge";
 import { CrawlAllButton } from "@/app/components/crawl-all-button";
 import { RunButton } from "@/app/components/run-button";
+import { PageDetailsSheet } from "@/app/components/page-details-sheet";
 import { ExternalLink } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
 
@@ -25,6 +27,10 @@ export default function SitemapDetailPage() {
 	const trpc = useTRPC();
 	const params = useParams();
 	const sitemapId = params.sitemapId as string;
+	const [selectedUrl, setSelectedUrl] = useState<{
+		id: string;
+		url: string;
+	} | null>(null);
 
 	const urlListQuery = useQuery(
 		trpc.sitemap.listUrls.queryOptions({ sitemapId }),
@@ -35,6 +41,15 @@ export default function SitemapDetailPage() {
 			title="Sitemap URLs"
 			backHref="/app/sitemaps"
 			backLabel="Back to Sitemaps"
+			action={
+				<CrawlAllButton
+					sitemapId={sitemapId}
+					sitemapActiveCrawlRunId={
+						urlListQuery.data?.sitemapActiveCrawlRunId ?? null
+					}
+					isBusy={urlListQuery.isPending}
+				/>
+			}
 		>
 			<QueryCell<SitemapUrlList>
 				query={urlListQuery}
@@ -45,17 +60,19 @@ export default function SitemapDetailPage() {
 								{urlList.urls.length} URL{urlList.urls.length !== 1 ? "s" : ""}{" "}
 								in this sitemap
 							</p>
-							<CrawlAllButton
-								sitemapId={sitemapId}
-								sitemapActiveCrawlRunId={urlList.sitemapActiveCrawlRunId}
-							/>
 						</div>
 						<DataList<SitemapUrlItem>
 							items={urlList.urls}
 							keyExtractor={(urlItem) => urlItem.id}
 							renderItem={(urlItem) => (
 								<div className="flex items-start justify-between gap-4 w-full">
-									<div className="flex flex-col flex-1 min-w-0 gap-1">
+									<button
+										type="button"
+										onClick={() =>
+											setSelectedUrl({ id: urlItem.id, url: urlItem.url })
+										}
+										className="flex flex-col flex-1 min-w-0 gap-1 text-left cursor-pointer hover:opacity-80 transition-opacity"
+									>
 										<span className="text-sm font-mono truncate">
 											{urlItem.url}
 										</span>
@@ -77,7 +94,7 @@ export default function SitemapDetailPage() {
 												label="Crawled"
 											/>
 										</div>
-									</div>
+									</button>
 									<div className="flex items-center gap-2 shrink-0">
 										<RunButton
 											sitemapUrlId={urlItem.id}
@@ -103,6 +120,17 @@ export default function SitemapDetailPage() {
 									"This sitemap has no URLs. It may still be crawling or the sitemap is empty.",
 							}}
 						/>
+						{selectedUrl && (
+							<PageDetailsSheet
+								sitemapUrlId={selectedUrl.id}
+								url={selectedUrl.url}
+								sitemapId={sitemapId}
+								open={!!selectedUrl}
+								onOpenChange={(open) => {
+									if (!open) setSelectedUrl(null);
+								}}
+							/>
+						)}
 					</div>
 				)}
 			/>
