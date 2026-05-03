@@ -8,7 +8,8 @@
 		"dev:turbo": "next dev --port 3000 --turbopack",
 		"build": "next build",
 		"start": "next start",
-		"tsc": "next typegen && tsc --noEmit"
+		"tsc": "next typegen && tsc --noEmit",
+		"inspect": "npx workflow web"
 	},
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
@@ -25,7 +26,8 @@
 		"next": "catalog:",
 		"react": "catalog:",
 		"react-dom": "catalog:",
-		"tailwind-merge": "catalog:"
+		"tailwind-merge": "catalog:",
+		"workflow": "catalog:"
 	},
 	"devDependencies": {
 		"@opencited/tailwind-config": "workspace:*",

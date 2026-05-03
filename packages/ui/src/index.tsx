@@ -119,3 +119,10 @@ export {
 	DialogTitle,
 	DialogDescription,
 } from "./dialog";
+
+export {
+	Tabs,
+	TabsList,
+	TabsTrigger,
+	TabsContent,
+} from "./tabs";

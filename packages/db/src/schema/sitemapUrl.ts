@@ -17,6 +17,7 @@ export const sitemapUrlTable = pgTable("sitemap_url", {
 	lastmod: text("lastmod"),
 	changefreq: text("changefreq"),
 	priority: text("priority"),
+	activeCrawlRunId: text("active_crawl_run_id"),
 	createdAt: createdAt,
 	updatedAt: updatedAt,
 });

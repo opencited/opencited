@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "crawled_page_sitemap_url_id_unique" ON "crawled_page" ("sitemap_url_id");

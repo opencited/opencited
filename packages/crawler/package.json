@@ -9,13 +9,18 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"tsc": "tsc --noEmit"
+		"tsc": "tsc --noEmit",
+		"play": "bun run scripts/play.ts"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
 		"typescript": "catalog:"
 	},
 	"dependencies": {
-		"fast-xml-parser": "catalog:"
+		"fast-xml-parser": "catalog:",
+		"@ai-sdk/openai": "catalog:",
+		"ai": "catalog:",
+		"cheerio": "catalog:",
+		"zod": "catalog:"
 	}
 }

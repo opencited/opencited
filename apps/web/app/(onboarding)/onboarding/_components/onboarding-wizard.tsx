@@ -138,6 +138,14 @@ export function OnboardingWizard() {
 		}),
 	);
 
+	const triggerSitemapCrawlMutation = useMutation(
+		trpc.crawl.triggerSitemapCrawl.mutationOptions({
+			onError: () => {
+				// Fire-and-forget; user can retry manually via "Crawl All"
+			},
+		}),
+	);
+
 	const validateDomain = (value: string): boolean => {
 		const cleaned = value.replace(/^https?:\/\//, "").replace(/\/$/, "");
 		const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}$/;
@@ -284,6 +292,8 @@ export function OnboardingWizard() {
 				logoUrl: faviconUrl,
 			});
 
+			const createdSitemapIds: string[] = [];
+
 			for (const sitemapUrl of selectedSitemapUrls) {
 				const source = getSourceForUrl(sitemapUrl);
 				const sitemap = await sitemapCreateMutation.mutateAsync({
@@ -296,6 +306,12 @@ export function OnboardingWizard() {
 					sitemapId: sitemap.id,
 					sitemapUrl,
 				});
+
+				createdSitemapIds.push(sitemap.id);
+			}
+
+			for (const sitemapId of createdSitemapIds) {
+				triggerSitemapCrawlMutation.mutate({ sitemapId });
 			}
 
 			router.push("/app/dashboard");
