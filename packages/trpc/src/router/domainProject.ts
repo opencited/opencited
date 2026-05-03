@@ -4,22 +4,29 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import {
 	createDomainProjectHandler,
+	createDomainProjectOutputSchema,
 	getDomainProjectHandler,
+	getDomainProjectOutputSchema,
 	listDomainProjectHandler,
+	listDomainProjectOutputSchema,
 	updateDomainProjectHandler,
+	updateDomainProjectOutputSchema,
 	deleteDomainProjectHandler,
+	deleteDomainProjectOutputSchema,
 	discoverSitemapsHandler,
-} from "../actions/domainProject";
-import { createDomainProjectInputSchema } from "../actions/domainProject/createAction";
-import { discoverSitemapsInputSchema } from "../actions/domainProject/discoverSitemapsAction";
-import { listDomainProjectInputSchema } from "../actions/domainProject/listAction";
-import { updateDomainProjectInputSchema } from "../actions/domainProject/updateAction";
-import { deleteDomainProjectInputSchema } from "../actions/domainProject/deleteAction";
+	discoverSitemapsOutputSchema,
+	createDomainProjectInputSchema,
+	discoverSitemapsInputSchema,
+	listDomainProjectInputSchema,
+	updateDomainProjectInputSchema,
+	deleteDomainProjectInputSchema,
+} from "@opencited/actions";
 import { domainProjectTable } from "@opencited/db";
 
 export const domainProjectRouter = createTRPCRouter({
 	create: publicProcedure
 		.input(createDomainProjectInputSchema)
+		.output(createDomainProjectOutputSchema)
 		.mutation(async ({ ctx, input }) => {
 			const { orgId } = await auth();
 			if (!orgId) {
@@ -34,16 +41,19 @@ export const domainProjectRouter = createTRPCRouter({
 			});
 		}),
 
-	get: publicProcedure.query(async ({ ctx }) => {
-		const { orgId } = await auth();
-		if (!orgId) {
-			return null;
-		}
-		return getDomainProjectHandler({ ctx, clerkOrganizationId: orgId });
-	}),
+	get: publicProcedure
+		.output(getDomainProjectOutputSchema)
+		.query(async ({ ctx }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				return null;
+			}
+			return getDomainProjectHandler({ ctx, clerkOrganizationId: orgId });
+		}),
 
 	list: publicProcedure
 		.input(listDomainProjectInputSchema)
+		.output(listDomainProjectOutputSchema)
 		.query(async ({ ctx }) => {
 			const { orgId } = await auth();
 			if (!orgId) {
@@ -67,6 +77,7 @@ export const domainProjectRouter = createTRPCRouter({
 
 	update: publicProcedure
 		.input(updateDomainProjectInputSchema)
+		.output(updateDomainProjectOutputSchema)
 		.mutation(async ({ ctx, input }) => {
 			const { orgId } = await auth();
 			if (!orgId) {
@@ -84,6 +95,7 @@ export const domainProjectRouter = createTRPCRouter({
 
 	delete: publicProcedure
 		.input(deleteDomainProjectInputSchema)
+		.output(deleteDomainProjectOutputSchema)
 		.mutation(async ({ ctx }) => {
 			const { orgId } = await auth();
 			if (!orgId) {
@@ -97,6 +109,7 @@ export const domainProjectRouter = createTRPCRouter({
 
 	discoverSitemaps: publicProcedure
 		.input(discoverSitemapsInputSchema)
+		.output(discoverSitemapsOutputSchema)
 		.mutation(async ({ ctx, input }) => {
 			return discoverSitemapsHandler({ input, ctx });
 		}),

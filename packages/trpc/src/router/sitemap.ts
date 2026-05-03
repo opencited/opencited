@@ -1,72 +1,93 @@
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import {
-	createSitemapHandler,
-	getSitemapHandler,
-	listSitemapHandler,
-	deleteSitemapHandler,
-	addSitemapUrlHandler,
-	crawlSitemapHandler,
-	previewSitemapHandler,
-	listSitemapUrlsHandler,
-	getSitemapUrlCountHandler,
-} from "../actions/sitemap";
-import { createSitemapInputSchema } from "../actions/sitemap/createAction";
-import { getSitemapInputSchema } from "../actions/sitemap/getAction";
-import { listSitemapInputSchema } from "../actions/sitemap/listAction";
-import { deleteSitemapInputSchema } from "../actions/sitemap/deleteAction";
-import { addSitemapUrlInputSchema } from "../actions/sitemap/addUrlAction";
-import { crawlSitemapInputSchema } from "../actions/sitemap/crawlAction";
-import { previewSitemapInputSchema } from "../actions/sitemap/previewSitemapAction";
-import { listSitemapUrlsInputSchema } from "../actions/sitemap/listSitemapUrlsAction";
+	sitemapCreateHandler,
+	sitemapGetHandler,
+	sitemapListHandler,
+	sitemapDeleteHandler,
+	sitemapUrlAddHandler,
+	sitemapCrawlHandler,
+	sitemapPreviewHandler,
+	sitemapUrlListHandler,
+	sitemapUrlGetCountHandler,
+	sitemapCreateInputSchema,
+	sitemapCreateOutputSchema,
+	sitemapGetInputSchema,
+	sitemapGetOutputSchema,
+	sitemapListInputSchema,
+	sitemapListOutputSchema,
+	sitemapDeleteInputSchema,
+	sitemapDeleteOutputSchema,
+	sitemapUrlAddInputSchema,
+	sitemapUrlAddOutputSchema,
+	sitemapCrawlInputSchema,
+	sitemapCrawlOutputSchema,
+	sitemapPreviewInputSchema,
+	sitemapPreviewOutputSchema,
+	sitemapUrlListInputSchema,
+	sitemapUrlListOutputSchema,
+	sitemapUrlGetCountOutputSchema,
+} from "@opencited/actions";
 
 export const sitemapRouter = createTRPCRouter({
 	create: publicProcedure
-		.input(createSitemapInputSchema)
+		.input(sitemapCreateInputSchema)
+		.output(sitemapCreateOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			return createSitemapHandler({ input, ctx });
+			return sitemapCreateHandler({ input, ctx });
 		}),
 
 	get: publicProcedure
-		.input(getSitemapInputSchema)
+		.input(sitemapGetInputSchema)
+		.output(sitemapGetOutputSchema)
 		.query(async ({ ctx, input }) => {
-			return getSitemapHandler({ input, ctx });
+			return sitemapGetHandler({ input, ctx });
 		}),
 
-	list: publicProcedure.input(listSitemapInputSchema).query(async ({ ctx }) => {
-		return listSitemapHandler({ input: {}, ctx });
-	}),
+	list: publicProcedure
+		.input(sitemapListInputSchema)
+		.output(sitemapListOutputSchema)
+		.query(async ({ ctx }) => {
+			return sitemapListHandler({ input: {}, ctx });
+		}),
 
 	delete: publicProcedure
-		.input(deleteSitemapInputSchema)
+		.input(sitemapDeleteInputSchema)
+		.output(sitemapDeleteOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			return deleteSitemapHandler({ input, ctx });
+			return sitemapDeleteHandler({ input, ctx });
 		}),
 
 	addUrl: publicProcedure
-		.input(addSitemapUrlInputSchema)
+		.input(sitemapUrlAddInputSchema)
+		.output(sitemapUrlAddOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			return addSitemapUrlHandler({ input, ctx });
+			return sitemapUrlAddHandler({ input, ctx });
 		}),
 
 	crawl: publicProcedure
-		.input(crawlSitemapInputSchema)
+		.input(sitemapCrawlInputSchema)
+		.output(sitemapCrawlOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			return crawlSitemapHandler({ input, ctx });
+			return sitemapCrawlHandler({ input, ctx });
 		}),
 
 	preview: publicProcedure
-		.input(previewSitemapInputSchema)
+		.input(sitemapPreviewInputSchema)
+		.output(sitemapPreviewOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			return previewSitemapHandler({ input, ctx });
+			return sitemapPreviewHandler({ input, ctx });
 		}),
 
 	listUrls: publicProcedure
-		.input(listSitemapUrlsInputSchema)
+		.input(sitemapUrlListInputSchema)
+		.output(sitemapUrlListOutputSchema)
 		.query(async ({ ctx, input }) => {
-			return listSitemapUrlsHandler({ input, ctx });
+			return sitemapUrlListHandler({ input, ctx });
 		}),
 
-	getUrlCount: publicProcedure.query(async ({ ctx }) => {
-		return getSitemapUrlCountHandler({ ctx });
-	}),
+	getUrlCount: publicProcedure
+		.output(sitemapUrlGetCountOutputSchema)
+		.query(async ({ ctx }) => {
+			return sitemapUrlGetCountHandler({ ctx });
+		}),
 });

@@ -19,12 +19,11 @@
 	},
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
-		"@opencited/crawler": "workspace:*",
+		"@opencited/actions": "workspace:*",
 		"@opencited/db": "workspace:*",
 		"@trpc/server": "catalog:",
 		"@trpc/client": "catalog:",
 		"drizzle-orm": "catalog:",
-		"workflow": "catalog:",
 		"zod": "catalog:"
 	},
 	"peerDependencies": {

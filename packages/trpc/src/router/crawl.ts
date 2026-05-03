@@ -1,46 +1,56 @@
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { authProtectedProcedure } from "../procedures/authProtectedProcedure";
 import {
-	getCrawledPageHandler,
-	getCrawledPageInputSchema,
-	listCrawledPagesHandler,
-	listCrawledPagesInputSchema,
-	reCrawlPageHandler,
-	reCrawlPageInputSchema,
-	triggerSingleCrawlHandler,
-	triggerSingleCrawlInputSchema,
-	triggerSitemapCrawlHandler,
-	triggerSitemapCrawlInputSchema,
-} from "../actions/crawl";
+	crawledPageGetHandler,
+	crawledPageGetInputSchema,
+	crawledPageGetOutputSchema,
+	crawledPageListHandler,
+	crawledPageListInputSchema,
+	crawledPageListOutputSchema,
+	crawlRetryPageHandler,
+	crawlRetryPageInputSchema,
+	crawlRetryPageOutputSchema,
+	crawlTriggerSingleHandler,
+	crawlTriggerSingleInputSchema,
+	crawlTriggerSingleOutputSchema,
+	crawlTriggerSitemapHandler,
+	crawlTriggerSitemapInputSchema,
+	crawlTriggerSitemapOutputSchema,
+} from "@opencited/actions";
 
 export const crawlRouter = createTRPCRouter({
 	get: publicProcedure
-		.input(getCrawledPageInputSchema)
+		.input(crawledPageGetInputSchema)
+		.output(crawledPageGetOutputSchema)
 		.query(async ({ ctx, input }) => {
-			return getCrawledPageHandler({ input, ctx });
+			return crawledPageGetHandler({ input, ctx });
 		}),
 
 	list: publicProcedure
-		.input(listCrawledPagesInputSchema)
+		.input(crawledPageListInputSchema)
+		.output(crawledPageListOutputSchema)
 		.query(async ({ ctx, input }) => {
-			return listCrawledPagesHandler({ input, ctx });
+			return crawledPageListHandler({ input, ctx });
 		}),
 
 	reCrawl: publicProcedure
-		.input(reCrawlPageInputSchema)
+		.input(crawlRetryPageInputSchema)
+		.output(crawlRetryPageOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			return reCrawlPageHandler({ input, ctx });
+			return crawlRetryPageHandler({ input, ctx });
 		}),
 
 	triggerSingleCrawl: publicProcedure
-		.input(triggerSingleCrawlInputSchema)
+		.input(crawlTriggerSingleInputSchema)
+		.output(crawlTriggerSingleOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			return triggerSingleCrawlHandler({ input, ctx });
+			return crawlTriggerSingleHandler({ input, ctx });
 		}),
 
 	triggerSitemapCrawl: authProtectedProcedure
-		.input(triggerSitemapCrawlInputSchema)
+		.input(crawlTriggerSitemapInputSchema)
+		.output(crawlTriggerSitemapOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			return triggerSitemapCrawlHandler({ input, ctx });
+			return crawlTriggerSitemapHandler({ input, ctx });
 		}),
 });
