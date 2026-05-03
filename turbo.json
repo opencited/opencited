@@ -33,7 +33,8 @@
 		"migrate": {
 			"dependsOn": [
 				"^migrate"
-			]
+			],
+			"cache": false
 		},
 		"generate": {
 			"dependsOn": [
