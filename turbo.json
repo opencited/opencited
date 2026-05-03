@@ -17,7 +17,8 @@
 			],
 			"outputs": [
 				".next/**",
-				"!.next/cache/**"
+				"!.next/cache/**",
+				"app/.well-known/workflow/**"
 			]
 		},
 		"lint": {

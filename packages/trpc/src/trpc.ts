@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { TRPCError, initTRPC } from "@trpc/server";
-import { db, dbSchema } from "@opencited/db";
-import { z } from "zod";
+import { db } from "@opencited/db";
+import { baseActionContextSchema } from "@opencited/actions";
 
 export type Context = {
 	userId: string | null;
@@ -9,11 +9,7 @@ export type Context = {
 	db: typeof db;
 };
 
-export const baseActionContextSchema = z.object({
-	userId: z.string().nullable(),
-	isAuthenticated: z.boolean(),
-	db: dbSchema,
-});
+export { baseActionContextSchema };
 
 export const createTRPCContext = async (): Promise<Context> => {
 	const { userId, isAuthenticated } = await auth();
