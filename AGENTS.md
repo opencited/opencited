@@ -34,6 +34,10 @@ Runs on every `git commit` via Husky. The `prepare` script in root `package.json
 - Commit types: `chore`, `feat`, `fix`, `perf`, `refactor`, `release`, `style`, `ci`, `docs`.
 - `scope` and `breaking` questions are skipped.
 
+## Git operations
+
+Agents MUST NOT use `git commit` or `git push`. Git is only to be used for read-only operations (e.g., `git status`, `git diff`, `git log`).
+
 ## Monorepo structure
 
 | Package | Name | Type |
