@@ -47,3 +47,5 @@ yarn-error.log*
 
 # Agents
 .omc
+
+.playwright
