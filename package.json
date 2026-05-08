@@ -80,7 +80,9 @@
 			"ink": "7.0.0",
 			"bun-types": "1.3.12",
 			"motion": "12.38.0",
-			"date-fns": "4.1.0"
+			"date-fns": "4.1.0",
+			"@playwright/test": "1.59.1",
+			"playwright": "1.59.1"
 		}
 	},
 	"config": {
