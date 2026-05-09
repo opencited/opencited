@@ -22,7 +22,28 @@ export {
 	getClipboard,
 } from "./actions";
 
-export { runPerplexityQuery } from "./workflows/perplexity";
+export { Crawler } from "./crawler";
+export {
+	createLogger,
+	defaultLogger,
+	type Logger,
+	type LogLevel,
+} from "./logger";
+
+export {
+	CrawlerError,
+	AuthenticationError,
+	NavigationError,
+	ExtractionError,
+} from "./errors";
+
+export { PerplexityProvider } from "./providers/perplexity";
+export type {
+	CrawlerProvider,
+	AuthCredentials,
+	CrawlResult,
+	CrawlMetadata,
+} from "./providers";
 
 export type {
 	BrowserSession,
@@ -36,5 +57,3 @@ export type {
 	PageMetadata,
 	ActionResult,
 } from "./types";
-
-export type { PerplexityOptions } from "./workflows/perplexity";
