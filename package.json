@@ -64,8 +64,8 @@
 			"tsx": "4.21.0",
 			"fast-xml-parser": "5.6.0",
 			"cheerio": "1.0.0",
-			"@ai-sdk/openai": "1.0.0",
-			"ai": "4.0.0",
+			"@ai-sdk/openai": "3.0.63",
+			"ai": "6.0.177",
 			"workflow": "4.2.4",
 			"@workflow/vitest": "4.0.5",
 			"vitest": "3.0.0",
@@ -91,5 +91,8 @@
 		"shadcn": "catalog:",
 		"turbo": "2.9.6",
 		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@ai-sdk/openai-compatible": "^2.0.47"
 	}
 }

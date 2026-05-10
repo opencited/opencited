@@ -60,8 +60,63 @@ const handle = await tasks.trigger<typeof perplexityCrawlTask>(
 Required in `.env.local`:
 ```bash
 TRIGGER_SECRET_KEY=tr_dev_...  # From Trigger.dev dashboard
-OPENAI_API_KEY=sk-...           # For LLM analysis (optional)
+
+# LLM Configuration (for LLM analysis - optional)
+# Uses OpenAI-compatible API (supports LM Studio, Ollama, Groq, TogetherAI, OpenAI, etc.)
+LLM_PROVIDER=openai-compatible
+LLM_MODEL=llama3                          # Model identifier (required)
+LLM_BASE_URL=http://localhost:1234/v1     # API endpoint (defaults to OpenAI if not set)
+LLM_API_KEY=your-api-key                  # API key (optional for local servers)
 ```
+
+### Example Configurations
+
+**LM Studio (local):**
+```bash
+LLM_PROVIDER=openai-compatible
+LLM_BASE_URL=http://localhost:1234/v1
+LLM_API_KEY=lm-studio
+LLM_MODEL=local-model
+```
+
+**Ollama (local):**
+```bash
+LLM_PROVIDER=openai-compatible
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_API_KEY=ollama
+LLM_MODEL=llama3
+```
+
+**Groq (cloud):**
+```bash
+LLM_PROVIDER=openai-compatible
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=gsk_...
+LLM_MODEL=llama3-70b-8192
+```
+
+**TogetherAI (cloud):**
+```bash
+LLM_PROVIDER=openai-compatible
+LLM_BASE_URL=https://api.together.xyz/v1
+LLM_API_KEY=your-api-key
+LLM_MODEL=meta-llama/Llama-3-70b-chat-hf
+```
+
+**OpenAI (cloud):**
+```bash
+LLM_PROVIDER=openai-compatible
+LLM_API_KEY=sk-...
+LLM_MODEL=gpt-4o-mini
+# LLM_BASE_URL defaults to https://api.openai.com/v1
+```
+
+### Notes
+
+- `LLM_MODEL` is required — the crawler will throw an error if not specified
+- `LLM_BASE_URL` is optional — defaults to `https://api.openai.com/v1` if not provided
+- `LLM_API_KEY` is optional — some local servers (LM Studio, Ollama) don't require authentication
+- LLM analysis fails gracefully — if the API is unavailable, the crawler continues without LLM insights
 
 ## Architecture
 

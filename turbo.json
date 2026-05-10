@@ -9,7 +9,11 @@
 		"CLERK_SECRET_KEY",
 		"DATABASE_URL",
 		"TRIGGER_SECRET_KEY",
-		"OPENAI_API_KEY"
+		"OPENAI_API_KEY",
+		"LLM_PROVIDER",
+		"LLM_BASE_URL",
+		"LLM_API_KEY",
+		"LLM_MODEL"
 	],
 	"tasks": {
 		"build": {
