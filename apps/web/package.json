@@ -14,6 +14,8 @@
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
 		"@opencited/trpc": "workspace:*",
+		"@opencited/trigger": "workspace:*",
+		"@trigger.dev/sdk": "catalog:",
 		"date-fns": "catalog:",
 		"@opencited/ui": "*",
 		"@tanstack/react-query": "catalog:",
