@@ -21,7 +21,13 @@ import {
 	Kbd,
 } from "@opencited/ui";
 import { Skeleton } from "@opencited/ui";
-import { LayoutDashboard, PanelLeft, Database, Keyboard } from "lucide-react";
+import {
+	LayoutDashboard,
+	PanelLeft,
+	Database,
+	Keyboard,
+	MessageSquare,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo } from "react";
@@ -55,6 +61,7 @@ const shortcuts: Shortcut[] = [
 	{ keys: ["B"], description: "Toggle sidebar" },
 	{ keys: ["G"], description: "Go to Dashboard" },
 	{ keys: ["S"], description: "Go to Sitemaps" },
+	{ keys: ["P"], description: "Go to Prompts" },
 ];
 
 export function AppSidebar() {
@@ -100,6 +107,13 @@ export function AppSidebar() {
 				}
 				router.push("/app/sitemaps");
 			}
+			if (event.key === "p" && !event.metaKey && !event.ctrlKey) {
+				const target = event.target as HTMLElement;
+				if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+					return;
+				}
+				router.push("/app/prompts");
+			}
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
@@ -121,6 +135,13 @@ export function AppSidebar() {
 				isActive: pathname.includes("sitemaps"),
 				icon: <Database className="size-4" />,
 				shortcut: "S",
+			},
+			{
+				name: "Prompts",
+				link: "/app/prompts",
+				isActive: pathname.includes("prompts"),
+				icon: <MessageSquare className="size-4" />,
+				shortcut: "P",
 			},
 		],
 		[pathname],

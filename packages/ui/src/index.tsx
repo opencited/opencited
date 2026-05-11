@@ -15,6 +15,7 @@ export {
 } from "./card";
 
 export { Input } from "./input";
+export { Textarea } from "./textarea";
 export { Label } from "./label";
 export { Badge, badgeVariants } from "./badge";
 export type { BadgeProps } from "./badge";

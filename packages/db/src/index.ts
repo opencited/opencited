@@ -51,3 +51,10 @@ export {
 	pageAnalysisInsertSchema,
 	pageAnalysisUpdateSchema,
 } from "./schema/pageAnalysis";
+export {
+	promptQueryTable,
+	promptQuerySelectSchema,
+	promptQueryBaseInsertSchema,
+	promptQueryInsertSchema,
+	promptQueryUpdateSchema,
+} from "./schema/promptQuery";
