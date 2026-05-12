@@ -4,6 +4,7 @@ import { domainProjectRouter } from "./domainProject";
 import { sitemapRouter } from "./sitemap";
 import { crawlRouter } from "./crawl";
 import { promptQueryRouter } from "./promptQuery";
+import { promptQueryCrawlRouter } from "./promptQueryCrawl";
 
 export const appRouter = createTRPCRouter({
 	user: userRouter,
@@ -11,6 +12,7 @@ export const appRouter = createTRPCRouter({
 	sitemap: sitemapRouter,
 	crawl: crawlRouter,
 	promptQuery: promptQueryRouter,
+	promptQueryCrawl: promptQueryCrawlRouter,
 });
 
 export type AppRouter = typeof appRouter;

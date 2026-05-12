@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import { PageShell } from "@/app/components/page-shell";
 import {
@@ -10,17 +10,29 @@ import {
 	CardContent,
 	CardHeader,
 	CardTitle,
+	Tabs,
+	TabsList,
+	TabsTrigger,
+	TabsContent,
 } from "@opencited/ui";
-import { Plus, Trash2, Clock, Calendar } from "lucide-react";
+import { Plus, Trash2, Clock, Calendar, Terminal } from "lucide-react";
 import { CreatePromptDialog } from "./_components/create-prompt-dialog";
 import { DeletePromptDialog } from "./_components/delete-prompt-dialog";
 import { ViewPromptDialog } from "./_components/view-prompt-dialog";
+import { RunCrawlButton } from "./_components/run-crawl-button";
+import { HistoryTab } from "./_components/history-tab";
+import { CrawlResultsSheet } from "./_components/crawl-results-sheet";
 import { TimeAgo } from "@/app/components/time-ago";
 import { QueryCell } from "@/app/components/query-cell";
 import { format } from "date-fns";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function PromptsPage() {
 	const trpc = useTRPC();
+	const queryClient = useQueryClient();
+	const searchParams = useSearchParams();
+	const router = useRouter();
+
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [promptToDelete, setPromptToDelete] = useState<{
 		id: string;
@@ -32,6 +44,13 @@ export default function PromptsPage() {
 		createdAt: string;
 		lastCrawledAt: string | null;
 	} | null>(null);
+	const [crawlToView, setCrawlToView] = useState<any | null>(null);
+	const [runningCrawlIds, setRunningCrawlIds] = useState<Set<string>>(
+		new Set(),
+	);
+	const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
+
+	const activeTab = searchParams.get("tab") ?? "prompts";
 
 	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
 	const domainProject = domainProjectQuery.data;
@@ -41,6 +60,115 @@ export default function PromptsPage() {
 			domainProjectId: domainProject?.id ?? "",
 		}),
 	);
+
+	const _crawlsQuery = useQuery({
+		...trpc.promptQueryCrawl.list.queryOptions({
+			domainProjectId: domainProject?.id ?? "",
+		}),
+		enabled: activeTab === "history" && !!domainProject,
+	});
+
+	// Poll running crawls
+	useEffect(() => {
+		if (runningCrawlIds.size === 0) return;
+
+		const pollInterval = setInterval(async () => {
+			const updatedCrawls = await Promise.all(
+				Array.from(runningCrawlIds).map(async (id) => {
+					try {
+						return await queryClient.fetchQuery({
+							...trpc.promptQueryCrawl.get.queryOptions({ id }),
+						});
+					} catch {
+						return null;
+					}
+				}),
+			);
+
+			const stillRunning = new Set<string>();
+			updatedCrawls.forEach((crawl: any) => {
+				if (
+					crawl &&
+					(crawl.status === "running" || crawl.status === "pending")
+				) {
+					stillRunning.add(crawl.id);
+				}
+			});
+
+			setRunningCrawlIds(stillRunning);
+		}, 2000);
+
+		return () => clearInterval(pollInterval);
+	}, [runningCrawlIds, trpc, queryClient]);
+
+	const handleTabChange = useCallback(
+		(tab: "prompts" | "history") => {
+			const params = new URLSearchParams(searchParams.toString());
+			params.set("tab", tab);
+			router.push(`/app/prompts?${params.toString()}`, { scroll: false });
+		},
+		[router, searchParams],
+	);
+
+	// Keyboard shortcuts
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (
+				event.target instanceof HTMLInputElement ||
+				event.target instanceof HTMLTextAreaElement
+			) {
+				return;
+			}
+			if (event.key === "n" && activeTab === "prompts") {
+				event.preventDefault();
+				setIsCreateDialogOpen(true);
+			}
+			if (event.key === "r" && selectedPromptId && activeTab === "prompts") {
+				event.preventDefault();
+				// Trigger crawl on selected prompt
+				const prompt = promptsQuery.data?.find(
+					(p) => p.id === selectedPromptId,
+				);
+				if (prompt && !runningCrawlIds.has(prompt.id)) {
+					// The RunCrawlButton will handle this via its onClick
+					const button = document.querySelector(
+						`[data-prompt-id="${selectedPromptId}"] .run-crawl-btn`,
+					) as HTMLButtonElement;
+					button?.click();
+				}
+			}
+			if (event.key === "d" && selectedPromptId && activeTab === "prompts") {
+				event.preventDefault();
+				const prompt = promptsQuery.data?.find(
+					(p) => p.id === selectedPromptId,
+				);
+				if (prompt) {
+					setPromptToDelete({ id: prompt.id, query: prompt.query });
+				}
+			}
+			if (
+				event.key === "Enter" &&
+				selectedPromptId &&
+				activeTab === "prompts"
+			) {
+				event.preventDefault();
+				const prompt = promptsQuery.data?.find(
+					(p) => p.id === selectedPromptId,
+				);
+				if (prompt) {
+					setPromptToView({
+						id: prompt.id,
+						query: prompt.query,
+						createdAt: prompt.createdAt,
+						lastCrawledAt: prompt.lastCrawledAt,
+					});
+				}
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [activeTab, selectedPromptId, promptsQuery.data, runningCrawlIds]);
 
 	if (!domainProject) {
 		return (
@@ -58,7 +186,7 @@ export default function PromptsPage() {
 		<PageShell
 			title="Prompts"
 			action={
-				<>
+				<div>
 					<Button onClick={() => setIsCreateDialogOpen(true)}>
 						<Plus className="h-4 w-4 mr-2" />
 						New Prompt
@@ -71,118 +199,195 @@ export default function PromptsPage() {
 							promptsQuery.refetch();
 						}}
 					/>
-				</>
+				</div>
 			}
 		>
-			<div className="space-y-6">
-				<QueryCell
-					query={promptsQuery}
-					loading={
-						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-							{[1, 2, 3].map((i) => (
-								<Card key={i} className="animate-pulse">
-									<CardHeader>
-										<div className="h-4 bg-muted rounded w-3/4" />
-									</CardHeader>
-									<CardContent>
-										<div className="space-y-2">
-											<div className="h-3 bg-muted rounded w-full" />
-											<div className="h-3 bg-muted rounded w-full" />
-											<div className="h-3 bg-muted rounded w-1/2" />
-										</div>
-									</CardContent>
-								</Card>
-							))}
-						</div>
-					}
-					error={() => (
-						<Card>
-							<CardContent className="py-8 text-center text-destructive">
-								Couldn&apos;t load prompts. Try again.
-							</CardContent>
-						</Card>
-					)}
-					success={(prompts) => {
-						if (!prompts || prompts.length === 0) {
-							return (
-								<Card>
-									<CardContent className="py-12 text-center">
-										<p className="text-muted-foreground mb-4">
-											No prompts saved yet
-										</p>
-										<Button
-											variant="outline"
-											onClick={() => setIsCreateDialogOpen(true)}
-										>
-											<Plus className="h-4 w-4 mr-2" />
-											Create your first prompt
-										</Button>
-									</CardContent>
-								</Card>
-							);
-						}
-
-						return (
-							<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-								{prompts.map((prompt) => (
-									<Card
-										key={prompt.id}
-										className="group relative cursor-pointer hover:bg-muted/50 transition-colors"
-										onClick={() =>
-											setPromptToView({
-												id: prompt.id,
-												query: prompt.query,
-												createdAt: prompt.createdAt,
-												lastCrawledAt: prompt.lastCrawledAt,
-											})
-										}
-									>
+			<Tabs value={activeTab} className="w-full">
+				<Tabs
+					value={activeTab}
+					onValueChange={(v) => handleTabChange(v as "prompts" | "history")}
+				>
+					<TabsList>
+						<TabsTrigger value="prompts">Prompts</TabsTrigger>
+						<TabsTrigger value="history">History</TabsTrigger>
+					</TabsList>
+				</Tabs>
+				<TabsContent value="prompts">
+					<QueryCell
+						query={promptsQuery}
+						loading={
+							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+								{[1, 2, 3].map((i) => (
+									<Card key={i} className="animate-pulse">
 										<CardHeader>
-											<CardTitle className="text-base line-clamp-2">
-												{prompt.query}
-											</CardTitle>
+											<div className="h-4 bg-muted rounded w-3/4" />
 										</CardHeader>
 										<CardContent>
-											<div className="space-y-3 text-xs text-muted-foreground">
-												<div className="flex items-center gap-1">
-													<Calendar className="h-3 w-3" />
-													<span>
-														Created {format(new Date(prompt.createdAt), "PP")}
-													</span>
-												</div>
-												<div className="flex items-center justify-between">
-													{prompt.lastCrawledAt ? (
-														<div className="flex items-center gap-1">
-															<Clock className="h-3 w-3" />
-															<TimeAgo date={prompt.lastCrawledAt} />
-														</div>
-													) : (
-														<span>Never crawled</span>
-													)}
-													<Button
-														variant="ghost"
-														size="sm"
-														onClick={(e) => {
-															e.stopPropagation();
-															setPromptToDelete({
-																id: prompt.id,
-																query: prompt.query,
-															});
-														}}
-														className="opacity-0 group-hover:opacity-100 transition-opacity h-auto p-1"
-													>
-														<Trash2 className="h-3 w-3" />
-													</Button>
-												</div>
+											<div className="space-y-2">
+												<div className="h-3 bg-muted rounded w-full" />
+												<div className="h-3 bg-muted rounded w-full" />
+												<div className="h-3 bg-muted rounded w-1/2" />
 											</div>
 										</CardContent>
 									</Card>
 								))}
 							</div>
-						);
-					}}
-				/>
-			</div>
+						}
+						error={() => (
+							<Card>
+								<CardContent className="py-8 text-center text-destructive">
+									Couldn&apos;t load prompts. Try again.
+								</CardContent>
+							</Card>
+						)}
+						success={(prompts) => {
+							if (!prompts || prompts.length === 0) {
+								return (
+									<Card variant="dashed">
+										<CardContent className="py-16 text-center">
+											<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+												<Terminal className="h-6 w-6 text-muted-foreground" />
+											</div>
+											<h3 className="text-lg font-semibold mb-2">
+												No prompts yet
+											</h3>
+											<p className="text-muted-foreground mb-6 max-w-md mx-auto">
+												Prompts are queries you save to crawl AI answer engines.
+												Create your first prompt to start tracking how AI
+												engines respond to your searches.
+											</p>
+											<Button onClick={() => setIsCreateDialogOpen(true)}>
+												<Plus className="h-4 w-4 mr-2" />
+												Create your first prompt
+											</Button>
+										</CardContent>
+									</Card>
+								);
+							}
+
+							return (
+								<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+									{prompts.map((prompt, index) => {
+										const isRunning = runningCrawlIds.has(prompt.id);
+										const _isSelected = selectedPromptId === prompt.id;
+
+										return (
+											<Card
+												key={prompt.id}
+												data-prompt-id={prompt.id}
+												style={{
+													animationDelay: `${index * 50}ms`,
+												}}
+												onClick={() => {
+													setSelectedPromptId(prompt.id);
+													setPromptToView({
+														id: prompt.id,
+														query: prompt.query,
+														createdAt: prompt.createdAt,
+														lastCrawledAt: prompt.lastCrawledAt,
+													});
+												}}
+												onKeyDown={(e) => {
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault();
+														setSelectedPromptId(prompt.id);
+														setPromptToView({
+															id: prompt.id,
+															query: prompt.query,
+															createdAt: prompt.createdAt,
+															lastCrawledAt: prompt.lastCrawledAt,
+														});
+													}
+												}}
+												tabIndex={0}
+												role="button"
+												aria-label={`View prompt: ${prompt.query}`}
+											>
+												<CardHeader className="pb-3">
+													<CardTitle className="text-sm font-medium leading-relaxed line-clamp-3">
+														{prompt.query}
+													</CardTitle>
+												</CardHeader>
+												<CardContent className="pt-0">
+													<div className="flex items-center justify-between text-xs text-muted-foreground">
+														<div className="flex items-center gap-3">
+															<div className="flex items-center gap-1">
+																<Calendar className="h-3 w-3" />
+																<span>
+																	{format(new Date(prompt.createdAt), "MMM d")}
+																</span>
+															</div>
+															{prompt.lastCrawledAt ? (
+																<div className="flex items-center gap-1">
+																	<Clock className="h-3 w-3" />
+																	<TimeAgo date={prompt.lastCrawledAt} />
+																</div>
+															) : (
+																<span className="text-muted-foreground/60">
+																	Never crawled
+																</span>
+															)}
+														</div>
+														<div className="flex items-center gap-1">
+															<RunCrawlButton
+																promptQueryId={prompt.id}
+																isRunning={isRunning}
+																onCrawlStart={() => {
+																	setRunningCrawlIds((prev) =>
+																		new Set(prev).add(prompt.id),
+																	);
+																}}
+																onCrawlComplete={() => {
+																	setRunningCrawlIds((prev) => {
+																		const next = new Set(prev);
+																		next.delete(prompt.id);
+																		return next;
+																	});
+																	promptsQuery.refetch();
+																}}
+															/>
+															<Button
+																variant="ghost"
+																size="sm"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	setPromptToDelete({
+																		id: prompt.id,
+																		query: prompt.query,
+																	});
+																}}
+																className="opacity-0 group-hover:opacity-100 transition-opacity h-auto p-1"
+															>
+																<Trash2 className="h-3 w-3" />
+															</Button>
+														</div>
+													</div>
+												</CardContent>
+											</Card>
+										);
+									})}
+								</div>
+							);
+						}}
+					/>
+				</TabsContent>
+				<TabsContent value="history">
+					<HistoryTab
+						domainProjectId={domainProject.id}
+						onSelectCrawl={(crawl) => {
+							setCrawlToView(crawl);
+						}}
+					/>
+				</TabsContent>
+			</Tabs>
+
+			<CrawlResultsSheet
+				open={!!crawlToView}
+				onOpenChange={(open) => {
+					if (!open) setCrawlToView(null);
+				}}
+				crawl={crawlToView}
+			/>
 
 			<ViewPromptDialog
 				open={!!promptToView}

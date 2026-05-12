@@ -58,3 +58,11 @@ export {
 	promptQueryInsertSchema,
 	promptQueryUpdateSchema,
 } from "./schema/promptQuery";
+export {
+	promptQueryCrawlTable,
+	promptQueryCrawlSelectSchema,
+	promptQueryCrawlBaseInsertSchema,
+	promptQueryCrawlInsertSchema,
+	promptQueryCrawlUpdateSchema,
+	promptQueryCrawlStatusEnum,
+} from "./schema/promptQueryCrawl";

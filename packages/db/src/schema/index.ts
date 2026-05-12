@@ -5,3 +5,4 @@ export * from "./sitemapUrl";
 export * from "./crawledPage";
 export * from "./pageAnalysis";
 export * from "./promptQuery";
+export * from "./promptQueryCrawl";

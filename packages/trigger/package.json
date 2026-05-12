@@ -10,11 +10,14 @@
 	},
 	"scripts": {
 		"dev": "npx trigger.dev@latest dev",
+		"dev:turbo": "npx trigger.dev@latest dev",
 		"deploy": "npx trigger.dev@latest deploy",
 		"tsc": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@opencited/actions": "workspace:*",
 		"@opencited/browser-crawler": "workspace:*",
+		"@opencited/db": "workspace:*",
 		"@trigger.dev/sdk": "catalog:",
 		"zod": "catalog:"
 	},

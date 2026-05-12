@@ -12,8 +12,9 @@ import {
 	DialogFooter,
 	Button,
 	Textarea,
+	Badge,
 } from "@opencited/ui";
-import { Loader2 } from "lucide-react";
+import { Loader2, Terminal } from "lucide-react";
 
 interface CreatePromptDialogProps {
 	open: boolean;
@@ -58,14 +59,18 @@ export function CreatePromptDialog({
 	};
 
 	const isInvalid = wordCount < 10 || wordCount > 500;
+	const isValid = wordCount >= 10 && wordCount <= 500;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>
-					<DialogTitle>Create New Prompt</DialogTitle>
+					<DialogTitle className="flex items-center gap-2">
+						<Terminal className="h-5 w-5 text-muted-foreground" />
+						Create New Prompt
+					</DialogTitle>
 					<DialogDescription>
-						Save a query to use with the browser crawler. Must be between 50 and
+						Save a query to use with the browser crawler. Must be between 10 and
 						500 words.
 					</DialogDescription>
 				</DialogHeader>
@@ -77,23 +82,36 @@ export function CreatePromptDialog({
 						onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
 							setQuery(e.target.value)
 						}
-						className="min-h-[200px] font-mono text-sm"
+						className="min-h-[200px] text-sm"
 						autoFocus
 					/>
 
-					<div className="flex items-center justify-between text-sm">
-						<span
-							className={
-								isInvalid ? "text-destructive" : "text-muted-foreground"
-							}
-						>
-							{wordCount} {wordCount === 1 ? "word" : "words"}
-						</span>
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-2">
+							<span
+								className={`text-sm font-medium ${
+									isInvalid ? "text-destructive" : "text-muted-foreground"
+								}`}
+							>
+								{wordCount} {wordCount === 1 ? "word" : "words"}
+							</span>
+							{isValid && (
+								<Badge variant="success" className="text-xs">
+									Valid length
+								</Badge>
+							)}
+						</div>
 						<div className="flex gap-4 text-xs text-muted-foreground">
-							<span className={wordCount < 10 ? "text-destructive" : ""}>
+							<span
+								className={wordCount < 10 ? "text-destructive font-medium" : ""}
+							>
 								Min: 10 words
 							</span>
-							<span className={wordCount > 500 ? "text-destructive" : ""}>
+							<span
+								className={
+									wordCount > 500 ? "text-destructive font-medium" : ""
+								}
+							>
 								Max: 500 words
 							</span>
 						</div>
@@ -101,12 +119,14 @@ export function CreatePromptDialog({
 
 					{wordCount > 0 && wordCount < 10 && (
 						<p className="text-xs text-destructive">
-							{10 - wordCount} more words required
+							{10 - wordCount} more {10 - wordCount === 1 ? "word" : "words"}{" "}
+							required
 						</p>
 					)}
 					{wordCount > 500 && (
 						<p className="text-xs text-destructive">
-							{wordCount - 500} words over limit
+							{wordCount - 500} {wordCount - 500 === 1 ? "word" : "words"} over
+							limit
 						</p>
 					)}
 				</div>

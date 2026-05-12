@@ -86,3 +86,23 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 ## Clerk Authentication
 
 `apps/web` uses Clerk for auth with Next.js App Router. Keys are declared in `turbo.json` `globalEnv` so they are available during builds.
+
+## UI Component Rules
+
+**Always use `@opencited/ui` components without custom style overrides.** See [.impeccable.md](.impeccable.md) for design principles.
+
+**Allowed:** Layout (`flex`, `grid`), size (`h-*`, `w-*`), spacing (`p-*`, `gap-*`), typography sizing (`text-sm`), interaction states (`hover:*`), opacity modifiers.
+
+**Not Allowed:** Color overrides (`text-destructive`, `bg-*`), border styles (`border-dashed`), custom variants (ring shadows, etc.).
+
+**Need a variant?** Add it to the component in `packages/ui/src/` using `cva`, then use `variant` prop instead of `className`.
+
+```tsx
+// ❌ WRONG
+<Badge variant="outline" className="text-emerald-600">Valid</Badge>
+<Card className="border-dashed">
+
+// ✅ CORRECT
+<Badge variant="success">Valid</Badge>
+<Card variant="dashed">
+```

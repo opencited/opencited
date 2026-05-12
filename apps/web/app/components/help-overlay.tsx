@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Keyboard } from "lucide-react";
 import {
 	Sheet,
@@ -15,9 +15,10 @@ import { Kbd, KbdGroup } from "@opencited/ui";
 interface Shortcut {
 	keys: string[];
 	description: string;
+	context?: string;
 }
 
-const shortcuts: Shortcut[] = [
+const globalShortcuts: Shortcut[] = [
 	{
 		keys: ["?"],
 		description: "Show keyboard shortcuts",
@@ -37,6 +38,26 @@ const shortcuts: Shortcut[] = [
 	{
 		keys: ["N"],
 		description: "Add new sitemap",
+		context: "Sitemaps page",
+	},
+];
+
+const promptShortcuts: Shortcut[] = [
+	{
+		keys: ["N"],
+		description: "New prompt",
+	},
+	{
+		keys: ["Enter"],
+		description: "View selected prompt",
+	},
+	{
+		keys: ["R"],
+		description: "Run crawl on selected",
+	},
+	{
+		keys: ["D"],
+		description: "Delete selected prompt",
 	},
 ];
 
@@ -47,6 +68,17 @@ interface HelpOverlayProps {
 function HelpOverlay({ showIndicator = false }: HelpOverlayProps) {
 	const [open, setOpen] = useState(false);
 	const router = useRouter();
+	const pathname = usePathname();
+
+	const isPromptsPage = pathname?.includes("/prompts");
+	const shortcuts = isPromptsPage
+		? [
+				...globalShortcuts.filter(
+					(s) => !s.context || s.context === "Sitemaps page",
+				),
+				...promptShortcuts,
+			]
+		: globalShortcuts;
 
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
