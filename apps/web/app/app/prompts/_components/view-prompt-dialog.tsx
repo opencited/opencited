@@ -9,7 +9,7 @@ import {
 	Button,
 	Badge,
 } from "@opencited/ui";
-import { Clock, Calendar, Terminal, Hash, Type } from "lucide-react";
+import { Clock, Calendar, Hash, Type } from "lucide-react";
 import { format } from "date-fns";
 
 interface ViewPromptDialogProps {
@@ -40,42 +40,41 @@ export function ViewPromptDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-3xl">
 				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2">
-						<Terminal className="h-5 w-5 text-muted-foreground" />
-						Prompt Details
-					</DialogTitle>
+					<DialogTitle>Prompt Details</DialogTitle>
 				</DialogHeader>
 
 				<div className="space-y-6">
 					<div className="flex items-center gap-4 text-sm text-muted-foreground">
 						<div className="flex items-center gap-1.5">
 							<Calendar className="h-4 w-4" />
-							<span>Created {format(new Date(prompt.createdAt), "PPP")}</span>
+							<span className="font-medium">Created</span>{" "}
+							<span>{format(new Date(prompt.createdAt), "PPP")}</span>
 						</div>
 						<div className="flex items-center gap-1.5">
 							<Clock className="h-4 w-4" />
-							<span>
-								{prompt.lastCrawledAt
-									? `Last crawled ${format(new Date(prompt.lastCrawledAt), "PPP")}`
-									: "Never crawled"}
+							<span className="font-medium">
+								{prompt.lastCrawledAt ? "Last crawled" : "Never crawled"}
 							</span>
+							{prompt.lastCrawledAt && (
+								<span>{format(new Date(prompt.lastCrawledAt), "PPP")}</span>
+							)}
 						</div>
 					</div>
 
 					<div className="rounded-lg border border-border bg-muted/30 p-4">
-						<p className="text-sm leading-relaxed whitespace-pre-wrap">
+						<p className="text-base leading-relaxed whitespace-pre-wrap max-w-[65ch]">
 							{prompt.query}
 						</p>
 					</div>
 
 					<div className="flex items-center gap-4">
-						<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+						<div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground tabular-nums">
 							<Hash className="h-3 w-3" />
 							<span>
 								{wordCount} {wordCount === 1 ? "word" : "words"}
 							</span>
 						</div>
-						<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+						<div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground tabular-nums">
 							<Type className="h-3 w-3" />
 							<span>{charCount.toLocaleString()} characters</span>
 						</div>

@@ -10,8 +10,8 @@ import {
 	DialogDescription,
 	DialogFooter,
 	Button,
+	Spinner,
 } from "@opencited/ui";
-import { Loader2 } from "lucide-react";
 
 interface DeletePromptDialogProps {
 	open: boolean;
@@ -73,7 +73,7 @@ export function DeletePromptDialog({
 					>
 						{deleteMutation.isPending ? (
 							<>
-								<Loader2 className="h-4 w-4 animate-spin mr-2" />
+								<Spinner className="mr-2" />
 								Deleting...
 							</>
 						) : (

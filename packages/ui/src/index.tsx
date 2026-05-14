@@ -128,3 +128,5 @@ export {
 	TabsTrigger,
 	TabsContent,
 } from "./tabs";
+
+export { Spinner } from "./spinner";

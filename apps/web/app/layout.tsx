@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "@opencited/ui/styles.css";
 import "./globals.css";
+import { cn } from "@/lib/utils";
 
 const geistSans = localFont({
 	src: "./fonts/GeistVF.woff",
@@ -25,7 +26,12 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body className={`${geistSans.variable} ${geistMono.variable}`}>
+			<body
+				className={cn(
+					`${geistSans.variable} ${geistMono.variable}`,
+					"antialiased",
+				)}
+			>
 				<script
 					dangerouslySetInnerHTML={{
 						__html: `

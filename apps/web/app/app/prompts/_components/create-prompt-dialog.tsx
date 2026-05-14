@@ -13,8 +13,8 @@ import {
 	Button,
 	Textarea,
 	Badge,
+	Spinner,
 } from "@opencited/ui";
-import { Loader2, Terminal } from "lucide-react";
 
 interface CreatePromptDialogProps {
 	open: boolean;
@@ -59,16 +59,13 @@ export function CreatePromptDialog({
 	};
 
 	const isInvalid = wordCount < 10 || wordCount > 500;
-	const isValid = wordCount >= 10 && wordCount <= 500;
+	const _isValid = wordCount >= 10 && wordCount <= 500;
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-2xl">
 				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2">
-						<Terminal className="h-5 w-5 text-muted-foreground" />
-						Create New Prompt
-					</DialogTitle>
+					<DialogTitle>Create New Prompt</DialogTitle>
 					<DialogDescription>
 						Save a query to use with the browser crawler. Must be between 10 and
 						500 words.
@@ -86,37 +83,29 @@ export function CreatePromptDialog({
 						autoFocus
 					/>
 
-					<div className="flex items-center justify-between">
+					<div className="flex items-center justify-between gap-4">
 						<div className="flex items-center gap-2">
 							<span
-								className={`text-sm font-medium ${
-									isInvalid ? "text-destructive" : "text-muted-foreground"
+								className={`text-sm ${
+									wordCount > 0 && wordCount < 10
+										? "text-destructive font-medium"
+										: wordCount > 500
+											? "text-destructive font-medium"
+											: "text-muted-foreground"
 								}`}
 							>
-								{wordCount} {wordCount === 1 ? "word" : "words"}
+								{wordCount === 0
+									? "Enter a prompt query"
+									: `${wordCount} ${wordCount === 1 ? "word" : "words"}`}
 							</span>
-							{isValid && (
+							{wordCount >= 10 && wordCount <= 500 && (
 								<Badge variant="success" className="text-xs">
-									Valid length
+									Valid
 								</Badge>
 							)}
 						</div>
-						<div className="flex gap-4 text-xs text-muted-foreground">
-							<span
-								className={wordCount < 10 ? "text-destructive font-medium" : ""}
-							>
-								Min: 10 words
-							</span>
-							<span
-								className={
-									wordCount > 500 ? "text-destructive font-medium" : ""
-								}
-							>
-								Max: 500 words
-							</span>
-						</div>
+						<span className="text-xs text-muted-foreground">10–500 words</span>
 					</div>
-
 					{wordCount > 0 && wordCount < 10 && (
 						<p className="text-xs text-destructive">
 							{10 - wordCount} more {10 - wordCount === 1 ? "word" : "words"}{" "}
@@ -141,7 +130,7 @@ export function CreatePromptDialog({
 					>
 						{createMutation.isPending ? (
 							<>
-								<Loader2 className="h-4 w-4 animate-spin mr-2" />
+								<Spinner className="mr-2" />
 								Saving...
 							</>
 						) : (

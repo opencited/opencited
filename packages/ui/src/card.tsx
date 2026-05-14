@@ -9,6 +9,7 @@ const cardVariants = cva(
 			variant: {
 				default: "border-border/60",
 				dashed: "border-dashed border-border/60",
+				destructive: "border-destructive/50 bg-destructive/10",
 			},
 		},
 		defaultVariants: {

@@ -12,6 +12,7 @@ import {
 	CardContent,
 } from "@opencited/ui";
 import { Copy, ExternalLink, Calendar, Clock } from "lucide-react";
+import DOMPurify from "dompurify";
 import { PromptQueryCrawlStatusBadge } from "@/app/components/prompt-query-crawl-status-badge";
 import { TimeAgo } from "@/app/components/time-ago";
 import { toast } from "sonner";
@@ -92,10 +93,12 @@ export function CrawlResultsSheet({
 
 				<div className="flex-1 overflow-y-auto mt-6 space-y-6">
 					{crawl.error && (
-						<div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
-							<p className="text-sm text-destructive font-medium">Error</p>
-							<p className="text-sm text-destructive mt-1">{crawl.error}</p>
-						</div>
+						<Card variant="destructive">
+							<CardContent className="p-4">
+								<p className="text-sm text-destructive font-medium">Error</p>
+								<p className="text-sm text-destructive mt-1">{crawl.error}</p>
+							</CardContent>
+						</Card>
 					)}
 
 					<div className="grid grid-cols-2 gap-3">
@@ -167,7 +170,9 @@ export function CrawlResultsSheet({
 								<div
 									className="text-sm whitespace-pre-wrap max-h-[350px] overflow-y-auto"
 									dangerouslySetInnerHTML={{
-										__html: crawl.content || "No content available",
+										__html: DOMPurify.sanitize(
+											crawl.content || "No content available",
+										),
 									}}
 								/>
 							</div>

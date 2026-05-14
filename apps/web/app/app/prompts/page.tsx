@@ -16,6 +16,7 @@ import {
 	TabsContent,
 } from "@opencited/ui";
 import { Plus, Trash2, Clock, Calendar, Terminal } from "lucide-react";
+import { Skeleton } from "@opencited/ui";
 import { CreatePromptDialog } from "./_components/create-prompt-dialog";
 import { DeletePromptDialog } from "./_components/delete-prompt-dialog";
 import { ViewPromptDialog } from "./_components/view-prompt-dialog";
@@ -26,10 +27,11 @@ import { TimeAgo } from "@/app/components/time-ago";
 import { QueryCell } from "@/app/components/query-cell";
 import { format } from "date-fns";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useCrawlPolling } from "./_components/use-crawl-polling";
 
 export default function PromptsPage() {
 	const trpc = useTRPC();
-	const queryClient = useQueryClient();
+	const _queryClient = useQueryClient();
 	const searchParams = useSearchParams();
 	const router = useRouter();
 
@@ -68,38 +70,23 @@ export default function PromptsPage() {
 		enabled: activeTab === "history" && !!domainProject,
 	});
 
-	// Poll running crawls
+	const { completedCrawlIds } = useCrawlPolling({
+		runningCrawlIds,
+		enabled: true,
+	});
+
 	useEffect(() => {
-		if (runningCrawlIds.size === 0) return;
+		if (completedCrawlIds.size === 0) return;
 
-		const pollInterval = setInterval(async () => {
-			const updatedCrawls = await Promise.all(
-				Array.from(runningCrawlIds).map(async (id) => {
-					try {
-						return await queryClient.fetchQuery({
-							...trpc.promptQueryCrawl.get.queryOptions({ id }),
-						});
-					} catch {
-						return null;
-					}
-				}),
-			);
-
-			const stillRunning = new Set<string>();
-			updatedCrawls.forEach((crawl: any) => {
-				if (
-					crawl &&
-					(crawl.status === "running" || crawl.status === "pending")
-				) {
-					stillRunning.add(crawl.id);
-				}
-			});
-
-			setRunningCrawlIds(stillRunning);
-		}, 2000);
-
-		return () => clearInterval(pollInterval);
-	}, [runningCrawlIds, trpc, queryClient]);
+		setRunningCrawlIds((prev) => {
+			const next = new Set(prev);
+			for (const id of completedCrawlIds) {
+				next.delete(id);
+			}
+			return next;
+		});
+		promptsQuery.refetch();
+	}, [completedCrawlIds, promptsQuery]);
 
 	const handleTabChange = useCallback(
 		(tab: "prompts" | "history") => {
@@ -202,31 +189,30 @@ export default function PromptsPage() {
 				</div>
 			}
 		>
-			<Tabs value={activeTab} className="w-full">
-				<Tabs
-					value={activeTab}
-					onValueChange={(v) => handleTabChange(v as "prompts" | "history")}
-				>
-					<TabsList>
-						<TabsTrigger value="prompts">Prompts</TabsTrigger>
-						<TabsTrigger value="history">History</TabsTrigger>
-					</TabsList>
-				</Tabs>
+			<Tabs
+				value={activeTab}
+				onValueChange={(v) => handleTabChange(v as "prompts" | "history")}
+				className="w-full"
+			>
+				<TabsList>
+					<TabsTrigger value="prompts">Prompts</TabsTrigger>
+					<TabsTrigger value="history">History</TabsTrigger>
+				</TabsList>
 				<TabsContent value="prompts">
 					<QueryCell
 						query={promptsQuery}
 						loading={
 							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
 								{[1, 2, 3].map((i) => (
-									<Card key={i} className="animate-pulse">
+									<Card key={i}>
 										<CardHeader>
-											<div className="h-4 bg-muted rounded w-3/4" />
+											<Skeleton className="h-4 w-3/4" />
 										</CardHeader>
 										<CardContent>
 											<div className="space-y-2">
-												<div className="h-3 bg-muted rounded w-full" />
-												<div className="h-3 bg-muted rounded w-full" />
-												<div className="h-3 bg-muted rounded w-1/2" />
+												<Skeleton className="h-3 w-full" />
+												<Skeleton className="h-3 w-full" />
+												<Skeleton className="h-3 w-1/2" />
 											</div>
 										</CardContent>
 									</Card>
@@ -235,8 +221,10 @@ export default function PromptsPage() {
 						}
 						error={() => (
 							<Card>
-								<CardContent className="py-8 text-center text-destructive">
-									Couldn&apos;t load prompts. Try again.
+								<CardContent className="py-8 text-center">
+									<p className="text-destructive">
+										Couldn&apos;t load prompts. Try again.
+									</p>
 								</CardContent>
 							</Card>
 						)}
@@ -266,18 +254,15 @@ export default function PromptsPage() {
 							}
 
 							return (
-								<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-									{prompts.map((prompt, index) => {
+								<div className="grid gap-3 p-4 sm:p-0 md:grid-cols-2 lg:grid-cols-3">
+									{prompts.map((prompt, _index) => {
 										const isRunning = runningCrawlIds.has(prompt.id);
-										const _isSelected = selectedPromptId === prompt.id;
 
 										return (
 											<Card
 												key={prompt.id}
 												data-prompt-id={prompt.id}
-												style={{
-													animationDelay: `${index * 50}ms`,
-												}}
+												className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm"
 												onClick={() => {
 													setSelectedPromptId(prompt.id);
 													setPromptToView({
@@ -323,9 +308,7 @@ export default function PromptsPage() {
 																	<TimeAgo date={prompt.lastCrawledAt} />
 																</div>
 															) : (
-																<span className="text-muted-foreground/60">
-																	Never crawled
-																</span>
+																<span>Never crawled</span>
 															)}
 														</div>
 														<div className="flex items-center gap-1">
@@ -336,14 +319,6 @@ export default function PromptsPage() {
 																	setRunningCrawlIds((prev) =>
 																		new Set(prev).add(prompt.id),
 																	);
-																}}
-																onCrawlComplete={() => {
-																	setRunningCrawlIds((prev) => {
-																		const next = new Set(prev);
-																		next.delete(prompt.id);
-																		return next;
-																	});
-																	promptsQuery.refetch();
 																}}
 															/>
 															<Button
@@ -356,9 +331,9 @@ export default function PromptsPage() {
 																		query: prompt.query,
 																	});
 																}}
-																className="opacity-0 group-hover:opacity-100 transition-opacity h-auto p-1"
+																className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-9 w-9"
 															>
-																<Trash2 className="h-3 w-3" />
+																<Trash2 className="h-4 w-4" />
 															</Button>
 														</div>
 													</div>
