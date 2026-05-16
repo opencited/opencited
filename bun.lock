@@ -151,6 +151,7 @@
       "devDependencies": {
         "@opencited/typescript-config": "workspace:*",
         "@trigger.dev/build": "catalog:",
+        "@types/node": "catalog:",
         "typescript": "catalog:",
       },
     },
