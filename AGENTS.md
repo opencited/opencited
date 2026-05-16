@@ -115,3 +115,17 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 <Badge variant="success">Valid</Badge>
 <Card variant="dashed">
 ```
+
+## Agent skills
+
+### Issue tracker
+
+Issues tracked via GitHub Issues + GitHub Projects board (`orgs/opencited/projects/1`). Drafts live on the board; public issues are created when ready. Skills use the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage state lives in the `"Triage Status"` custom field on the GitHub Projects board (not repo labels). Values: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout: `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.
