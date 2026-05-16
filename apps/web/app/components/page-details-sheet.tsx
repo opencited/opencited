@@ -1,41 +1,41 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTRPC } from "@/app/_trpc/client";
-import { QueryCell } from "@/app/components/query-cell";
 import {
+	Badge,
+	Button,
 	Sheet,
 	SheetContent,
+	SheetDescription,
 	SheetHeader,
 	SheetTitle,
-	SheetDescription,
-	Badge,
 	Tabs,
+	TabsContent,
 	TabsList,
 	TabsTrigger,
-	TabsContent,
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-	Button,
 } from "@opencited/ui";
-import { CrawlStatusBadge } from "@/app/components/crawl-status-badge";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+	Brain,
 	Clock,
+	ExternalLink,
 	FileText,
 	Image,
-	Link2,
-	Layers,
-	Brain,
-	Layout,
-	Type,
-	ExternalLink,
-	RefreshCw,
-	Loader2,
 	Info,
+	Layers,
+	Layout,
+	Link2,
+	Loader2,
+	RefreshCw,
+	Type,
 } from "lucide-react";
 import { useState } from "react";
+import { useTRPC } from "@/app/_trpc/client";
+import { CrawlStatusBadge } from "@/app/components/crawl-status-badge";
+import { QueryCell } from "@/app/components/query-cell";
 
 interface PageDetailsSheetProps {
 	sitemapUrlId: string;
@@ -106,12 +106,7 @@ export function PageDetailsSheet({
 									}
 								/>
 							) : (
-								<Badge
-									variant="outline"
-									className="border-amber-500/50 text-amber-600 dark:text-amber-400"
-								>
-									Not Crawled
-								</Badge>
+								<Badge variant="warning">Not Crawled</Badge>
 							)}
 						</div>
 						<div className="flex items-center gap-2 shrink-0">

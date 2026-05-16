@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import {
+	Kbd,
+	KbdGroup,
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
@@ -16,32 +22,24 @@ import {
 	SidebarMenuItem,
 	SidebarRail,
 	SidebarSeparator,
+	Skeleton,
 	ThemeToggle,
 	useSidebar,
-	Kbd,
 } from "@opencited/ui";
-import { Skeleton } from "@opencited/ui";
 import {
-	LayoutDashboard,
-	PanelLeft,
 	Database,
 	Keyboard,
+	LayoutDashboard,
 	MessageSquare,
+	PanelLeft,
+	Target,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { BrandNameLink } from "./brand-name";
 import { DomainDisplay } from "./domain-display";
-import {
-	Sheet,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetTitle,
-} from "@opencited/ui";
-import { KbdGroup } from "@opencited/ui";
 
 interface NavigationLink {
 	name: string;
@@ -62,6 +60,7 @@ const shortcuts: Shortcut[] = [
 	{ keys: ["G"], description: "Go to Dashboard" },
 	{ keys: ["S"], description: "Go to Sitemaps" },
 	{ keys: ["P"], description: "Go to Prompts" },
+	{ keys: ["V"], description: "Go to AI Visibility" },
 ];
 
 export function AppSidebar() {
@@ -114,6 +113,13 @@ export function AppSidebar() {
 				}
 				router.push("/app/prompts");
 			}
+			if (event.key === "v" && !event.metaKey && !event.ctrlKey) {
+				const target = event.target as HTMLElement;
+				if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+					return;
+				}
+				router.push("/app/ai-visibility");
+			}
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
@@ -142,6 +148,13 @@ export function AppSidebar() {
 				isActive: pathname.includes("prompts"),
 				icon: <MessageSquare className="size-4" />,
 				shortcut: "P",
+			},
+			{
+				name: "AI Visibility",
+				link: "/app/ai-visibility",
+				isActive: pathname.includes("ai-visibility"),
+				icon: <Target className="size-4" />,
+				shortcut: "V",
 			},
 		],
 		[pathname],

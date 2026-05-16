@@ -1,5 +1,5 @@
-import type * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import type * as React from "react";
 import { cn } from "./lib/utils";
 
 const badgeVariants = cva(
@@ -16,6 +16,7 @@ const badgeVariants = cva(
 				outline: "text-foreground",
 				success:
 					"border-transparent bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+				warning: "border-amber-500/50 text-amber-600 dark:text-amber-400",
 			},
 		},
 		defaultVariants: {

@@ -262,7 +262,7 @@ export default function PromptsPage() {
 											<Card
 												key={prompt.id}
 												data-prompt-id={prompt.id}
-												className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm"
+												className="group focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm"
 												onClick={() => {
 													setSelectedPromptId(prompt.id);
 													setPromptToView({

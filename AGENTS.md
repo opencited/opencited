@@ -87,6 +87,15 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 
 `apps/web` uses Clerk for auth with Next.js App Router. Keys are declared in `turbo.json` `globalEnv` so they are available during builds.
 
+## Architecture Rules
+
+### Domain Project = Brand
+- **One organization = One domainProject = One brand** (1:1:1 mapping)
+- `domainProject` is the canonical brand entity for the workspace
+- All feature tables (crawls, mentions, citations, competitors) reference `domainProjectId`
+- Do NOT create separate `brand` tables or link feature data to `clerkOrganizationId`
+- `domainProject` fields: `domain` (primary URL), `name` (display name), `aliases` (JSONB array for mention detection), `logoUrl`, `active`
+
 ## UI Component Rules
 
 **Always use `@opencited/ui` components without custom style overrides.** See [.impeccable.md](.impeccable.md) for design principles.

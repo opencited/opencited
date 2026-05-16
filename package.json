@@ -78,7 +78,8 @@
 			"@trigger.dev/sdk": "4.4.6",
 			"@trigger.dev/build": "4.4.6",
 			"dompurify": "3.3.0",
-			"@types/dompurify": "3.2.0"
+			"@types/dompurify": "3.2.0",
+			"@radix-ui/react-select": "^2.2.6"
 		}
 	},
 	"config": {

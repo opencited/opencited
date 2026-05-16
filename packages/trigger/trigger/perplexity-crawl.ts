@@ -4,7 +4,11 @@ import {
 	PerplexityProvider,
 	createLogger,
 } from "@opencited/browser-crawler";
-import { saveCrawlResultAction, failCrawlAction } from "@opencited/actions";
+import {
+	saveCrawlResultAction,
+	failCrawlAction,
+	saveStructuredCrawlDataAction,
+} from "@opencited/actions";
 import { getDb } from "./db";
 
 export const perplexityCrawlTask = task({
@@ -59,6 +63,28 @@ export const perplexityCrawlTask = task({
 				},
 				ctx: { db: getDb(), userId: null, isAuthenticated: false },
 			});
+
+			// Save structured data if available
+			if (result.structured) {
+				logger.log("📊 Saving structured crawl data", {
+					citations: result.structured.citations.length,
+					brandMentions: result.structured.brandMentions.length,
+				});
+
+				await saveStructuredCrawlDataAction({
+					input: {
+						crawlId: payload.promptQueryCrawlId,
+						promptQueryId: payload.promptQueryId,
+						structured: {
+							citations: result.structured.citations,
+							brandMentions: result.structured.brandMentions,
+							answerFormat: result.structured.answerFormat,
+							wordCount: result.content.split(/\s+/).length,
+						},
+					},
+					ctx: { db: getDb(), userId: null, isAuthenticated: false },
+				});
+			}
 
 			logger.log("💾 Crawl result saved to database", {
 				crawlId: payload.promptQueryCrawlId,

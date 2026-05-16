@@ -1,0 +1,259 @@
+{
+	"inlineCitations": [
+		{
+			"sourceName": "github",
+			"sourceUrl": "",
+			"position": 1,
+			"context": "ConvoForm appears to be a lightweight AI conversational form builder that turns static forms into chat-style experiences, with AI-assisted form generation, live editing/preview, and branded submission"
+		},
+		{
+			"sourceName": "devfolio",
+			"sourceUrl": "",
+			"position": 2,
+			"context": "ConvoForm’s core pitch is simple: “Google Forms, but more engaging.” The public repo and project listing describe AI-powered form generation from a prompt, real-time editing with preview, and customiz"
+		},
+		{
+			"sourceName": "github",
+			"sourceUrl": "",
+			"position": 3,
+			"context": "Its biggest strength is the conversational UX angle, which can improve completion rates for forms that feel intimidating in a standard layout. It may also be attractive to small teams and builders who"
+		},
+		{
+			"sourceName": "devfolio",
+			"sourceUrl": "",
+			"position": 4,
+			"context": "I couldn’t find strong evidence of broad customer review coverage, mature enterprise features, or a large integration ecosystem for ConvoForm itself. That usually means the product is either newer, sm"
+		},
+		{
+			"sourceName": "g2",
+			"sourceUrl": "",
+			"position": 5,
+			"context": "The closest competitors are usually split into two groups: conversational form tools and traditional form builders with AI added on top. In the conversational space, likely alternatives include Voicef"
+		},
+		{
+			"sourceName": "github",
+			"sourceUrl": "",
+			"position": 6,
+			"context": ""
+		},
+		{
+			"sourceName": "g2",
+			"sourceUrl": "",
+			"position": 7,
+			"context": ""
+		},
+		{
+			"sourceName": "g2",
+			"sourceUrl": "",
+			"position": 8,
+			"context": ""
+		},
+		{
+			"sourceName": "g2",
+			"sourceUrl": "",
+			"position": 9,
+			"context": ""
+		},
+		{
+			"sourceName": "g2",
+			"sourceUrl": "",
+			"position": 10,
+			"context": ""
+		},
+		{
+			"sourceName": "g2",
+			"sourceUrl": "",
+			"position": 11,
+			"context": "Choose ConvoForm if you want a simple conversational form experience and are comfortable testing a newer product. Choose Jotform or SurveyMonkey if you want maturity, integrations, and proven workflow"
+		},
+		{
+			"sourceName": "g2",
+			"sourceUrl": "",
+			"position": 12,
+			"context": "My read is that ConvoForm is promising if you want a modern, lightweight conversational form builder, but it is not yet as clearly established as the best-known form platforms. The safest move is to c"
+		}
+	],
+	"externalLinks": [
+		{
+			"href": "https://www.g2.com/products/voiceform/competitors/alternatives",
+			"text": "g2",
+			"parentSelector": "SPAN.citation inline",
+			"hasCitation": true
+		},
+		{
+			"href": "https://www.g2.com/products/voiceform/competitors/alternatives",
+			"text": "g2",
+			"parentSelector": "SPAN.citation inline",
+			"hasCitation": true
+		},
+		{
+			"href": "https://www.g2.com/products/voiceform/competitors/alternatives",
+			"text": "g2",
+			"parentSelector": "SPAN.citation inline",
+			"hasCitation": true
+		},
+		{
+			"href": "https://github.com/growupanand/ConvoForm",
+			"text": "githubgrowupanand/ConvoForm: Turn Forms into Conversations with AICreate interative conversational f",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://www.capterra.in/alternatives/125634/goformz",
+			"text": "capterraGoFormz Alternatives for Businesses in India - CapterraFind the best GoFormz alternatives at",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://estha.ai/blog/10-leading-ai-form-builders-ranked-the-ultimate-comparison-guide/",
+			"text": "estha10 Leading AI Form Builders Ranked: The Ultimate Comparison Guide",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://devfolio.co/projects/convoform-6c3d",
+			"text": "devfolioConvoForm - DevfolioCreate your own AI-Powered conversational form",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://www.g2.com/products/voiceform/competitors/alternatives",
+			"text": "g2Top 10 Voiceform Alternatives & Competitors in 2026 - G2The best Voiceform alternatives are Qualtr",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://www.zite.com/blog/ai-form-builder",
+			"text": "zite7 Best AI Form Builders for 2026: Tested and Reviewed - ZiteI tested the best AI form builders f",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://www.g2.com/products/botscrew-noform-ai/reviews",
+			"text": "g2NoForm AI Reviews 2026: Details, Pricing, & Features - G2Filter 10 reviews by the users' company s",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://www.involve.me/blog/best-ai-form-builders",
+			"text": "involve11 Best AI Form Builders in 2026 (Tested & Compared) - Involve.meCompare the 10 best AI form ",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://orbitforms.ai/blog/best-conversational-form-software",
+			"text": "orbitformsBest Conversational Form Software: Top 9 Tools 2026 - Orbit AI",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		},
+		{
+			"href": "https://www.g2.com/products/botscrew-noform-ai/reviews?qs=pros-and-cons",
+			"text": "g2NoForm AI Pros and Cons | User Likes & Dislikes - G2Explore NoForm AI's top pros, cons, and user-r",
+			"parentSelector": "DIV.flex flex-col w-full gap-6",
+			"hasCitation": false
+		}
+	],
+	"brandMentions": [
+		{
+			"brand": "ConvoForm",
+			"context": "ConvoForm appears to be a lightweight AI conversational form builder that turns static forms into chat-style",
+			"position": 0
+		},
+		{
+			"brand": "ConvoForm",
+			"context": "e like an early-stage product than a widely reviewed enterprise platform.github+1What it seems to doConvoForm’s core pitch is simple: “Google Forms, but more engaging.” The public repo and project listing desc",
+			"position": 260
+		},
+		{
+			"brand": "ConvoForm",
+			"context": "of broad customer review coverage, mature enterprise features, or a large integration ecosystem for ConvoForm itself. That usually means the product is either newer, smaller, or less documented than establishe",
+			"position": 1092
+		},
+		{
+			"brand": "ConvoForm",
+			"context": "chmark products.g2+3How they compareProductBest forRelative positionProductBest forRelative positionConvoFormSimple AI conversational forms and fast prototypingNewer/niche, based on public info github+1Voicefo",
+			"position": 1816
+		},
+		{
+			"brand": "ConvoForm",
+			"context": "sest mainstream UX comparison, though I don’t have a direct source result hereBuying guidanceChoose ConvoForm if you want a simple conversational form experience and are comfortable testing a newer product. Ch",
+			"position": 2482
+		},
+		{
+			"brand": "ConvoForm",
+			"context": "nal/AI lead-capture angle is the main reason you’re switching.g2+2Practical takeawayMy read is that ConvoForm is promising if you want a modern, lightweight conversational form builder, but it is not yet as cl",
+			"position": 2830
+		},
+		{
+			"brand": "Voiceform",
+			"context": "tional form builders with AI added on top. In the conversational space, likely alternatives include Voiceform, NoForm AI, and other conversational survey/form products; in the broader form-builder space, Jotfo",
+			"position": 1542
+		},
+		{
+			"brand": "Voiceform",
+			"context": "nvoFormSimple AI conversational forms and fast prototypingNewer/niche, based on public info github+1VoiceformConversational surveys and form experiencesMore established alternative in the category g2NoForm AIW",
+			"position": 1918
+		},
+		{
+			"brand": "Voiceform",
+			"context": "Choose Jotform or SurveyMonkey if you want maturity, integrations, and proven workflows, and choose Voiceform or NoForm AI if the conversational/AI lead-capture angle is the main reason you’re switching.g2+2Pr",
+			"position": 2689
+		},
+		{
+			"brand": "NoForm AI",
+			"context": "builders with AI added on top. In the conversational space, likely alternatives include Voiceform, NoForm AI, and other conversational survey/form products; in the broader form-builder space, Jotform, Typefor",
+			"position": 1553
+		},
+		{
+			"brand": "NoForm AI",
+			"context": "1VoiceformConversational surveys and form experiencesMore established alternative in the category g2NoForm AIWebsite chat-style lead captureStrong for conversational lead generation g2+1JotformGeneral-purpose",
+			"position": 2017
+		},
+		{
+			"brand": "NoForm AI",
+			"context": "m or SurveyMonkey if you want maturity, integrations, and proven workflows, and choose Voiceform or NoForm AI if the conversational/AI lead-capture angle is the main reason you’re switching.g2+2Practical takea",
+			"position": 2702
+		},
+		{
+			"brand": "Jotform",
+			"context": "eform, NoForm AI, and other conversational survey/form products; in the broader form-builder space, Jotform, Typeform, SurveyMonkey, and Qualtrics are the most common benchmark products.g2+3How they compareP",
+			"position": 1646
+		},
+		{
+			"brand": "Jotform",
+			"context": "he category g2NoForm AIWebsite chat-style lead captureStrong for conversational lead generation g2+1JotformGeneral-purpose online forms with lots of templates and integrationsBroader, more mature all-around",
+			"position": 2103
+		},
+		{
+			"brand": "Jotform",
+			"context": "ou want a simple conversational form experience and are comfortable testing a newer product. Choose Jotform or SurveyMonkey if you want maturity, integrations, and proven workflows, and choose Voiceform or N",
+			"position": 2596
+		},
+		{
+			"brand": "Google Forms",
+			"context": "a widely reviewed enterprise platform.github+1What it seems to doConvoForm’s core pitch is simple: “Google Forms, but more engaging.” The public repo and project listing describe AI-powered form generation from a",
+			"position": 295
+		},
+		{
+			"brand": "SurveyMonkey",
+			"context": "nd other conversational survey/form products; in the broader form-builder space, Jotform, Typeform, SurveyMonkey, and Qualtrics are the most common benchmark products.g2+3How they compareProductBest forRelative p",
+			"position": 1665
+		},
+		{
+			"brand": "SurveyMonkey",
+			"context": "online forms with lots of templates and integrationsBroader, more mature all-around form platform g2SurveyMonkeySurveys and feedback workflowsStrong for research and feedback, less “conversational” first g2Typefo",
+			"position": 2226
+		},
+		{
+			"brand": "SurveyMonkey",
+			"context": "imple conversational form experience and are comfortable testing a newer product. Choose Jotform or SurveyMonkey if you want maturity, integrations, and proven workflows, and choose Voiceform or NoForm AI if the",
+			"position": 2607
+		},
+		{
+			"brand": "Qualtrics",
+			"context": "ional survey/form products; in the broader form-builder space, Jotform, Typeform, SurveyMonkey, and Qualtrics are the most common benchmark products.g2+3How they compareProductBest forRelative positionProductB",
+			"position": 1683
+		}
+	],
+	"timestamp": "2026-05-15T04:26:35.958Z"
+}

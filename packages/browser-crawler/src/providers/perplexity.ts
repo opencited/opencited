@@ -1,5 +1,11 @@
 import type { BrowserSession } from "../types";
-import type { CrawlResult } from "./types";
+import type {
+	CrawlResult,
+	StructuredCrawlData,
+	CitationSource,
+	BrandMention,
+	AnswerFormat,
+} from "./types";
 import type { CrawlerProvider } from "./base";
 import { waitFor, click, getClipboard } from "../actions";
 import { ExtractionError } from "../errors";
@@ -31,7 +37,7 @@ export class PerplexityProvider implements CrawlerProvider {
 		const copyButtonLocated = await waitFor(
 			session,
 			'button[aria-label="Copy"]',
-			15000,
+			60000,
 		);
 
 		if (!copyButtonLocated) {
@@ -46,6 +52,8 @@ export class PerplexityProvider implements CrawlerProvider {
 
 		const clipboardContent = await getClipboard(session);
 
+		const structured = await this.extractStructuredData(session);
+
 		return {
 			provider: this.name,
 			query: "",
@@ -56,6 +64,159 @@ export class PerplexityProvider implements CrawlerProvider {
 				timestamp: new Date(),
 				loadTimeMs: Date.now() - startTime,
 			},
+			structured,
 		};
+	}
+
+	private async extractStructuredData(
+		session: BrowserSession,
+	): Promise<StructuredCrawlData> {
+		const citations = await this.extractCitations(session);
+		const brandMentions = await this.extractBrandMentions(session);
+		const relatedQuestions = await this.extractRelatedQuestions(session);
+		const answerFormat = this.detectAnswerFormat(session);
+
+		return {
+			citations,
+			brandMentions,
+			relatedQuestions,
+			answerFormat,
+		};
+	}
+
+	private async extractCitations(
+		session: BrowserSession,
+	): Promise<CitationSource[]> {
+		const citations: CitationSource[] = [];
+
+		try {
+			const externalLinks = await session.page.evaluate(() => {
+				const links: Array<{
+					href: string;
+					text: string;
+					hasCitation: boolean;
+				}> = [];
+
+				const answerContainer = document.querySelector(
+					'[class*="prose"], [class*="answer"]',
+				);
+				if (!answerContainer) return links;
+
+				const allLinks = answerContainer.querySelectorAll("a[href]");
+				allLinks.forEach((link) => {
+					const href = (link as HTMLAnchorElement).href;
+					if (href && (href.startsWith("http") || href.startsWith("https"))) {
+						const parent = link.closest(".citation, [class*='citation']");
+						links.push({
+							href,
+							text: link.textContent?.trim() ?? "",
+							hasCitation: !!parent,
+						});
+					}
+				});
+
+				return links;
+			});
+
+			const seen = new Set<string>();
+			let position = 1;
+
+			for (const link of externalLinks) {
+				if (seen.has(link.href)) continue;
+				seen.add(link.href);
+
+				const url = new URL(link.href);
+				const domain = url.hostname.replace("www.", "");
+
+				citations.push({
+					domain,
+					url: link.href,
+					position: position++,
+					sourceName: link.text.split(/\s+/)[0]?.toLowerCase() ?? domain,
+				});
+			}
+		} catch {
+			// Citations extraction is non-critical
+		}
+
+		return citations;
+	}
+
+	private async extractBrandMentions(
+		session: BrowserSession,
+	): Promise<BrandMention[]> {
+		const mentions: BrandMention[] = [];
+
+		try {
+			const content = await session.page.evaluate(() => {
+				const answerContainer = document.querySelector(
+					'[class*="prose"], [class*="answer"]',
+				);
+				return answerContainer?.textContent ?? "";
+			});
+
+			const brandPattern =
+				/[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\.com|\.ai|\.io)?/g;
+			const seen = new Set<string>();
+
+			let match: RegExpExecArray | null = brandPattern.exec(content);
+			while (match !== null) {
+				const brandName = match[0].replace(/\.(com|ai|io)$/, "");
+				if (!seen.has(brandName)) {
+					seen.add(brandName);
+
+					const start = Math.max(0, match.index - 100);
+					const end = Math.min(content.length, match.index + 100);
+					const context = content.slice(start, end).trim();
+
+					mentions.push({
+						brandName,
+						context,
+						position: match.index,
+					});
+				}
+
+				match = brandPattern.exec(content);
+			}
+		} catch {
+			// Brand mention extraction is non-critical
+		}
+
+		return mentions;
+	}
+
+	private async extractRelatedQuestions(
+		session: BrowserSession,
+	): Promise<string[]> {
+		const questions: string[] = [];
+
+		try {
+			const relatedQuestions = await session.page.evaluate(() => {
+				const buttons = Array.from(
+					document.querySelectorAll('button[class*="interactable"]'),
+				);
+				return buttons
+					.map((btn) => btn.textContent?.trim() ?? "")
+					.filter(
+						(text) =>
+							text.length > 20 &&
+							(text.endsWith("?") ||
+								text.startsWith("How") ||
+								text.startsWith("What") ||
+								text.startsWith("Why") ||
+								text.startsWith("Which")),
+					);
+			});
+
+			questions.push(...relatedQuestions);
+		} catch {
+			// Related questions extraction is non-critical
+		}
+
+		return questions;
+	}
+
+	private detectAnswerFormat(_session: BrowserSession): AnswerFormat {
+		return "unknown";
 	}
 }

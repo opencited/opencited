@@ -66,3 +66,24 @@ export {
 	promptQueryCrawlUpdateSchema,
 	promptQueryCrawlStatusEnum,
 } from "./schema/promptQueryCrawl";
+export {
+	competitorTable,
+	competitorSelectSchema,
+	competitorBaseInsertSchema,
+	competitorInsertSchema,
+	competitorUpdateSchema,
+} from "./schema/competitor";
+export {
+	crawlSourceTable,
+	crawlSourceSelectSchema,
+	crawlSourceBaseInsertSchema,
+	crawlSourceInsertSchema,
+	crawlSourceUpdateSchema,
+} from "./schema/crawlSource";
+export {
+	crawlBrandMentionTable,
+	crawlBrandMentionSelectSchema,
+	crawlBrandMentionBaseInsertSchema,
+	crawlBrandMentionInsertSchema,
+	crawlBrandMentionUpdateSchema,
+} from "./schema/crawlBrandMention";

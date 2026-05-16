@@ -7,6 +7,7 @@ import {
 } from "drizzle-orm/zod";
 import { id, createdAt, updatedAt } from "./common-fields";
 import { promptQueryTable } from "./promptQuery";
+import { domainProjectTable } from "./domainProject";
 
 export const promptQueryCrawlStatusEnum = z.enum([
 	"pending",
@@ -21,6 +22,9 @@ export const promptQueryCrawlTable = pgTable("prompt_query_crawl", {
 	promptQueryId: text("prompt_query_id")
 		.notNull()
 		.references(() => promptQueryTable.id, { onDelete: "cascade" }),
+	domainProjectId: text("domain_project_id").references(
+		() => domainProjectTable.id,
+	),
 
 	status: text("status").notNull().default("pending"),
 	provider: text("provider"),
@@ -28,12 +32,17 @@ export const promptQueryCrawlTable = pgTable("prompt_query_crawl", {
 
 	// Input snapshot
 	query: text("query").notNull(),
+	promptSnapshot: text("prompt_snapshot"),
 
 	// Output fields
 	url: text("url"),
 	title: text("title"),
 	content: text("content"),
 	loadTimeMs: integer("load_time_ms"),
+	answerFormat: text("answer_format"),
+	wordCount: integer("word_count"),
+	sourceCount: integer("source_count").default(0),
+	brandMentionCount: integer("brand_mention_count").default(0),
 
 	// Error tracking
 	error: text("error"),
@@ -55,14 +64,20 @@ export const promptQueryCrawlBaseInsertSchema = createInsertSchema(
 export const promptQueryCrawlInsertSchema =
 	promptQueryCrawlBaseInsertSchema.extend({
 		promptQueryId: z.string().min(1, "Prompt query is required"),
+		domainProjectId: z.string().optional(),
 		status: promptQueryCrawlStatusEnum.optional(),
 		provider: z.string().optional(),
 		triggerRunId: z.string().optional(),
 		query: z.string().min(1, "Query is required"),
+		promptSnapshot: z.string().optional(),
 		url: z.string().url().optional(),
 		title: z.string().optional(),
 		content: z.string().optional(),
 		loadTimeMs: z.number().int().nonnegative().optional(),
+		answerFormat: z.string().optional(),
+		wordCount: z.number().int().nonnegative().optional(),
+		sourceCount: z.number().int().nonnegative().optional(),
+		brandMentionCount: z.number().int().nonnegative().optional(),
 		error: z.string().optional(),
 		startedAt: z.date().optional(),
 		completedAt: z.date().optional(),
