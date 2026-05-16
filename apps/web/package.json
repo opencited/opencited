@@ -8,7 +8,7 @@
 		"dev:turbo": "next dev --port 3000 --turbopack",
 		"build": "next build",
 		"start": "next start",
-		"tsc": "next typegen && tsc --noEmit",
+		"tsc": "tsc --noEmit",
 		"inspect": "npx workflow web"
 	},
 	"dependencies": {
