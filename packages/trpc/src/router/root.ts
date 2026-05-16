@@ -7,6 +7,7 @@ import { promptQueryRouter } from "./promptQuery";
 import { promptQueryCrawlRouter } from "./promptQueryCrawl";
 import { competitorRouter } from "./competitor";
 import { aiVisibilityRouter } from "./aiVisibility";
+import { dashboardRouter } from "./dashboard";
 
 export const appRouter = createTRPCRouter({
 	user: userRouter,
@@ -17,6 +18,7 @@ export const appRouter = createTRPCRouter({
 	promptQueryCrawl: promptQueryCrawlRouter,
 	competitor: competitorRouter,
 	aiVisibility: aiVisibilityRouter,
+	dashboard: dashboardRouter,
 });
 
 export type AppRouter = typeof appRouter;

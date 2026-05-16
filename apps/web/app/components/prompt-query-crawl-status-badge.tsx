@@ -1,8 +1,8 @@
-import { Badge } from "@opencited/ui";
+import { Badge, type BadgeProps } from "@opencited/ui";
 
 type PromptQueryCrawlStatus = "pending" | "running" | "completed" | "failed";
 
-interface PromptQueryCrawlStatusBadgeProps {
+interface PromptQueryCrawlStatusBadgeProps extends BadgeProps {
 	status: PromptQueryCrawlStatus | string | null;
 }
 
@@ -21,14 +21,27 @@ const STATUS_CONFIG: Record<
 
 export function PromptQueryCrawlStatusBadge({
 	status,
+	...badgeProps
 }: PromptQueryCrawlStatusBadgeProps) {
 	if (!status) {
-		return <Badge variant="outline">Unknown</Badge>;
+		return (
+			<Badge variant="outline" {...badgeProps}>
+				Unknown
+			</Badge>
+		);
 	}
 
 	const config = STATUS_CONFIG[status as PromptQueryCrawlStatus];
 	if (!config) {
-		return <Badge variant="outline">{status}</Badge>;
+		return (
+			<Badge variant="outline" {...badgeProps}>
+				{status}
+			</Badge>
+		);
 	}
-	return <Badge variant={config.variant}>{config.label}</Badge>;
+	return (
+		<Badge variant={config.variant} {...badgeProps}>
+			{config.label}
+		</Badge>
+	);
 }

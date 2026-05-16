@@ -23,16 +23,16 @@ import { useTRPC } from "@/app/_trpc/client";
 import { PromptQueryCrawlStatusBadge } from "@/app/components/prompt-query-crawl-status-badge";
 import { QueryCell } from "@/app/components/query-cell";
 import { TimeAgo } from "@/app/components/time-ago";
-import { RunLogDetailSheet } from "./run-log-detail-sheet";
+import { CrawlDetailSheet } from "./crawl-detail-sheet";
 
 type RunLog =
 	inferRouterOutputs<AppRouter>["aiVisibility"]["listRunLogs"]["runs"][number];
 
-interface RunLogsTabProps {
+interface RunLogsSectionProps {
 	domainProjectId: string;
 }
 
-export function RunLogsTab({ domainProjectId }: RunLogsTabProps) {
+export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 	const trpc = useTRPC();
 	const [selectedRun, setSelectedRun] = useState<RunLog | null>(null);
 	const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -184,12 +184,6 @@ export function RunLogsTab({ domainProjectId }: RunLogsTabProps) {
 															</span>
 														</>
 													)}
-													{run.loadTimeMs && (
-														<>
-															<span className="text-muted-foreground">·</span>
-															<span>{run.loadTimeMs}ms</span>
-														</>
-													)}
 													{run.status === "failed" && run.error && (
 														<>
 															<span className="text-muted-foreground">·</span>
@@ -200,31 +194,22 @@ export function RunLogsTab({ domainProjectId }: RunLogsTabProps) {
 													)}
 												</div>
 											</div>
-											<div className="flex-shrink-0 flex items-center gap-2 text-xs text-muted-foreground">
-												{run.sourceCount != null && run.sourceCount > 0 && (
-													<Badge variant="secondary" className="text-xs">
-														{run.sourceCount} sources
-													</Badge>
-												)}
-												{run.brandMentionCount != null &&
-													run.brandMentionCount > 0 && (
-														<Badge variant="secondary" className="text-xs">
-															{run.brandMentionCount} mentions
-														</Badge>
-													)}
-											</div>
 										</div>
 									</button>
 								)}
 							/>
 
-							<RunLogDetailSheet
-								open={!!selectedRun}
-								onOpenChange={(open) => {
-									if (!open) setSelectedRun(null);
-								}}
-								run={selectedRun}
-							/>
+							{selectedRun && (
+								<CrawlDetailSheet
+									crawlId={selectedRun.id}
+									queryId={selectedRun.promptQueryId}
+									domainProjectId={domainProjectId}
+									open={!!selectedRun}
+									onOpenChange={(open) => {
+										if (!open) setSelectedRun(null);
+									}}
+								/>
+							)}
 						</>
 					);
 				}}

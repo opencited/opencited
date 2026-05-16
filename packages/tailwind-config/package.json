@@ -8,6 +8,7 @@
 		"./postcss": "./postcss.config.js"
 	},
 	"devDependencies": {
+		"@tailwindcss/typography": "catalog:",
 		"postcss": "catalog:",
 		"tailwindcss": "catalog:"
 	}

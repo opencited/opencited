@@ -3,7 +3,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import {
-	Button,
 	EntityCard,
 	EntityCardHeader,
 	EntityCardTitle,
@@ -11,20 +10,28 @@ import {
 	EntityCardContent,
 	EntityCardFooter,
 	EntityCardSkeleton,
+	DataList,
+	Badge,
+	Button,
 } from "@opencited/ui";
-import { DataList } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
-import { Globe, Database, Hash, ArrowRight, MessageSquare } from "lucide-react";
+import {
+	ArrowRight,
+	Target,
+	MessageSquare,
+	Hash,
+	TrendingDown,
+} from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
 import Link from "next/link";
 import { PageShell } from "@/app/components/page-shell";
 import { TimeAgo } from "@/app/components/time-ago";
+import { useState } from "react";
+import { CrawlDetailSheet } from "@/app/app/ai-visibility/_components/crawl-detail-sheet";
 
 type RouterOutput = inferRouterOutputs<AppRouter>;
-type SitemapList = RouterOutput["sitemap"]["list"];
-type UrlCount = RouterOutput["sitemap"]["getUrlCount"];
-type PromptCount = RouterOutput["promptQuery"]["count"];
+type RunLogs = RouterOutput["aiVisibility"]["listRunLogs"];
 
 function StatCard({
 	icon: Icon,
@@ -57,104 +64,154 @@ function StatCard({
 
 export default function DashboardPage() {
 	const trpc = useTRPC();
+	const [selectedCrawl, setSelectedCrawl] = useState<{
+		crawlId: string;
+		queryId: string;
+	} | null>(null);
 
 	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
 	const domainProject = domainProjectQuery.data;
 
-	const sitemapsQuery = useQuery(trpc.sitemap.list.queryOptions({}));
-	const urlCountQuery = useQuery(trpc.sitemap.getUrlCount.queryOptions());
-	const promptCountQuery = useQuery(
-		trpc.promptQuery.count.queryOptions({
+	const visibilityMetricsQuery = useQuery({
+		...trpc.dashboard.getVisibilityMetrics.queryOptions({
 			domainProjectId: domainProject?.id ?? "",
 		}),
-	);
+		enabled: !!domainProject?.id,
+	});
+
+	const runLogsQuery = useQuery({
+		...trpc.aiVisibility.listRunLogs.queryOptions({
+			domainProjectId: domainProject?.id ?? "",
+			limit: 5,
+		}),
+		enabled: !!domainProject?.id,
+	});
 
 	return (
 		<PageShell title="Dashboard">
 			<div className="space-y-6">
 				<div>
-					<h2 className="text-lg font-medium mb-2">Project Overview</h2>
-					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(3,200px)]">
-						<QueryCell
-							query={sitemapsQuery}
-							loading={<EntityCardSkeleton hasFooter />}
-							success={(sitemaps) => (
-								<StatCard
-									icon={Database}
-									label="Sitemaps"
-									value={(sitemaps as SitemapList)?.length ?? 0}
-									description="Sitemaps indexed"
-								/>
-							)}
-						/>
-						<QueryCell
-							query={urlCountQuery}
-							loading={<EntityCardSkeleton hasFooter />}
-							success={(urlCount) => (
-								<StatCard
-									icon={Hash}
-									label="Total URLs"
-									value={(urlCount as UrlCount)?.count.toLocaleString() ?? 0}
-									description="URLs discovered"
-								/>
-							)}
-						/>
-						<QueryCell
-							query={promptCountQuery}
-							loading={<EntityCardSkeleton hasFooter />}
-							success={(promptCount) => (
-								<StatCard
-									icon={MessageSquare}
-									label="Prompts"
-									value={
-										(promptCount as PromptCount)?.count.toLocaleString() ?? 0
-									}
-									description="Saved prompts"
-								/>
-							)}
-						/>
-					</div>
+					<h2 className="text-lg font-medium mb-2">AI Visibility</h2>
+					<QueryCell
+						query={visibilityMetricsQuery}
+						loading={
+							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(4,200px)]">
+								{[1, 2, 3, 4].map((i) => (
+									<EntityCardSkeleton key={i} hasFooter />
+								))}
+							</div>
+						}
+						success={(metrics) => {
+							if (!metrics) return null;
+							return (
+								<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(4,200px)]">
+									<StatCard
+										icon={Target}
+										label="Cited in queries"
+										value={
+											<span>
+												<span>{metrics.citedInRatio.cited}</span>
+												<span className="text-sm text-muted-foreground ml-1">
+													of {metrics.citedInRatio.total}
+												</span>
+											</span>
+										}
+										description="Queries where your brand appears"
+									/>
+									<StatCard
+										icon={MessageSquare}
+										label="Brand mentions"
+										value={metrics.brandMentionCount}
+										description="Total target mentions"
+									/>
+									<StatCard
+										icon={Hash}
+										label="Avg citation position"
+										value={
+											metrics.avgCitationPosition !== null
+												? `#${metrics.avgCitationPosition}`
+												: "—"
+										}
+										description="Average rank when cited"
+									/>
+									<StatCard
+										icon={TrendingDown}
+										label="Competitors outranking you"
+										value={metrics.competitorOutrankCount}
+										description="Queries where competitors rank higher"
+									/>
+								</div>
+							);
+						}}
+					/>
 				</div>
 
 				<div>
 					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-lg font-medium">Recent Sitemaps</h2>
+						<h2 className="text-lg font-medium">Recent Activity</h2>
 						<Button variant="ghost" size="sm" asChild>
-							<Link href="/app/sitemaps">
+							<Link href="/app/ai-visibility">
 								View All
 								<ArrowRight className="ml-1 h-4 w-4" />
 							</Link>
 						</Button>
 					</div>
 
-					<QueryCell<SitemapList>
-						query={sitemapsQuery}
-						success={(sitemaps) => (
-							<DataList
-								items={sitemaps.slice(0, 5)}
-								keyExtractor={(sitemap) => sitemap.id}
-								renderItem={(sitemap) => (
-									<Link
-										href={`/app/sitemaps/${sitemap.id}`}
-										className="flex items-center justify-between gap-4 w-full"
-									>
-										<div className="flex items-center gap-3 min-w-0">
-											<Globe className="h-5 w-5 text-muted-foreground shrink-0" />
-											<span className="font-mono text-sm truncate text-foreground">
-												{sitemap.url}
-											</span>
-										</div>
-										<span className="text-xs text-muted-foreground shrink-0">
-											<TimeAgo date={sitemap.createdAt} />
-										</span>
-									</Link>
-								)}
-								emptyState={{
-									title: "No sitemaps yet",
-									description: "Add a sitemap to start tracking.",
-								}}
-							/>
-						)}
+					<QueryCell<RunLogs>
+						query={runLogsQuery}
+						success={(data) => {
+							if (!data) return null;
+							return (
+								<>
+									<DataList
+										items={data.runs.slice(0, 5)}
+										keyExtractor={(run) => run.id}
+										renderItem={(run) => (
+											<button
+												type="button"
+												className="flex items-center justify-between gap-4 w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+												onClick={() => {
+													setSelectedCrawl({
+														crawlId: run.id,
+														queryId: run.promptQueryId,
+													});
+												}}
+											>
+												<div className="flex items-center gap-3 min-w-0">
+													<Target className="h-5 w-5 text-muted-foreground shrink-0" />
+													<span className="text-sm truncate text-foreground">
+														{run.query}
+													</span>
+													{run.status === "completed" && (
+														<Badge variant="success">Cited</Badge>
+													)}
+												</div>
+												<span className="text-xs text-muted-foreground shrink-0">
+													<TimeAgo date={run.createdAt} />
+												</span>
+											</button>
+										)}
+										emptyState={{
+											title: "No activity yet",
+											description:
+												"Run your first prompt to see activity here.",
+										}}
+									/>
+
+									{selectedCrawl && (
+										<CrawlDetailSheet
+											crawlId={selectedCrawl.crawlId}
+											queryId={selectedCrawl.queryId}
+											domainProjectId={domainProject?.id ?? ""}
+											open={!!selectedCrawl}
+											onOpenChange={(open) => {
+												if (!open) setSelectedCrawl(null);
+											}}
+										/>
+									)}
+								</>
+							);
+						}}
 					/>
 				</div>
 			</div>

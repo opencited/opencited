@@ -11,6 +11,18 @@ import {
 	listBrandMentionsHandler,
 	listBrandMentionsInputSchema,
 	listBrandMentionsOutputSchema,
+	getVisibilityOverviewHandler,
+	getVisibilityOverviewInputSchema,
+	getVisibilityOverviewOutputSchema,
+	getCompetitorIntelligenceHandler,
+	getCompetitorIntelligenceInputSchema,
+	getCompetitorIntelligenceOutputSchema,
+	getCrawlHistoryHandler,
+	getCrawlHistoryInputSchema,
+	getCrawlHistoryOutputSchema,
+	getCompetitorDetailHandler,
+	getCompetitorDetailInputSchema,
+	getCompetitorDetailOutputSchema,
 } from "@opencited/actions";
 
 export const aiVisibilityRouter = createTRPCRouter({
@@ -51,5 +63,52 @@ export const aiVisibilityRouter = createTRPCRouter({
 				});
 			}
 			return listBrandMentionsHandler({ ctx, input });
+		}),
+
+	getVisibilityOverview: publicProcedure
+		.input(getVisibilityOverviewInputSchema)
+		.output(getVisibilityOverviewOutputSchema)
+		.query(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				return [];
+			}
+			return getVisibilityOverviewHandler({ ctx, input });
+		}),
+
+	getCompetitorIntelligence: publicProcedure
+		.input(getCompetitorIntelligenceInputSchema)
+		.output(getCompetitorIntelligenceOutputSchema)
+		.query(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				return [];
+			}
+			return getCompetitorIntelligenceHandler({ ctx, input });
+		}),
+
+	getCrawlHistory: publicProcedure
+		.input(getCrawlHistoryInputSchema)
+		.output(getCrawlHistoryOutputSchema)
+		.query(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				return [];
+			}
+			return getCrawlHistoryHandler({ ctx, input });
+		}),
+
+	getCompetitorDetail: publicProcedure
+		.input(getCompetitorDetailInputSchema)
+		.output(getCompetitorDetailOutputSchema)
+		.query(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "No organization found",
+				});
+			}
+			return getCompetitorDetailHandler({ ctx, input });
 		}),
 });
