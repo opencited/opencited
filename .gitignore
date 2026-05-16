@@ -52,3 +52,5 @@ yarn-error.log*
 # used by playwrite playground for storage (cookie, session etc)
 .playwrite-playground
 .trigger
+
+.impeccable

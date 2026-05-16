@@ -247,14 +247,16 @@ export default function PromptsPage() {
 							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
 								{[1, 2, 3].map((i) => (
 									<Card key={i}>
-										<CardHeader>
+										<div className="flex items-center gap-3 px-5 pt-3 pb-1.5">
+											<Skeleton className="h-3 w-16" />
+											<Skeleton className="h-3 w-20" />
+										</div>
+										<CardHeader className="pb-1 pt-1">
 											<Skeleton className="h-4 w-3/4" />
 										</CardHeader>
-										<CardContent>
-											<div className="space-y-2">
-												<Skeleton className="h-3 w-full" />
-												<Skeleton className="h-3 w-full" />
-												<Skeleton className="h-3 w-1/2" />
+										<CardContent className="pt-0 pb-4 mt-auto">
+											<div className="flex items-center justify-end">
+												<Skeleton className="h-8 w-20 rounded-sm" />
 											</div>
 										</CardContent>
 									</Card>
@@ -330,51 +332,51 @@ export default function PromptsPage() {
 												role="button"
 												aria-label={`View prompt: ${prompt.query}`}
 											>
-												<CardHeader className="pb-3">
+												<div className="flex items-center justify-between px-5 pt-3 pb-1.5 text-xs text-muted-foreground">
+													<div className="flex items-center gap-2.5">
+														<div className="flex items-center gap-1">
+															<Calendar className="h-3 w-3" />
+															<span>
+																{format(new Date(prompt.createdAt), "MMM d")}
+															</span>
+														</div>
+														{prompt.lastCrawledAt ? (
+															<div className="flex items-center gap-1">
+																<Clock className="h-3 w-3" />
+																<TimeAgo date={prompt.lastCrawledAt} />
+															</div>
+														) : (
+															<span>Never crawled</span>
+														)}
+													</div>
+												</div>
+												<CardHeader className="pb-1 pt-1">
 													<CardTitle className="text-sm font-medium leading-relaxed line-clamp-3">
 														{prompt.query}
 													</CardTitle>
 												</CardHeader>
-												<CardContent className="pt-0 mt-auto">
-													<div className="flex items-center justify-between text-xs text-muted-foreground">
-														<div className="flex items-center gap-3">
-															<div className="flex items-center gap-1">
-																<Calendar className="h-3 w-3" />
-																<span>
-																	{format(new Date(prompt.createdAt), "MMM d")}
-																</span>
-															</div>
-															{prompt.lastCrawledAt ? (
-																<div className="flex items-center gap-1">
-																	<Clock className="h-3 w-3" />
-																	<TimeAgo date={prompt.lastCrawledAt} />
-																</div>
-															) : (
-																<span>Never crawled</span>
-															)}
-														</div>
-														<div className="flex items-center gap-1">
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={(e) => {
-																	e.stopPropagation();
-																	handleDeletePrompt(prompt.id, prompt.query);
-																}}
-																className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-9 w-9"
-															>
-																<Trash2 className="h-4 w-4" />
-															</Button>
-															<RunCrawlButton
-																promptQueryId={prompt.id}
-																isRunning={isRunning}
-																onCrawlStart={() => {
-																	setRunningCrawlIds((prev) =>
-																		new Set(prev).add(prompt.id),
-																	);
-																}}
-															/>
-														</div>
+												<CardContent className="pt-0 pb-4 mt-auto">
+													<div className="flex items-center justify-between">
+														<Button
+															variant="ghost"
+															size="icon"
+															onClick={(e) => {
+																e.stopPropagation();
+																handleDeletePrompt(prompt.id, prompt.query);
+															}}
+															className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive"
+														>
+															<Trash2 className="h-4 w-4" />
+														</Button>
+														<RunCrawlButton
+															promptQueryId={prompt.id}
+															isRunning={isRunning}
+															onCrawlStart={() => {
+																setRunningCrawlIds((prev) =>
+																	new Set(prev).add(prompt.id),
+																);
+															}}
+														/>
 													</div>
 												</CardContent>
 											</Card>
