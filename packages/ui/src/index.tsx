@@ -31,6 +31,7 @@ export {
 	EntityCardValue,
 	EntityCardContent,
 	EntityCardFooter,
+	EntityCardSkeleton,
 } from "./entity-card";
 
 export { DataList, DataListLink, DataListAction } from "./data-list";

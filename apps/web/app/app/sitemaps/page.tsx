@@ -16,6 +16,7 @@ import {
 	TooltipTrigger,
 	TooltipProvider,
 	Kbd,
+	Skeleton,
 } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
 import { Globe, Plus } from "lucide-react";
@@ -163,14 +164,28 @@ export default function SitemapsPage() {
 				<QueryCell
 					query={sitemapsQuery}
 					loading={
-						<div className="flex items-center justify-center py-12 text-muted-foreground">
-							Loading sitemaps...
+						<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+							{Array.from({ length: 3 }).map((_, i) => (
+								<Card key={i}>
+									<CardHeader className="pb-2">
+										<CardTitle className="flex items-center gap-2 text-sm font-medium">
+											<Skeleton className="h-4 w-4" />
+											<Skeleton className="h-4 w-32" />
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<Skeleton className="h-3 w-24" />
+									</CardContent>
+								</Card>
+							))}
 						</div>
 					}
 					error={(_error) => (
 						<Card>
-							<CardContent className="py-8 text-center text-destructive">
-								Couldn&apos;t load sitemaps. Try again.
+							<CardContent className="py-8 text-center">
+								<p className="text-destructive">
+									Couldn&apos;t load sitemaps. Try again.
+								</p>
 							</CardContent>
 						</Card>
 					)}
@@ -178,9 +193,11 @@ export default function SitemapsPage() {
 						if (!sitemapList || sitemapList.length === 0) {
 							return (
 								<Card>
-									<CardContent className="py-8 text-center text-muted-foreground">
-										No sitemaps yet. Add your first sitemap to track URLs in AI
-										answer engines.
+									<CardContent className="py-8 text-center">
+										<p className="text-muted-foreground">
+											No sitemaps yet. Add your first sitemap to track URLs in
+											AI answer engines.
+										</p>
 									</CardContent>
 								</Card>
 							);

@@ -4,13 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import {
 	Button,
-	Skeleton,
 	EntityCard,
 	EntityCardHeader,
 	EntityCardTitle,
 	EntityCardValue,
 	EntityCardContent,
 	EntityCardFooter,
+	EntityCardSkeleton,
 } from "@opencited/ui";
 import { DataList } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
@@ -31,13 +31,11 @@ function StatCard({
 	label,
 	value,
 	description,
-	isLoading,
 }: {
 	icon: React.ElementType;
 	label: string;
 	value: React.ReactNode;
 	description?: string;
-	isLoading?: boolean;
 }) {
 	return (
 		<EntityCard size="md">
@@ -48,11 +46,7 @@ function StatCard({
 				>
 					<EntityCardTitle>{label}</EntityCardTitle>
 				</EntityCardHeader>
-				{isLoading ? (
-					<Skeleton className="h-8 w-20 mt-3" />
-				) : (
-					<EntityCardValue size="md">{value}</EntityCardValue>
-				)}
+				<EntityCardValue size="md">{value}</EntityCardValue>
 			</EntityCardContent>
 			{description && (
 				<EntityCardFooter size="md">{description}</EntityCardFooter>
@@ -83,6 +77,7 @@ export default function DashboardPage() {
 					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(3,200px)]">
 						<QueryCell
 							query={sitemapsQuery}
+							loading={<EntityCardSkeleton hasFooter />}
 							success={(sitemaps) => (
 								<StatCard
 									icon={Database}
@@ -94,6 +89,7 @@ export default function DashboardPage() {
 						/>
 						<QueryCell
 							query={urlCountQuery}
+							loading={<EntityCardSkeleton hasFooter />}
 							success={(urlCount) => (
 								<StatCard
 									icon={Hash}
@@ -105,6 +101,7 @@ export default function DashboardPage() {
 						/>
 						<QueryCell
 							query={promptCountQuery}
+							loading={<EntityCardSkeleton hasFooter />}
 							success={(promptCount) => (
 								<StatCard
 									icon={MessageSquare}

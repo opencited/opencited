@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import { PageShell } from "@/app/components/page-shell";
 import {
@@ -18,7 +18,6 @@ import {
 import { Plus, Trash2, Clock, Calendar, Terminal } from "lucide-react";
 import { Skeleton } from "@opencited/ui";
 import { CreatePromptDialog } from "./_components/create-prompt-dialog";
-import { DeletePromptDialog } from "./_components/delete-prompt-dialog";
 import { ViewPromptDialog } from "./_components/view-prompt-dialog";
 import { RunCrawlButton } from "./_components/run-crawl-button";
 import { HistoryTab } from "./_components/history-tab";
@@ -28,18 +27,16 @@ import { QueryCell } from "@/app/components/query-cell";
 import { format } from "date-fns";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCrawlPolling } from "./_components/use-crawl-polling";
+import { useConfirmation } from "@/app/hooks/use-confirmation";
 
 export default function PromptsPage() {
 	const trpc = useTRPC();
 	const _queryClient = useQueryClient();
 	const searchParams = useSearchParams();
 	const router = useRouter();
+	const { confirm, dialog } = useConfirmation();
 
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-	const [promptToDelete, setPromptToDelete] = useState<{
-		id: string;
-		query: string;
-	} | null>(null);
 	const [promptToView, setPromptToView] = useState<{
 		id: string;
 		query: string;
@@ -52,8 +49,6 @@ export default function PromptsPage() {
 	);
 	const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
 
-	const activeTab = searchParams.get("tab") ?? "prompts";
-
 	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
 	const domainProject = domainProjectQuery.data;
 
@@ -62,6 +57,16 @@ export default function PromptsPage() {
 			domainProjectId: domainProject?.id ?? "",
 		}),
 	);
+
+	const deleteMutation = useMutation(
+		trpc.promptQuery.delete.mutationOptions({
+			onSuccess: () => {
+				promptsQuery.refetch();
+			},
+		}),
+	);
+
+	const activeTab = searchParams.get("tab") ?? "prompts";
 
 	const _crawlsQuery = useQuery({
 		...trpc.promptQueryCrawl.list.queryOptions({
@@ -97,6 +102,33 @@ export default function PromptsPage() {
 		[router, searchParams],
 	);
 
+	const handleDeletePrompt = useCallback(
+		async (id: string, query: string) => {
+			const confirmed = await confirm({
+				title: "Delete Prompt",
+				description:
+					"Are you sure you want to delete this prompt? This action cannot be undone.",
+				content: (
+					<div className="py-4">
+						<p className="text-sm text-muted-foreground max-h-[40vh] overflow-y-auto bg-muted p-3 rounded">
+							{query}
+						</p>
+					</div>
+				),
+				confirmLabel: "Delete",
+				variant: "destructive",
+			});
+
+			if (!confirmed || !domainProject) return;
+
+			deleteMutation.mutate({
+				id,
+				domainProjectId: domainProject.id,
+			});
+		},
+		[confirm, deleteMutation, domainProject],
+	);
+
 	// Keyboard shortcuts
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
@@ -130,7 +162,7 @@ export default function PromptsPage() {
 					(p) => p.id === selectedPromptId,
 				);
 				if (prompt) {
-					setPromptToDelete({ id: prompt.id, query: prompt.query });
+					handleDeletePrompt(prompt.id, prompt.query);
 				}
 			}
 			if (
@@ -156,6 +188,16 @@ export default function PromptsPage() {
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [activeTab, selectedPromptId, promptsQuery.data, runningCrawlIds]);
+
+	if (domainProjectQuery.isLoading) {
+		return (
+			<PageShell title="Prompts">
+				<div className="flex items-center justify-center py-12">
+					<p className="text-muted-foreground">Loading...</p>
+				</div>
+			</PageShell>
+		);
+	}
 
 	if (!domainProject) {
 		return (
@@ -262,7 +304,7 @@ export default function PromptsPage() {
 											<Card
 												key={prompt.id}
 												data-prompt-id={prompt.id}
-												className="group focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm"
+												className="group focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm flex flex-col"
 												onClick={() => {
 													setSelectedPromptId(prompt.id);
 													setPromptToView({
@@ -293,7 +335,7 @@ export default function PromptsPage() {
 														{prompt.query}
 													</CardTitle>
 												</CardHeader>
-												<CardContent className="pt-0">
+												<CardContent className="pt-0 mt-auto">
 													<div className="flex items-center justify-between text-xs text-muted-foreground">
 														<div className="flex items-center gap-3">
 															<div className="flex items-center gap-1">
@@ -312,6 +354,17 @@ export default function PromptsPage() {
 															)}
 														</div>
 														<div className="flex items-center gap-1">
+															<Button
+																variant="ghost"
+																size="sm"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	handleDeletePrompt(prompt.id, prompt.query);
+																}}
+																className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-9 w-9"
+															>
+																<Trash2 className="h-4 w-4" />
+															</Button>
 															<RunCrawlButton
 																promptQueryId={prompt.id}
 																isRunning={isRunning}
@@ -321,20 +374,6 @@ export default function PromptsPage() {
 																	);
 																}}
 															/>
-															<Button
-																variant="ghost"
-																size="sm"
-																onClick={(e) => {
-																	e.stopPropagation();
-																	setPromptToDelete({
-																		id: prompt.id,
-																		query: prompt.query,
-																	});
-																}}
-																className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-9 w-9"
-															>
-																<Trash2 className="h-4 w-4" />
-															</Button>
 														</div>
 													</div>
 												</CardContent>
@@ -372,21 +411,7 @@ export default function PromptsPage() {
 				prompt={promptToView}
 			/>
 
-			{promptToDelete && (
-				<DeletePromptDialog
-					open={!!promptToDelete}
-					onOpenChange={(open) => {
-						if (!open) setPromptToDelete(null);
-					}}
-					promptId={promptToDelete.id}
-					promptQuery={promptToDelete.query}
-					domainProjectId={domainProject.id}
-					onSuccess={() => {
-						promptsQuery.refetch();
-						setPromptToDelete(null);
-					}}
-				/>
-			)}
+			{dialog}
 		</PageShell>
 	);
 }

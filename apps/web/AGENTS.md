@@ -51,6 +51,50 @@ import { QueryCell } from "@/app/components/query-cell";
 />
 ```
 
+### Confirmation Dialogs
+
+**Always use `useConfirmation` hook from `@/app/hooks/use-confirmation` for confirmation dialogs.** Never create custom Dialog-based confirmation UI.
+
+```tsx
+import { useConfirmation } from "@/app/hooks/use-confirmation";
+
+const { confirm, dialog } = useConfirmation();
+
+const handleDelete = async () => {
+  const confirmed = await confirm({
+    title: "Delete Item",
+    description: "Are you sure you want to delete this item?",
+    confirmLabel: "Delete",
+    variant: "destructive",
+  });
+  if (!confirmed) return;
+  // proceed with deletion
+};
+
+return (
+  <>
+    <Button onClick={handleDelete}>Delete</Button>
+    {dialog}
+  </>
+);
+```
+
+**Custom content:** Use the `content` prop to render custom UI between the description and footer:
+
+```tsx
+const confirmed = await confirm({
+  title: "Delete Prompt",
+  description: "This action cannot be undone.",
+  content: (
+    <div className="py-4">
+      <p className="text-sm bg-muted p-3 rounded">{promptQuery}</p>
+    </div>
+  ),
+  confirmLabel: "Delete",
+  variant: "destructive",
+});
+```
+
 ## Structure
 
 ```

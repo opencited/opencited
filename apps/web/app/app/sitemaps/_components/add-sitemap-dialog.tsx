@@ -27,17 +27,14 @@ import {
 	AccordionContent,
 	AccordionItem,
 	AccordionTrigger,
+	Spinner,
+	Tabs,
+	TabsList,
+	TabsTrigger,
 } from "@opencited/ui";
 import { TimeAgo } from "@/app/components/time-ago";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import {
-	AlertCircle,
-	Loader2,
-	Search,
-	Plus,
-	Link2,
-	ChevronRight,
-} from "lucide-react";
+import { AlertCircle, Search, Plus, Link2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type DiscoveredSitemap = {
@@ -439,40 +436,25 @@ export function AddSitemapDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="flex items-center gap-1 p-1 bg-muted rounded-lg w-fit">
-					<button
-						type="button"
-						onClick={() => {
-							setMode("discover");
-							resetState();
-						}}
-						className={cn(
-							"flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-							mode === "discover"
-								? "bg-background shadow-sm"
-								: "text-muted-foreground hover:text-foreground",
-						)}
-					>
-						<Search className="h-3.5 w-3.5" />
-						Discover
-					</button>
-					<button
-						type="button"
-						onClick={() => {
-							setMode("manual");
-							resetState();
-						}}
-						className={cn(
-							"flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-							mode === "manual"
-								? "bg-background shadow-sm"
-								: "text-muted-foreground hover:text-foreground",
-						)}
-					>
-						<Link2 className="h-3.5 w-3.5" />
-						Manual
-					</button>
-				</div>
+				<Tabs
+					value={mode}
+					onValueChange={(v) => {
+						setMode(v as DialogMode);
+						resetState();
+					}}
+					className="w-fit"
+				>
+					<TabsList>
+						<TabsTrigger value="discover">
+							<Search className="h-3.5 w-3.5" />
+							<span>Discover</span>
+						</TabsTrigger>
+						<TabsTrigger value="manual">
+							<Link2 className="h-3.5 w-3.5" />
+							<span>Manual</span>
+						</TabsTrigger>
+					</TabsList>
+				</Tabs>
 
 				<div className="flex-1 overflow-y-auto">
 					<AnimatePresence mode="wait">
@@ -735,7 +717,7 @@ export function AddSitemapDialog({
 										>
 											{isPreviewing ? (
 												<>
-													<Loader2 className="h-4 w-4 animate-spin" />
+													<Spinner />
 													Checking...
 												</>
 											) : (
@@ -769,7 +751,7 @@ export function AddSitemapDialog({
 							>
 								{isPreviewing ? (
 									<div className="flex items-center justify-center py-12">
-										<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+										<Spinner className="size-6" />
 										<span className="ml-3 text-muted-foreground">
 											{discoveryStatus || "Loading..."}
 										</span>
@@ -917,7 +899,7 @@ export function AddSitemapDialog({
 							<Button onClick={handleConfirmAndSave} disabled={isSaving}>
 								{isSaving ? (
 									<>
-										<Loader2 className="h-4 w-4 animate-spin" />
+										<Spinner />
 										Adding...
 									</>
 								) : (

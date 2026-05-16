@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
 	Dialog,
@@ -15,6 +15,7 @@ import { Button } from "@opencited/ui";
 interface ConfirmationConfig {
 	title: string;
 	description?: string;
+	content?: ReactNode;
 	confirmLabel?: string;
 	cancelLabel?: string;
 	variant?: "default" | "destructive";
@@ -64,13 +65,23 @@ export function useConfirmation() {
 								</DialogDescription>
 							)}
 						</DialogHeader>
+						{pending.config.content}
 						<DialogFooter>
-							<Button variant="outline" onClick={handleCancel}>
+							<Button
+								variant="outline"
+								onClick={(e) => {
+									e.stopPropagation();
+									handleCancel();
+								}}
+							>
 								{pending.config.cancelLabel || "Cancel"}
 							</Button>
 							<Button
 								variant={pending.config.variant || "default"}
-								onClick={handleConfirm}
+								onClick={(e) => {
+									e.stopPropagation();
+									handleConfirm();
+								}}
 							>
 								{pending.config.confirmLabel || "Confirm"}
 							</Button>

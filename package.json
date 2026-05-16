@@ -80,7 +80,9 @@
 			"@trigger.dev/build": "4.4.6",
 			"dompurify": "3.3.0",
 			"@types/dompurify": "3.2.0",
-			"@radix-ui/react-select": "^2.2.6"
+			"@radix-ui/react-select": "^2.2.6",
+			"@tanstack/react-devtools": "0.10.5",
+			"@tanstack/react-query-devtools": "5.100.10"
 		}
 	},
 	"config": {
@@ -98,6 +100,8 @@
 		"vitest": "catalog:"
 	},
 	"dependencies": {
-		"@ai-sdk/openai-compatible": "^2.0.47"
+		"@ai-sdk/openai-compatible": "^2.0.47",
+		"@tanstack/react-devtools": "^0.10.5",
+		"@tanstack/react-query-devtools": "^5.100.10"
 	}
 }

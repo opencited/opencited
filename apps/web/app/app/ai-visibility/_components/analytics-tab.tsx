@@ -11,7 +11,7 @@ import {
 	EntityCardHeader,
 	EntityCardTitle,
 	EntityCardValue,
-	Skeleton,
+	EntityCardSkeleton,
 	Table,
 	TableBody,
 	TableCell,
@@ -46,171 +46,153 @@ export function AnalyticsTab({ domainProjectId }: AnalyticsTabProps) {
 		enabled: !!domainProjectId,
 	});
 
-	const completedCrawls =
-		runLogsQuery.data?.runs.filter((r: RunLog) => r.status === "completed") ??
-		[];
-	const failedCrawls =
-		runLogsQuery.data?.runs.filter((r: RunLog) => r.status === "failed") ?? [];
-	const totalCrawls = runLogsQuery.data?.runs.length ?? 0;
-
-	const avgSources =
-		completedCrawls.length > 0
-			? Math.round(
-					completedCrawls.reduce(
-						(sum: number, r: RunLog) => sum + (r.sourceCount ?? 0),
-						0,
-					) / completedCrawls.length,
-				)
-			: 0;
-
-	const avgMentions =
-		completedCrawls.length > 0
-			? Math.round(
-					completedCrawls.reduce(
-						(sum: number, r: RunLog) => sum + (r.brandMentionCount ?? 0),
-						0,
-					) / completedCrawls.length,
-				)
-			: 0;
-
-	const successRate =
-		totalCrawls > 0
-			? Math.round((completedCrawls.length / totalCrawls) * 100)
-			: 0;
-
-	const answerFormatDistribution = completedCrawls.reduce<
-		Record<string, number>
-	>((acc: Record<string, number>, crawl: RunLog) => {
-		const fmt = crawl.answerFormat ?? "unknown";
-		acc[fmt] = (acc[fmt] ?? 0) + 1;
-		return acc;
-	}, {});
-
 	return (
 		<div className="space-y-6">
-			<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-				<EntityCard size="md">
-					<EntityCardContent size="md">
-						<EntityCardHeader
-							icon={<Target className="h-4 w-4" />}
-							iconPosition="right"
-						>
-							<EntityCardTitle>Total Crawls</EntityCardTitle>
-						</EntityCardHeader>
-						<EntityCardValue size="md">{totalCrawls}</EntityCardValue>
-					</EntityCardContent>
-					<EntityCardFooter size="md">All time</EntityCardFooter>
-				</EntityCard>
-
-				<EntityCard size="md">
-					<EntityCardContent size="md">
-						<EntityCardHeader
-							icon={<Link className="h-4 w-4" />}
-							iconPosition="right"
-						>
-							<EntityCardTitle>Avg Sources</EntityCardTitle>
-						</EntityCardHeader>
-						<EntityCardValue size="md">{avgSources}</EntityCardValue>
-					</EntityCardContent>
-					<EntityCardFooter size="md">Per completed crawl</EntityCardFooter>
-				</EntityCard>
-
-				<EntityCard size="md">
-					<EntityCardContent size="md">
-						<EntityCardHeader
-							icon={<Quote className="h-4 w-4" />}
-							iconPosition="right"
-						>
-							<EntityCardTitle>Avg Mentions</EntityCardTitle>
-						</EntityCardHeader>
-						<EntityCardValue size="md">{avgMentions}</EntityCardValue>
-					</EntityCardContent>
-					<EntityCardFooter size="md">Per completed crawl</EntityCardFooter>
-				</EntityCard>
-
-				<EntityCard size="md">
-					<EntityCardContent size="md">
-						<EntityCardHeader
-							icon={<CheckCircle className="h-4 w-4" />}
-							iconPosition="right"
-						>
-							<EntityCardTitle>Success Rate</EntityCardTitle>
-						</EntityCardHeader>
-						<EntityCardValue size="md">{successRate}%</EntityCardValue>
-					</EntityCardContent>
-					<EntityCardFooter size="md">
-						{failedCrawls.length > 0 && (
-							<span className="flex items-center gap-1">
-								<AlertCircle className="h-3 w-3" />
-								{failedCrawls.length} failed
-							</span>
-						)}
-					</EntityCardFooter>
-				</EntityCard>
-			</div>
-
-			{Object.keys(answerFormatDistribution).length > 0 && (
-				<div>
-					<h3 className="text-lg font-medium mb-3">
-						Answer Format Distribution
-					</h3>
-					<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-						{Object.entries(answerFormatDistribution)
-							.sort(([, a]: [string, number], [, b]: [string, number]) => b - a)
-							.map(([fmt, count]) => (
-								<Card key={fmt}>
-									<CardContent className="p-4 flex items-center justify-between">
-										<AnswerFormatBadge format={fmt} />
-										<span className="text-2xl font-semibold">{count}</span>
-									</CardContent>
-								</Card>
-							))}
+			<QueryCell
+				query={runLogsQuery}
+				loading={
+					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+						<EntityCardSkeleton hasFooter />
+						<EntityCardSkeleton hasFooter />
+						<EntityCardSkeleton hasFooter />
+						<EntityCardSkeleton hasFooter />
 					</div>
-				</div>
-			)}
+				}
+				success={(data) => {
+					const completedCrawls =
+						data.runs.filter((r: RunLog) => r.status === "completed") ?? [];
+					const failedCrawls =
+						data.runs.filter((r: RunLog) => r.status === "failed") ?? [];
+					const totalCrawls = data.runs.length ?? 0;
 
-			<div>
-				<h3 className="text-lg font-medium mb-3">Recent Crawls</h3>
-				<QueryCell
-					query={runLogsQuery}
-					loading={
-						<div className="space-y-3">
-							{[1, 2, 3].map((i) => (
-								<Skeleton key={i} className="h-12 w-full" />
-							))}
-						</div>
-					}
-					error={() => (
-						<Card>
-							<CardContent className="py-8 text-center">
-								<p className="text-destructive">
-									Couldn&apos;t load crawl data. Try again.
-								</p>
-							</CardContent>
-						</Card>
-					)}
-					success={(data) => {
-						if (!data.runs || data.runs.length === 0) {
-							return (
-								<Card variant="dashed">
-									<CardContent className="py-16 text-center">
-										<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-											<Target className="h-6 w-6 text-muted-foreground" />
-										</div>
-										<h3 className="text-lg font-semibold mb-2">
-											No crawl data yet
-										</h3>
-										<p className="text-muted-foreground max-w-md mx-auto">
-											Run a prompt crawl to start tracking your AI visibility
-											metrics.
-										</p>
-									</CardContent>
-								</Card>
-							);
-						}
+					const avgSources =
+						completedCrawls.length > 0
+							? Math.round(
+									completedCrawls.reduce(
+										(sum: number, r: RunLog) => sum + (r.sourceCount ?? 0),
+										0,
+									) / completedCrawls.length,
+								)
+							: 0;
 
-						return (
-							<div className="">
+					const avgMentions =
+						completedCrawls.length > 0
+							? Math.round(
+									completedCrawls.reduce(
+										(sum: number, r: RunLog) =>
+											sum + (r.brandMentionCount ?? 0),
+										0,
+									) / completedCrawls.length,
+								)
+							: 0;
+
+					const successRate =
+						totalCrawls > 0
+							? Math.round((completedCrawls.length / totalCrawls) * 100)
+							: 0;
+
+					const answerFormatDistribution = completedCrawls.reduce<
+						Record<string, number>
+					>((acc: Record<string, number>, crawl: RunLog) => {
+						const fmt = crawl.answerFormat ?? "unknown";
+						acc[fmt] = (acc[fmt] ?? 0) + 1;
+						return acc;
+					}, {});
+
+					return (
+						<>
+							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+								<EntityCard size="md">
+									<EntityCardContent size="md">
+										<EntityCardHeader
+											icon={<Target className="h-4 w-4" />}
+											iconPosition="right"
+										>
+											<EntityCardTitle>Total Crawls</EntityCardTitle>
+										</EntityCardHeader>
+										<EntityCardValue size="md">{totalCrawls}</EntityCardValue>
+									</EntityCardContent>
+									<EntityCardFooter size="md">All time</EntityCardFooter>
+								</EntityCard>
+
+								<EntityCard size="md">
+									<EntityCardContent size="md">
+										<EntityCardHeader
+											icon={<Link className="h-4 w-4" />}
+											iconPosition="right"
+										>
+											<EntityCardTitle>Avg Sources</EntityCardTitle>
+										</EntityCardHeader>
+										<EntityCardValue size="md">{avgSources}</EntityCardValue>
+									</EntityCardContent>
+									<EntityCardFooter size="md">
+										Per completed crawl
+									</EntityCardFooter>
+								</EntityCard>
+
+								<EntityCard size="md">
+									<EntityCardContent size="md">
+										<EntityCardHeader
+											icon={<Quote className="h-4 w-4" />}
+											iconPosition="right"
+										>
+											<EntityCardTitle>Avg Mentions</EntityCardTitle>
+										</EntityCardHeader>
+										<EntityCardValue size="md">{avgMentions}</EntityCardValue>
+									</EntityCardContent>
+									<EntityCardFooter size="md">
+										Per completed crawl
+									</EntityCardFooter>
+								</EntityCard>
+
+								<EntityCard size="md">
+									<EntityCardContent size="md">
+										<EntityCardHeader
+											icon={<CheckCircle className="h-4 w-4" />}
+											iconPosition="right"
+										>
+											<EntityCardTitle>Success Rate</EntityCardTitle>
+										</EntityCardHeader>
+										<EntityCardValue size="md">{successRate}%</EntityCardValue>
+									</EntityCardContent>
+									<EntityCardFooter size="md">
+										{failedCrawls.length > 0 && (
+											<span className="flex items-center gap-1">
+												<AlertCircle className="h-3 w-3" />
+												{failedCrawls.length} failed
+											</span>
+										)}
+									</EntityCardFooter>
+								</EntityCard>
+							</div>
+
+							{Object.keys(answerFormatDistribution).length > 0 && (
+								<div>
+									<h3 className="text-lg font-medium mb-3">
+										Answer Format Distribution
+									</h3>
+									<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+										{Object.entries(answerFormatDistribution)
+											.sort(
+												([, a]: [string, number], [, b]: [string, number]) =>
+													b - a,
+											)
+											.map(([fmt, count]) => (
+												<Card key={fmt}>
+													<CardContent className="p-4 flex items-center justify-between">
+														<AnswerFormatBadge format={fmt} />
+														<span className="text-2xl font-semibold">
+															{count}
+														</span>
+													</CardContent>
+												</Card>
+											))}
+									</div>
+								</div>
+							)}
+
+							<div>
+								<h3 className="text-lg font-medium mb-3">Recent Crawls</h3>
 								<Table>
 									<TableHeader>
 										<TableRow>
@@ -256,10 +238,10 @@ export function AnalyticsTab({ domainProjectId }: AnalyticsTabProps) {
 									</TableBody>
 								</Table>
 							</div>
-						);
-					}}
-				/>
-			</div>
+						</>
+					);
+				}}
+			/>
 		</div>
 	);
 }

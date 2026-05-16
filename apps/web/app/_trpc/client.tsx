@@ -2,6 +2,8 @@
 
 import type { QueryClient } from "@tanstack/react-query";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import { ReactQueryDevtoolsPanel } from "@tanstack/react-query-devtools";
 import { createTRPCClient, httpBatchStreamLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { useState } from "react";
@@ -41,6 +43,17 @@ export function TRPCReactProvider({
 			<TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
 				{children}
 			</TRPCProvider>
+			<TanStackDevtools
+				config={{ position: "bottom-right", hideUntilHover: true }}
+				eventBusConfig={{ connectToServerBus: true }}
+				plugins={[
+					{
+						name: "TanStack Query",
+						render: <ReactQueryDevtoolsPanel />,
+						defaultOpen: true,
+					},
+				]}
+			/>
 		</QueryClientProvider>
 	);
 }

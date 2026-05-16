@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@opencited/ui";
+import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@opencited/ui";
 
 type SitemapStatus = "pending" | "indexed" | "error";
 
@@ -14,12 +14,12 @@ const statusConfig: Record<
 		description: "Sitemap added but not yet crawled",
 	},
 	indexed: {
-		dot: "bg-green-500",
+		dot: "bg-emerald-500",
 		label: "Indexed",
 		description: "All URLs successfully crawled and indexed",
 	},
 	error: {
-		dot: "bg-red-500",
+		dot: "bg-destructive",
 		label: "Error",
 		description: "Crawl failed or returned no URLs",
 	},
@@ -46,16 +46,10 @@ export function SitemapStatusBadge({
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<div
-					className={cn(
-						"inline-flex items-center gap-1.5 text-xs text-muted-foreground",
-						className,
-					)}
-					{...props}
-				>
+				<Badge variant="dot" className={className} {...props}>
 					<span className={cn("h-2 w-2 rounded-full", config.dot)} />
 					<span>{config.label}</span>
-				</div>
+				</Badge>
 			</TooltipTrigger>
 			<TooltipContent>
 				<p className="font-medium">{config.label}</p>

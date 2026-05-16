@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "./lib/utils";
+import { Skeleton } from "./skeleton";
 
 const entityCardCva = cva("rounded-2xl border border-border bg-muted", {
 	variants: {
@@ -178,11 +179,56 @@ const EntityCardFooter = React.forwardRef<
 ));
 EntityCardFooter.displayName = "EntityCardFooter";
 
+const entityCardSkeletonCva = cva("rounded-2xl border border-border bg-muted", {
+	variants: {
+		size: {
+			sm: "p-0.5",
+			md: "p-1",
+			lg: "p-2",
+		},
+	},
+	defaultVariants: {
+		size: "md",
+	},
+});
+
+interface EntityCardSkeletonProps
+	extends React.HTMLAttributes<HTMLDivElement>,
+		VariantProps<typeof entityCardSkeletonCva> {
+	hasFooter?: boolean;
+}
+
+const EntityCardSkeleton = React.forwardRef<
+	HTMLDivElement,
+	EntityCardSkeletonProps
+>(({ size, hasFooter = false, className, ...props }, ref) => (
+	<div
+		ref={ref}
+		className={cn(entityCardSkeletonCva({ size }), className)}
+		{...props}
+	>
+		<EntityCardContent size={size}>
+			<div className="flex items-center justify-between gap-2">
+				<Skeleton className="h-4 w-24" />
+				<Skeleton className="h-4 w-4 shrink-0" />
+			</div>
+			<Skeleton className="h-8 w-20 mt-3" />
+		</EntityCardContent>
+		{hasFooter && (
+			<EntityCardFooter size={size}>
+				<Skeleton className="h-3 w-32" />
+			</EntityCardFooter>
+		)}
+	</div>
+));
+EntityCardSkeleton.displayName = "EntityCardSkeleton";
+
 export {
 	EntityCard,
-	EntityCardContent,
 	EntityCardHeader,
 	EntityCardTitle,
 	EntityCardValue,
+	EntityCardContent,
 	EntityCardFooter,
+	EntityCardSkeleton,
 };
