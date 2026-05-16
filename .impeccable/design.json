@@ -1,0 +1,277 @@
+{
+	"schemaVersion": 2,
+	"generatedAt": "2026-05-16T00:00:00Z",
+	"title": "Design System: OpenCited",
+	"extensions": {
+		"colorMeta": {
+			"paper": {
+				"role": "neutral-bg",
+				"displayName": "Paper",
+				"canonical": "oklch(100% 0 0)",
+				"tonalRamp": [
+					"oklch(15% 0 0)",
+					"oklch(25% 0 0)",
+					"oklch(40% 0 0)",
+					"oklch(55% 0 0)",
+					"oklch(70% 0 0)",
+					"oklch(85% 0 0)",
+					"oklch(95% 0 0)",
+					"oklch(100% 0 0)"
+				]
+			},
+			"steel": {
+				"role": "neutral-fg",
+				"displayName": "Steel",
+				"canonical": "oklch(15% 0.005 280)",
+				"tonalRamp": [
+					"oklch(15% 0.005 280)",
+					"oklch(25% 0.005 280)",
+					"oklch(40% 0.005 280)",
+					"oklch(55% 0.005 280)",
+					"oklch(70% 0.005 280)",
+					"oklch(85% 0.005 280)",
+					"oklch(95% 0.005 280)",
+					"oklch(100% 0 0)"
+				]
+			},
+			"zinc-border": {
+				"role": "neutral-border",
+				"displayName": "Zinc Border",
+				"canonical": "oklch(90% 0.005 280)",
+				"tonalRamp": [
+					"oklch(30% 0.005 280)",
+					"oklch(45% 0.005 280)",
+					"oklch(60% 0.005 280)",
+					"oklch(75% 0.005 280)",
+					"oklch(85% 0.005 280)",
+					"oklch(90% 0.005 280)",
+					"oklch(95% 0.005 280)",
+					"oklch(98% 0 0)"
+				]
+			},
+			"zinc-surface": {
+				"role": "primary",
+				"displayName": "Zinc Surface",
+				"canonical": "oklch(20% 0.005 280)",
+				"tonalRamp": [
+					"oklch(15% 0.005 280)",
+					"oklch(20% 0.005 280)",
+					"oklch(30% 0.005 280)",
+					"oklch(45% 0.005 280)",
+					"oklch(60% 0.005 280)",
+					"oklch(75% 0.005 280)",
+					"oklch(90% 0.005 280)",
+					"oklch(98% 0 0)"
+				]
+			},
+			"zinc-destructive": {
+				"role": "destructive",
+				"displayName": "Zinc Destructive",
+				"canonical": "oklch(60% 0.2 25)",
+				"tonalRamp": [
+					"oklch(25% 0.15 25)",
+					"oklch(35% 0.18 25)",
+					"oklch(45% 0.2 25)",
+					"oklch(55% 0.2 25)",
+					"oklch(60% 0.2 25)",
+					"oklch(70% 0.15 25)",
+					"oklch(85% 0.08 25)",
+					"oklch(95% 0.03 25)"
+				]
+			},
+			"zinc-sidebar-ring": {
+				"role": "focus",
+				"displayName": "Sidebar Ring",
+				"canonical": "oklch(65% 0.2 250)",
+				"tonalRamp": [
+					"oklch(25% 0.15 250)",
+					"oklch(35% 0.18 250)",
+					"oklch(45% 0.2 250)",
+					"oklch(55% 0.2 250)",
+					"oklch(65% 0.2 250)",
+					"oklch(75% 0.15 250)",
+					"oklch(85% 0.08 250)",
+					"oklch(95% 0.03 250)"
+				]
+			}
+		},
+		"typographyMeta": {
+			"display": {
+				"displayName": "Display",
+				"purpose": "Hero headlines on landing page only."
+			},
+			"body": {
+				"displayName": "Body",
+				"purpose": "Primary reading text throughout the app."
+			},
+			"label": {
+				"displayName": "Label",
+				"purpose": "Keyboard shortcuts, code snippets, technical identifiers."
+			}
+		},
+		"shadows": [
+			{
+				"name": "surface-shadow",
+				"value": "0 1px 2px rgba(0,0,0,0.05)",
+				"purpose": "Barely perceptible separation for buttons, cards, and inputs in light mode."
+			}
+		],
+		"motion": [
+			{
+				"name": "ease-standard",
+				"value": "cubic-bezier(0.4, 0, 0.2, 1)",
+				"purpose": "Default easing for state transitions (150ms duration)."
+			},
+			{
+				"name": "ease-sidebar",
+				"value": "linear",
+				"purpose": "Sidebar collapse/expand transitions (200ms duration)."
+			}
+		],
+		"breakpoints": [
+			{ "name": "sm", "value": "640px" },
+			{ "name": "md", "value": "768px" },
+			{ "name": "lg", "value": "1024px" },
+			{ "name": "xl", "value": "1280px" }
+		]
+	},
+	"components": [
+		{
+			"name": "Primary Button",
+			"kind": "button",
+			"refersTo": "button-primary",
+			"description": "Default action button. Zinc surface background with inverse text.",
+			"html": "<button class=\"ds-btn-primary\">Analyze</button>",
+			"css": ".ds-btn-primary { background: #18181b; color: #fafafa; padding: 8px 16px; border-radius: 6px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(0,0,0,0.05); } .ds-btn-primary:hover { opacity: 0.9; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 1px #18181b; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+		},
+		{
+			"name": "Ghost Button",
+			"kind": "button",
+			"refersTo": "button-ghost",
+			"description": "Secondary action. Transparent background, text-only until hover.",
+			"html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+			"css": ".ds-btn-ghost { background: transparent; color: #09090b; padding: 8px 16px; border-radius: 6px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-ghost:hover { background: #f4f4f5; } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 1px #18181b; }"
+		},
+		{
+			"name": "Outline Button",
+			"kind": "button",
+			"refersTo": "button-outline",
+			"description": "Tertiary action. Paper background with border.",
+			"html": "<button class=\"ds-btn-outline\">Details</button>",
+			"css": ".ds-btn-outline { background: #ffffff; color: #09090b; padding: 8px 16px; border-radius: 6px; border: 1px solid #e4e4e7; font-size: 14px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(0,0,0,0.05); } .ds-btn-outline:hover { background: #f4f4f5; } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 1px #18181b; }"
+		},
+		{
+			"name": "Input Field",
+			"kind": "input",
+			"refersTo": "input-default",
+			"description": "Standard text input. Transparent background with zinc border.",
+			"html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Enter domain...\" />",
+			"css": ".ds-input { background: transparent; color: #09090b; padding: 8px 12px; border-radius: 6px; border: 1px solid #e4e4e7; font-size: 14px; height: 36px; width: 100%; transition: box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-input::placeholder { color: #71717a; } .ds-input:focus-visible { outline: none; box-shadow: 0 0 0 1px #18181b; } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; }"
+		},
+		{
+			"name": "Card",
+			"kind": "card",
+			"refersTo": "card-default",
+			"description": "Content container. Paper background with hairline border and subtle shadow.",
+			"html": "<div class=\"ds-card\"><div class=\"ds-card-header\"><h3 class=\"ds-card-title\">Crawl Results</h3><p class=\"ds-card-desc\">Last updated 2 hours ago</p></div><div class=\"ds-card-body\"><p>Card content goes here.</p></div></div>",
+			"css": ".ds-card { background: #ffffff; color: #09090b; border-radius: 12px; border: 1px solid rgba(228,228,231,0.6); box-shadow: 0 1px 2px rgba(0,0,0,0.05); } .ds-card-header { padding: 24px 24px 0; display: flex; flex-direction: column; gap: 6px; } .ds-card-title { font-weight: 600; font-size: 16px; line-height: 1.2; letter-spacing: -0.02em; } .ds-card-desc { font-size: 14px; color: #71717a; } .ds-card-body { padding: 24px; }"
+		},
+		{
+			"name": "Badge",
+			"kind": "chip",
+			"refersTo": "badge-default",
+			"description": "Compact status label. Primary background with inverse text.",
+			"html": "<span class=\"ds-badge\">Active</span>",
+			"css": ".ds-badge { background: #18181b; color: #fafafa; padding: 2px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-badge:hover { background: rgba(24,24,27,0.8); }"
+		},
+		{
+			"name": "Success Badge",
+			"kind": "chip",
+			"refersTo": "badge-success",
+			"description": "Positive status indicator. Emerald tint background.",
+			"html": "<span class=\"ds-badge-success\">Verified</span>",
+			"css": ".ds-badge-success { background: rgba(16,185,129,0.1); color: #059669; padding: 2px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; }"
+		},
+		{
+			"name": "Navigation Item",
+			"kind": "nav",
+			"refersTo": "sidebar-menu-button",
+			"description": "Sidebar navigation link. Active state uses emphasis background with medium weight.",
+			"html": "<button class=\"ds-nav-item\" data-active=\"true\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\"/></svg><span>Dashboard</span><span class=\"ds-nav-kbd\">G</span></button>",
+			"css": ".ds-nav-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; font-size: 14px; color: #3f3f46; background: transparent; border: none; cursor: pointer; width: 100%; text-align: left; transition: background-color 200ms linear; } .ds-nav-item:hover { background: #e2e8f0; } .ds-nav-item[data-active=\"true\"] { background: #e2e8f0; font-weight: 500; color: #18181b; } .ds-nav-kbd { margin-left: auto; font-size: 9px; font-family: 'Geist Mono', monospace; background: #f4f4f5; padding: 2px 6px; border-radius: 4px; color: #71717a; }"
+		},
+		{
+			"name": "Tabs List",
+			"kind": "custom",
+			"refersTo": "tabs-list",
+			"description": "Segmented control for switching between views. Muted background with active tab highlighted.",
+			"html": "<div class=\"ds-tabs\"><button class=\"ds-tab\" data-active=\"true\">Overview</button><button class=\"ds-tab\">Details</button><button class=\"ds-tab\">History</button></div>",
+			"css": ".ds-tabs { display: inline-flex; background: #f4f4f5; border-radius: 8px; padding: 4px; height: 36px; align-items: center; gap: 4px; } .ds-tab { padding: 4px 12px; border-radius: 6px; font-size: 14px; font-weight: 500; color: #71717a; background: transparent; border: none; cursor: pointer; transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-tab[data-active=\"true\"] { background: #ffffff; color: #09090b; box-shadow: 0 1px 2px rgba(0,0,0,0.05); } .ds-tab:hover:not([data-active=\"true\"]) { color: #09090b; }"
+		}
+	],
+	"narrative": {
+		"northStar": "The Analyst's Workbench",
+		"overview": "OpenCited's visual system is built for developers who treat answer engine optimization as serious work, not a dashboard to glance at. The interface is a workspace: organized, dense without being cluttered, and quiet enough that the data speaks louder than the chrome. Every surface exists to reduce cognitive load, not add to it. The aesthetic is Steel and Paper — cool zinc neutrals, crisp contrast, editorial precision. There is no saturated accent color carrying the brand. The monochrome palette is the brand.",
+		"keyCharacteristics": [
+			"Monochrome zinc palette with no decorative color",
+			"Flat surfaces separated by hairline borders, not shadows",
+			"Geist typeface family: clean, geometric, technical",
+			"Keyboard-first interaction patterns with visible shortcuts",
+			"Progressive disclosure over information density at rest"
+		],
+		"rules": [
+			{
+				"name": "The Monochrome Doctrine",
+				"body": "The system has no brand accent color. Zinc carries every surface. If you reach for a saturated color, you're solving the wrong problem — use weight, size, or spacing instead.",
+				"section": "colors"
+			},
+			{
+				"name": "The One Blue Rule",
+				"body": "#3b82f6 exists for one purpose: keyboard focus rings. Never use it for decoration, status, or emphasis.",
+				"section": "colors"
+			},
+			{
+				"name": "The Mono-Only-When-Technical Rule",
+				"body": "Geist Mono appears only for keyboard shortcuts (Kbd), code, and technical identifiers. Never for body text or labels that aren't machine-readable.",
+				"section": "typography"
+			},
+			{
+				"name": "The No-Flat-Scale Rule",
+				"body": "Hierarchy requires at least a 1.25 ratio between steps. If two text sizes feel too close, one of them is wrong.",
+				"section": "typography"
+			},
+			{
+				"name": "The Flat-By-Default Rule",
+				"body": "Surfaces are flat at rest. Shadows appear only as a response to state (hover, focus, modal overlay). If a shadow exists on a resting card, it's too dark.",
+				"section": "elevation"
+			},
+			{
+				"name": "The Border-Over-Shadow Rule",
+				"body": "When in doubt about separating surfaces, use a border. Borders are precise and predictable; shadows are ambient and subjective.",
+				"section": "elevation"
+			}
+		],
+		"dos": [
+			"Do use the zinc monochrome palette for all surfaces. Let lightness steps carry hierarchy, not hue.",
+			"Do separate surfaces with 1px borders at 60% opacity. Borders are precise; shadows are not.",
+			"Do use Geist for all UI text and Geist Mono only for keyboard shortcuts, code, and technical identifiers.",
+			"Do cap body text line length at 65-75ch for readability.",
+			"Do make focus rings visible and consistent. The single blue (#3b82f6) is reserved for this purpose.",
+			"Do use progressive disclosure. Show the essential data first, let users drill deeper.",
+			"Do use @opencited/ui components instead of raw HTML elements. Consistency is non-negotiable."
+		],
+		"donts": [
+			"Don't add a saturated accent color. The monochrome palette is the brand. If you reach for color, use weight, size, or spacing instead.",
+			"Don't use decorative gradients. No gradient text, no gradient backgrounds, no gradient borders.",
+			"Don't build busy dashboards with charts everywhere. Progressive disclosure over wall-of-metrics.",
+			"Don't use generic blue/gradient AI tool aesthetics. This is not a SaaS landing page template.",
+			"Don't use enterprise-y data visualizations. The interface should feel like a workspace, not a BI tool.",
+			"Don't use border-left or border-right greater than 1px as a colored accent stripe on cards or list items.",
+			"Don't use glassmorphism or backdrop-filter as a default treatment. Flat surfaces, clear borders.",
+			"Don't animate CSS layout properties. Use opacity, transform, or purposeful transitions only.",
+			"Don't use bounce or elastic easing. Ease out with exponential curves (ease-out-quart or better).",
+			"Don't wrap everything in a container. Most surfaces don't need one.",
+			"Don't use modals as a first thought. Exhaust inline and progressive alternatives first."
+		]
+	}
+}

@@ -1,8 +1,10 @@
-# Impeccable Design Context
+# Product
 
-## Design Context
+## Register
 
-### Users
+product
+
+## Users
 Solo developers and indie hackers who want to track, analyze, and improve their website's visibility in AI answer engines (ChatGPT, Perplexity, Claude, Gemini). They are technically capable, value transparency and control, and use this tool as a workspace for ongoing optimization—not a passive dashboard they check once a month. Context: desk work during the day, possibly evening sessions; they need to move fast and find insights without friction.
 
 ### Brand Personality
@@ -26,3 +28,12 @@ Refined minimal inspired by Linear and Raycast. Light mode as default with dark 
 4. **Typography hierarchy**: Distinctive display font for headings, refined body font for readability. Fluid type scale on marketing pages, fixed scale in app UI.
 5. **Motion with purpose**: Staggered entrances on page load, subtle state transitions. Nothing bouncy or elastic.
 6. **Component reuse**: Always use UI package components (Button, Card, etc.) instead of raw HTML elements. This ensures consistency and allows centralized style changes.
+
+## Accessibility & Inclusion
+
+**WCAG 2.1 AA** as baseline. The zinc monochrome palette naturally supports strong contrast ratios; verify all text meets 4.5:1 minimum.
+
+- **Reduced motion**: Respect `prefers-reduced-motion`. Staggered entrances and state transitions should be disabled or simplified when the user requests reduced motion.
+- **Keyboard navigation**: Full keyboard operability is non-negotiable for a keyboard-first tool. Focus rings must be visible and consistent.
+- **Screen reader support**: Semantic HTML, proper ARIA labels on interactive elements, and meaningful alt text for any non-decorative imagery.
+- **Color independence**: Status and state must not rely on color alone. Use icons, text labels, or patterns alongside color cues.
