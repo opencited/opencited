@@ -1,0 +1,102 @@
+"use client";
+
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+	Button,
+	Badge,
+} from "@opencited/ui";
+import { Clock, Calendar, Hash, Type } from "lucide-react";
+import { format } from "date-fns";
+
+interface ViewPromptDialogProps {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	prompt: {
+		id: string;
+		query: string;
+		createdAt: string | Date;
+		lastCrawledAt?: string | Date | null;
+	} | null;
+}
+
+export function ViewPromptDialog({
+	open,
+	onOpenChange,
+	prompt,
+}: ViewPromptDialogProps) {
+	if (!prompt) return null;
+
+	const wordCount = prompt.query
+		.trim()
+		.split(/\s+/)
+		.filter((w) => w.length > 0).length;
+	const charCount = prompt.query.length;
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-3xl">
+				<DialogHeader>
+					<DialogTitle>Prompt Details</DialogTitle>
+				</DialogHeader>
+
+				<div className="space-y-6">
+					<div className="flex items-center gap-4 text-sm text-muted-foreground">
+						<div className="flex items-center gap-1.5">
+							<Calendar className="h-4 w-4" />
+							<span className="font-medium">Created</span>{" "}
+							<span>{format(new Date(prompt.createdAt), "PPP")}</span>
+						</div>
+						<div className="flex items-center gap-1.5">
+							<Clock className="h-4 w-4" />
+							<span className="font-medium">
+								{prompt.lastCrawledAt ? "Last crawled" : "Never crawled"}
+							</span>
+							{prompt.lastCrawledAt && (
+								<span>{format(new Date(prompt.lastCrawledAt), "PPP")}</span>
+							)}
+						</div>
+					</div>
+
+					<div className="rounded-lg border border-border bg-muted/30 p-4">
+						<p className="text-base leading-relaxed whitespace-pre-wrap max-w-[65ch]">
+							{prompt.query}
+						</p>
+					</div>
+
+					<div className="flex items-center gap-4">
+						<div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground tabular-nums">
+							<Hash className="h-3 w-3" />
+							<span>
+								{wordCount} {wordCount === 1 ? "word" : "words"}
+							</span>
+						</div>
+						<div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground tabular-nums">
+							<Type className="h-3 w-3" />
+							<span>{charCount.toLocaleString()} characters</span>
+						</div>
+						{wordCount < 10 && (
+							<Badge variant="destructive" className="text-xs">
+								Below minimum (10 words)
+							</Badge>
+						)}
+						{wordCount > 500 && (
+							<Badge variant="destructive" className="text-xs">
+								Above maximum (500 words)
+							</Badge>
+						)}
+					</div>
+				</div>
+
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Close
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}

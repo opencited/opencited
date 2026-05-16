@@ -4,3 +4,8 @@ export * from "./sitemap";
 export * from "./sitemapUrl";
 export * from "./crawledPage";
 export * from "./pageAnalysis";
+export * from "./promptQuery";
+export * from "./promptQueryCrawl";
+export * from "./competitor";
+export * from "./crawlSource";
+export * from "./crawlBrandMention";

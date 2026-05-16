@@ -1,6 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { ClerkProvider } from "@clerk/nextjs";
-import { SidebarInset, SidebarProvider, ThemeProvider } from "@opencited/ui";
+import {
+	SidebarInset,
+	SidebarProvider,
+	ThemeProvider,
+	Toaster,
+} from "@opencited/ui";
 import { redirect } from "next/navigation";
 import { TRPCReactProvider } from "../_trpc/client";
 import { AppSidebar } from "../components/app-sidebar";
@@ -41,6 +46,7 @@ export default async function ProtectedLayout({
 							</SidebarInset>
 						</div>
 					</SidebarProvider>
+					<Toaster />
 				</ThemeProvider>
 			</TRPCReactProvider>
 		</ClerkProvider>

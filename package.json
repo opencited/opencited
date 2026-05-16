@@ -15,14 +15,6 @@
 		"commit": "git add . && czg",
 		"clean": "find . -name node_modules -o -name .next -o -name .turbo -o -name dist -type d -prune | xargs rm -rf"
 	},
-	"devDependencies": {
-		"@biomejs/biome": "catalog:",
-		"dotenv-cli": "catalog:",
-		"husky": "9.1.7",
-		"shadcn": "catalog:",
-		"turbo": "2.9.6",
-		"typescript": "catalog:"
-	},
 	"engines": {
 		"node": "24.14.1",
 		"bun": "1.3.10"
@@ -72,20 +64,38 @@
 			"tsx": "4.21.0",
 			"fast-xml-parser": "5.6.0",
 			"cheerio": "1.0.0",
-			"@ai-sdk/openai": "1.0.0",
-			"ai": "4.0.0",
+			"@ai-sdk/openai": "3.0.63",
+			"ai": "6.0.177",
 			"workflow": "4.2.4",
 			"@workflow/vitest": "4.0.5",
 			"vitest": "3.0.0",
 			"ink": "7.0.0",
 			"bun-types": "1.3.12",
 			"motion": "12.38.0",
-			"date-fns": "4.1.0"
+			"date-fns": "4.1.0",
+			"@playwright/test": "1.59.1",
+			"playwright": "1.59.1",
+			"@trigger.dev/sdk": "4.4.6",
+			"@trigger.dev/build": "4.4.6",
+			"dompurify": "3.3.0",
+			"@types/dompurify": "3.2.0",
+			"@radix-ui/react-select": "^2.2.6"
 		}
 	},
 	"config": {
 		"commitizen": {
 			"czConfig": "./.commitlintrc.cjs"
 		}
+	},
+	"devDependencies": {
+		"@biomejs/biome": "catalog:",
+		"dotenv-cli": "catalog:",
+		"husky": "9.1.7",
+		"shadcn": "catalog:",
+		"turbo": "2.9.6",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@ai-sdk/openai-compatible": "^2.0.47"
 	}
 }

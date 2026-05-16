@@ -21,14 +21,7 @@ const STATUS_CONFIG: Record<
 
 export function CrawlStatusBadge({ status }: CrawlStatusBadgeProps) {
 	if (status === null) {
-		return (
-			<Badge
-				variant="outline"
-				className="border-amber-500/50 text-amber-600 dark:text-amber-400"
-			>
-				Pending
-			</Badge>
-		);
+		return <Badge variant="warning">Pending</Badge>;
 	}
 
 	const config = STATUS_CONFIG[status];

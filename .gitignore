@@ -47,3 +47,8 @@ yarn-error.log*
 
 # Agents
 .omc
+
+.playwright
+# used by playwrite playground for storage (cookie, session etc)
+.playwrite-playground
+.trigger

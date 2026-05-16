@@ -51,3 +51,39 @@ export {
 	pageAnalysisInsertSchema,
 	pageAnalysisUpdateSchema,
 } from "./schema/pageAnalysis";
+export {
+	promptQueryTable,
+	promptQuerySelectSchema,
+	promptQueryBaseInsertSchema,
+	promptQueryInsertSchema,
+	promptQueryUpdateSchema,
+} from "./schema/promptQuery";
+export {
+	promptQueryCrawlTable,
+	promptQueryCrawlSelectSchema,
+	promptQueryCrawlBaseInsertSchema,
+	promptQueryCrawlInsertSchema,
+	promptQueryCrawlUpdateSchema,
+	promptQueryCrawlStatusEnum,
+} from "./schema/promptQueryCrawl";
+export {
+	competitorTable,
+	competitorSelectSchema,
+	competitorBaseInsertSchema,
+	competitorInsertSchema,
+	competitorUpdateSchema,
+} from "./schema/competitor";
+export {
+	crawlSourceTable,
+	crawlSourceSelectSchema,
+	crawlSourceBaseInsertSchema,
+	crawlSourceInsertSchema,
+	crawlSourceUpdateSchema,
+} from "./schema/crawlSource";
+export {
+	crawlBrandMentionTable,
+	crawlBrandMentionSelectSchema,
+	crawlBrandMentionBaseInsertSchema,
+	crawlBrandMentionInsertSchema,
+	crawlBrandMentionUpdateSchema,
+} from "./schema/crawlBrandMention";

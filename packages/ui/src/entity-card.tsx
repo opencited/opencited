@@ -5,8 +5,8 @@ import { cn } from "./lib/utils";
 const entityCardCva = cva("rounded-2xl border border-border bg-muted", {
 	variants: {
 		size: {
-			sm: "p-1",
-			md: "p-1.5",
+			sm: "p-0.5",
+			md: "p-1",
 			lg: "p-2",
 		},
 	},
@@ -59,7 +59,7 @@ const EntityCard = React.forwardRef<HTMLDivElement, EntityCardProps>(
 );
 EntityCard.displayName = "EntityCard";
 
-const entityCardContentCva = cva("rounded-2xl border border-border bg-card", {
+const entityCardContentCva = cva("rounded-xl border border-border bg-card", {
 	variants: {
 		size: {
 			sm: "p-3",

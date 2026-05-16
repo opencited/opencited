@@ -14,7 +14,7 @@ import {
 } from "@opencited/ui";
 import { DataList } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
-import { Globe, Database, Hash, ArrowRight } from "lucide-react";
+import { Globe, Database, Hash, ArrowRight, MessageSquare } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
 import Link from "next/link";
@@ -24,6 +24,7 @@ import { TimeAgo } from "@/app/components/time-ago";
 type RouterOutput = inferRouterOutputs<AppRouter>;
 type SitemapList = RouterOutput["sitemap"]["list"];
 type UrlCount = RouterOutput["sitemap"]["getUrlCount"];
+type PromptCount = RouterOutput["promptQuery"]["count"];
 
 function StatCard({
 	icon: Icon,
@@ -63,15 +64,23 @@ function StatCard({
 export default function DashboardPage() {
 	const trpc = useTRPC();
 
+	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
+	const domainProject = domainProjectQuery.data;
+
 	const sitemapsQuery = useQuery(trpc.sitemap.list.queryOptions({}));
 	const urlCountQuery = useQuery(trpc.sitemap.getUrlCount.queryOptions());
+	const promptCountQuery = useQuery(
+		trpc.promptQuery.count.queryOptions({
+			domainProjectId: domainProject?.id ?? "",
+		}),
+	);
 
 	return (
 		<PageShell title="Dashboard">
 			<div className="space-y-6">
 				<div>
 					<h2 className="text-lg font-medium mb-2">Project Overview</h2>
-					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(5,200px)]">
+					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(3,200px)]">
 						<QueryCell
 							query={sitemapsQuery}
 							success={(sitemaps) => (
@@ -91,6 +100,19 @@ export default function DashboardPage() {
 									label="Total URLs"
 									value={(urlCount as UrlCount)?.count.toLocaleString() ?? 0}
 									description="URLs discovered"
+								/>
+							)}
+						/>
+						<QueryCell
+							query={promptCountQuery}
+							success={(promptCount) => (
+								<StatCard
+									icon={MessageSquare}
+									label="Prompts"
+									value={
+										(promptCount as PromptCount)?.count.toLocaleString() ?? 0
+									}
+									description="Saved prompts"
 								/>
 							)}
 						/>

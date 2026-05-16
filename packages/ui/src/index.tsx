@@ -1,3 +1,4 @@
+export { Toaster } from "sonner";
 export { Button, buttonVariants } from "./button";
 export type { ButtonProps } from "./button";
 
@@ -15,6 +16,7 @@ export {
 } from "./card";
 
 export { Input } from "./input";
+export { Textarea } from "./textarea";
 export { Label } from "./label";
 export { Badge, badgeVariants } from "./badge";
 export type { BadgeProps } from "./badge";
@@ -126,3 +128,18 @@ export {
 	TabsTrigger,
 	TabsContent,
 } from "./tabs";
+
+export {
+	Select,
+	SelectGroup,
+	SelectValue,
+	SelectTrigger,
+	SelectContent,
+	SelectLabel,
+	SelectItem,
+	SelectSeparator,
+	SelectScrollUpButton,
+	SelectScrollDownButton,
+} from "./select";
+
+export { Spinner } from "./spinner";

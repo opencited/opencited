@@ -47,65 +47,11 @@ Agents MUST NOT use `git commit` or `git push`. Git is only to be used for read-
 | `packages/trpc` | `@opencited/trpc` | tRPC server & client (routers, procedures, context) |
 | `packages/db` | `@opencited/db` | Drizzle ORM + Neon Postgres (used only by tRPC) |
 | `packages/crawler` | `@opencited/crawler` | Sitemap fetching and parsing (used by tRPC) |
+| `packages/browser-crawler` | `@opencited/browser-crawler` | Browser automation with Playwright (Strategy Pattern + Orchestrator) |
+| `packages/actions` | `@opencited/actions` | Vercel Workflow SDK actions (DB operations) |
+| `packages/trigger` | `@opencited/trigger` | Trigger.dev background tasks (Playwright + AI providers) |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
 | `packages/typescript-config` | `@opencited/typescript-config` | Shared tsconfigs |
-
-### Build order
-
-Turbo's `dependsOn: ["^build"]` ensures dependencies build first:
-1. `packages/tailwind-config` — no build (pure CSS/config, consumed at build time)
-2. `packages/ui` — `build:styles` (tailwindcss CLI) + `build:components` (tsc) run in parallel
-3. `apps/web` — `next build`
-
-### UI package internals
-
-- Components live in `packages/ui/src/*.tsx`. Exports via `index.tsx`.
-- CSS: `src/styles.css` imports `@opencited/tailwind-config` and uses `@source "../src"` to scan component files.
-- `build:styles` compiles CSS to `dist/index.css` via `@tailwindcss/cli`.
-- `build:components` compiles TS to `dist/*.js` via `tsc` (tsconfig: `outDir: ./dist`, `rootDir: ./src`).
-- `exports` field maps `.` → `dist/index.js`, `./styles.css` → `dist/index.css`.
-- shadcn config in `components.json` — `style: "new-york"`, `rsc: false`, `baseColor: zinc`.
-- Adding a component: `bun run --filter=@opencited/ui generate:component`.
-
-### tRPC package internals
-
-The tRPC package (`packages/trpc`) follows the ConvoForm structure:
-- `src/trpc.ts` — tRPC initialization, context creation, and base procedures. **Exports `db` from context.**
-- `src/procedures/publicProcedure.ts` — Base public procedure
-- `src/procedures/authProtectedProcedure.ts` — Protected procedure for authenticated users
-- `src/router/root.ts` — Main app router that merges all sub-routers
-- `src/router/*.ts` — Individual routers (e.g., `user.ts`)
-- `index.ts` — Package exports
-
-The web app uses tRPC via:
-- `apps/web/app/api/trpc/[trpc]/route.ts` — Edge runtime HTTP handler
-- `apps/web/app/_trpc/client.tsx` — Client-side `TRPCProvider` + `useTRPC` hook
-- `apps/web/app/_trpc/query-client.ts` — TanStack Query client factory
-
-### DB package internals
-
-The db package (`packages/db`) provides Drizzle ORM with Neon Postgres (drizzle-orm `1.0.0-beta.21`):
-- `src/index.ts` — Exports `db` (Drizzle client with Pool from `@neondatabase/serverless`)
-- `src/schema/index.ts` — Schema barrel export
-- `src/schema/common-fields.ts` — Reusable fields: `id` (UUID), `createdAt`, `updatedAt`
-- `src/schema/<feature>.ts` — One table per file. Named `<feature>Table`. Exports select, baseInsertSchema, insertSchema (extended), updateSchema. Auto-generated fields (id, createdAt, updatedAt) are omitted from insertSchema.
-- `drizzle.config.ts` — Drizzle Kit config (schema, out, dialect)
-
-**Scripts:**
-```sh
-bun run --filter=@opencited/db generate   # Generate migrations
-bun run --filter=@opencited/db migrate    # Apply migrations
-bun run --filter=@opencited/db dev        # Push schema (dev workflow)
-```
-
-**Usage in tRPC routes:**
-```ts
-// ctx.db is available in all procedures
-const result = await ctx.db.select().from(projects);
-
-// Zod schemas for validation (exported from same file as table)
-import { projectSelectSchema, projectInsertSchema, projectUpdateSchema } from "@opencited/db";
-```
 
 ### Tailwind theme
 
@@ -131,70 +77,41 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 | `DATABASE_URL` | `packages/db`, `turbo.json` | Neon Postgres connection string |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `apps/web` | Clerk auth |
 | `CLERK_SECRET_KEY` | `apps/web` | Clerk auth |
+| `TRIGGER_SECRET_KEY` | `packages/trigger`, `turbo.json` | Trigger.dev authentication |
+| `OPENAI_API_KEY` | `packages/trigger`, `turbo.json` | LLM analysis for crawler |
+| `LOGGER_LEVEL` | `packages/browser-crawler` | Browser crawler log level (`silent` | `info` | `debug`) |
 
 `turborepo` `globalEnv` includes all env vars required during builds.
 
 ## Clerk Authentication
 
-`apps/web` uses Clerk for auth with Next.js App Router:
+`apps/web` uses Clerk for auth with Next.js App Router. Keys are declared in `turbo.json` `globalEnv` so they are available during builds.
 
-| File | Purpose |
-|------|---------|
-| `apps/web/proxy.ts` | `clerkMiddleware()` — protects routes |
-| `apps/web/app/components/auth-ui.tsx` | `<Show>`, `<SignInButton>`, `<SignUpButton>`, `<UserButton>` |
-| `apps/web/app/layout.tsx` | `<ClerkProvider>` and `<TRPCReactProvider>` wrap the app |
-| `.env.local` | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` |
+## Architecture Rules
 
-Keys are declared in `turbo.json` `globalEnv` so they are available during builds.
+### Domain Project = Brand
+- **One organization = One domainProject = One brand** (1:1:1 mapping)
+- `domainProject` is the canonical brand entity for the workspace
+- All feature tables (crawls, mentions, citations, competitors) reference `domainProjectId`
+- Do NOT create separate `brand` tables or link feature data to `clerkOrganizationId`
+- `domainProject` fields: `domain` (primary URL), `name` (display name), `aliases` (JSONB array for mention detection), `logoUrl`, `active`
 
-## Page Crawler Engine
+## UI Component Rules
 
-### Architecture
+**Always use `@opencited/ui` components without custom style overrides.** See [.impeccable.md](.impeccable.md) for design principles.
 
-| Package | Role |
-|---------|------|
-| `packages/crawler` | Core engine — `fetchPage()`, `extractContent()`, `analyzeWithLLM()` (framework-agnostic) |
-| `packages/trpc/src/workflows/` | Workflow SDK orchestration — `crawlPageWorkflow`, `crawlSitemapWorkflow` |
-| `packages/trpc/src/actions/crawl/` | tRPC actions — trigger crawls, upsert results, list pages |
-| `packages/db/src/schema/crawledPage.ts` | Crawled page records (URL, HTTP status, content hash) |
-| `packages/db/src/schema/pageAnalysis.ts` | Page analysis (Content & SEO metrics + LLM insights) |
+**Allowed:** Layout (`flex`, `grid`), size (`h-*`, `w-*`), spacing (`p-*`, `gap-*`), typography sizing (`text-sm`), interaction states (`hover:*`), opacity modifiers.
 
-### Crawl Flow
+**Not Allowed:** Color overrides (`text-destructive`, `bg-*`), border styles (`border-dashed`), custom variants (ring shadows, etc.).
 
-1. tRPC action triggers workflow (`triggerSitemapCrawlAction` → `crawlSitemapWorkflow`)
-2. Workflow crawls pages in batches (10 at a time with 500ms delay)
-3. After each batch, workflow saves results to DB via `upsertCrawledPageBatchAction` + `upsertPageAnalysisBatchAction`
-4. Results are persisted incrementally — if crawl fails mid-way, already-saved batches aren't lost
-5. Workflow returns `{ total, succeeded, failed }` counts to the action
+**Need a variant?** Add it to the component in `packages/ui/src/` using `cva`, then use `variant` prop instead of `className`.
 
-### Workflow Run Tracking
+```tsx
+// ❌ WRONG
+<Badge variant="outline" className="text-emerald-600">Valid</Badge>
+<Card className="border-dashed">
 
-`activeCrawlRunId` columns on `sitemap` and `sitemap_url` tables track running workflows:
-- Set before `start()` call, cleared in `finally` block
-- UI buttons (`CrawlAllButton`, `RunButton`) disable based on presence of this value
-- `listSitemapUrlsAction` returns `{ urls: [...], sitemapActiveCrawlRunId }` — each URL item includes its own `activeCrawlRunId`
-- No polling needed — status comes from the existing query
-
-### Auto-Crawl on Onboarding
-
-After onboarding completes (user confirms project in wizard):
-1. Creates `domainProject`, sitemaps, parses sitemap XML (existing flow)
-2. Fires `triggerSitemapCrawl` for each created sitemap (fire-and-forget)
-3. Redirects to `/app/dashboard` immediately — crawl runs in background
-4. User sees "Running..." state on `CrawlAllButton`; can retry manually if crawl fails
-
-Located in `apps/web/app/(onboarding)/onboarding/_components/onboarding-wizard.tsx` → `handleConfirmAndSave`.
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `packages/trpc/src/workflows/crawl-sitemap.ts` | Sitemap crawl workflow — batches pages, saves results after each batch |
-| `packages/trpc/src/workflows/crawl-page.ts` | Single page crawl workflow — fetches, extracts content, analyzes with LLM |
-| `packages/trpc/src/actions/crawl/triggerSitemapCrawlAction.ts` | Starts `crawlSitemapWorkflow`, sets/clears `activeCrawlRunId` |
-| `packages/trpc/src/actions/crawl/triggerSingleCrawlAction.ts` | Starts `crawlPageWorkflow` for a single URL, sets/clears `activeCrawlRunId` |
-| `packages/trpc/src/actions/crawl/upsertCrawledPageBatchAction.ts` | Upserts crawled page records to DB |
-| `packages/trpc/src/actions/crawl/upsertPageAnalysisBatchAction.ts` | Upserts page analysis records to DB |
-| `apps/web/app/components/crawl-all-button.tsx` | "Crawl All" button for sitemap |
-| `apps/web/app/components/run-button.tsx` | "Run" button for individual URL |
-| `apps/web/app/components/crawl-status-badge.tsx` | Badge showing Pending/Fetched/Analyzed/Error |
+// ✅ CORRECT
+<Badge variant="success">Valid</Badge>
+<Card variant="dashed">
+```
