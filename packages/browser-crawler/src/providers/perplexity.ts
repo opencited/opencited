@@ -3,7 +3,6 @@ import type {
 	CrawlResult,
 	StructuredCrawlData,
 	CitationSource,
-	BrandMention,
 	AnswerFormat,
 } from "./types";
 import type { CrawlerProvider } from "./base";
@@ -72,13 +71,12 @@ export class PerplexityProvider implements CrawlerProvider {
 		session: BrowserSession,
 	): Promise<StructuredCrawlData> {
 		const citations = await this.extractCitations(session);
-		const brandMentions = await this.extractBrandMentions(session);
 		const relatedQuestions = await this.extractRelatedQuestions(session);
 		const answerFormat = this.detectAnswerFormat(session);
 
 		return {
 			citations,
-			brandMentions,
+			brandMentions: [],
 			relatedQuestions,
 			answerFormat,
 		};
@@ -140,49 +138,6 @@ export class PerplexityProvider implements CrawlerProvider {
 		}
 
 		return citations;
-	}
-
-	private async extractBrandMentions(
-		session: BrowserSession,
-	): Promise<BrandMention[]> {
-		const mentions: BrandMention[] = [];
-
-		try {
-			const content = await session.page.evaluate(() => {
-				const answerContainer = document.querySelector(
-					'[class*="prose"], [class*="answer"]',
-				);
-				return answerContainer?.textContent ?? "";
-			});
-
-			const brandPattern =
-				/[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*(?:\.com|\.ai|\.io)?/g;
-			const seen = new Set<string>();
-
-			let match: RegExpExecArray | null = brandPattern.exec(content);
-			while (match !== null) {
-				const brandName = match[0].replace(/\.(com|ai|io)$/, "");
-				if (!seen.has(brandName)) {
-					seen.add(brandName);
-
-					const start = Math.max(0, match.index - 100);
-					const end = Math.min(content.length, match.index + 100);
-					const context = content.slice(start, end).trim();
-
-					mentions.push({
-						brandName,
-						context,
-						position: match.index,
-					});
-				}
-
-				match = brandPattern.exec(content);
-			}
-		} catch {
-			// Brand mention extraction is non-critical
-		}
-
-		return mentions;
 	}
 
 	private async extractRelatedQuestions(

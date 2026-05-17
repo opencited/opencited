@@ -8,6 +8,9 @@ import {
 	saveCrawlResultAction,
 	failCrawlAction,
 	saveStructuredCrawlDataAction,
+	extractBrandIntelligenceAction,
+	saveBrandIntelligenceAction,
+	getCrawlContextAction,
 } from "@opencited/actions";
 import { getDb } from "./db";
 
@@ -19,10 +22,11 @@ export const perplexityCrawlTask = task({
 		promptQueryId: string;
 		promptQueryCrawlId: string;
 	}) => {
-		logger.log("🕷️ Starting Perplexity crawl", {
-			query: payload.query,
-			promptQueryId: payload.promptQueryId,
-			promptQueryCrawlId: payload.promptQueryCrawlId,
+		const db = getDb();
+
+		const crawlContext = await getCrawlContextAction({
+			input: { promptQueryId: payload.promptQueryId },
+			ctx: { db, userId: null, isAuthenticated: false },
 		});
 
 		const crawler = new Crawler({
@@ -42,14 +46,14 @@ export const perplexityCrawlTask = task({
 			});
 			const endTime = Date.now();
 
-			logger.log("✅ Crawl completed, saving to database", {
+			logger.log("Browser crawl completed", {
 				url: result.metadata.url,
 				title: result.metadata.title,
 				contentLength: result.content.length,
 				loadTimeMs: result.metadata.loadTimeMs,
+				citationsCount: result.structured?.citations.length ?? 0,
 			});
 
-			// Save successful crawl result to DB
 			await saveCrawlResultAction({
 				input: {
 					crawlId: payload.promptQueryCrawlId,
@@ -61,34 +65,65 @@ export const perplexityCrawlTask = task({
 					timestamp: result.metadata.timestamp.toISOString(),
 					promptQueryId: payload.promptQueryId,
 				},
-				ctx: { db: getDb(), userId: null, isAuthenticated: false },
+				ctx: { db, userId: null, isAuthenticated: false },
 			});
 
-			// Save structured data if available
 			if (result.structured) {
-				logger.log("📊 Saving structured crawl data", {
-					citations: result.structured.citations.length,
-					brandMentions: result.structured.brandMentions.length,
-				});
-
 				await saveStructuredCrawlDataAction({
 					input: {
 						crawlId: payload.promptQueryCrawlId,
 						promptQueryId: payload.promptQueryId,
+						domainProjectId: crawlContext.domainProjectId,
 						structured: {
 							citations: result.structured.citations,
-							brandMentions: result.structured.brandMentions,
+							brandMentions: [],
 							answerFormat: result.structured.answerFormat,
 							wordCount: result.content.split(/\s+/).length,
 						},
 					},
-					ctx: { db: getDb(), userId: null, isAuthenticated: false },
+					ctx: { db, userId: null, isAuthenticated: false },
 				});
 			}
 
-			logger.log("💾 Crawl result saved to database", {
-				crawlId: payload.promptQueryCrawlId,
-			});
+			try {
+				const intelligence = await extractBrandIntelligenceAction({
+					content: result.content,
+					query: payload.query,
+					targetBrand: crawlContext.targetBrand,
+					targetDomain: crawlContext.targetDomain,
+					targetAliases: crawlContext.targetAliases,
+					knownCompetitors: crawlContext.knownCompetitors,
+				});
+
+				logger.log("LLM extraction completed", {
+					brandMentionsCount: intelligence.brandMentions.length,
+					discoveredCompetitorsCount: intelligence.discoveredCompetitors.length,
+					answerFormat: intelligence.answerFormat,
+				});
+
+				const saveResult = await saveBrandIntelligenceAction({
+					input: {
+						crawlId: payload.promptQueryCrawlId,
+						domainProjectId: crawlContext.domainProjectId,
+						intelligence,
+						content: result.content,
+					},
+					ctx: { db, userId: null, isAuthenticated: false },
+				});
+
+				logger.log("Brand intelligence saved", {
+					mentionsSaved: saveResult.mentionsSaved,
+					competitorsCreated: saveResult.competitorsCreated,
+					competitorsMatched: saveResult.competitorsMatched,
+				});
+			} catch (llmError) {
+				const llmErrorMessage =
+					llmError instanceof Error ? llmError.message : String(llmError);
+
+				logger.error("LLM brand intelligence extraction failed", {
+					error: llmErrorMessage,
+				});
+			}
 
 			return {
 				success: true,
@@ -105,23 +140,18 @@ export const perplexityCrawlTask = task({
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 
-			logger.error("❌ Crawl failed, saving error to database", {
+			logger.error("Crawl task failed", {
 				error: errorMessage,
 				crawlId: payload.promptQueryCrawlId,
 			});
 
-			// Save failed crawl to DB
 			await failCrawlAction({
 				input: {
 					crawlId: payload.promptQueryCrawlId,
 					error: errorMessage,
 					promptQueryId: payload.promptQueryId,
 				},
-				ctx: { db: getDb(), userId: null, isAuthenticated: false },
-			});
-
-			logger.log("💾 Crawl error saved to database", {
-				crawlId: payload.promptQueryCrawlId,
+				ctx: { db, userId: null, isAuthenticated: false },
 			});
 
 			throw error;

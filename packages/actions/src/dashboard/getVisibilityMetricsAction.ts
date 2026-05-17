@@ -1,12 +1,10 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
 import {
 	promptQueryTable,
 	promptQueryCrawlTable,
-	crawlSourceTable,
 	crawlBrandMentionTable,
-	competitorTable,
 } from "@opencited/db";
 
 export const getDashboardVisibilityMetricsInputSchema = z.object({
@@ -33,9 +31,69 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 	const { input, ctx } = params;
 
 	const promptQueries = await ctx.db
-		.select()
+		.select({ id: promptQueryTable.id })
 		.from(promptQueryTable)
 		.where(eq(promptQueryTable.domainProjectId, input.domainProjectId));
+
+	if (promptQueries.length === 0) {
+		return {
+			citedInRatio: { cited: 0, total: 0 },
+			brandMentionCount: 0,
+			avgCitationPosition: null,
+			competitorOutrankCount: 0,
+		};
+	}
+
+	const promptQueryIds = promptQueries.map((pq: { id: string }) => pq.id);
+
+	const allCrawls = await ctx.db
+		.select({
+			id: promptQueryCrawlTable.id,
+			promptQueryId: promptQueryCrawlTable.promptQueryId,
+			createdAt: promptQueryCrawlTable.createdAt,
+		})
+		.from(promptQueryCrawlTable)
+		.where(inArray(promptQueryCrawlTable.promptQueryId, promptQueryIds));
+
+	if (allCrawls.length === 0) {
+		return {
+			citedInRatio: { cited: 0, total: 0 },
+			brandMentionCount: 0,
+			avgCitationPosition: null,
+			competitorOutrankCount: 0,
+		};
+	}
+
+	const latestCrawlByQuery = new Map<string, (typeof allCrawls)[number]>();
+	for (const crawl of allCrawls) {
+		const existing = latestCrawlByQuery.get(crawl.promptQueryId);
+		if (!existing || new Date(crawl.createdAt) > new Date(existing.createdAt)) {
+			latestCrawlByQuery.set(crawl.promptQueryId, crawl);
+		}
+	}
+
+	const latestCrawlIds = Array.from(latestCrawlByQuery.values()).map(
+		(c) => c.id,
+	);
+
+	const allBrandMentions = await ctx.db
+		.select({
+			crawlId: crawlBrandMentionTable.crawlId,
+			mentionType: crawlBrandMentionTable.mentionType,
+			position: crawlBrandMentionTable.position,
+		})
+		.from(crawlBrandMentionTable)
+		.where(inArray(crawlBrandMentionTable.crawlId, latestCrawlIds));
+
+	const mentionsByCrawlId = new Map<
+		string,
+		Array<{ crawlId: string; mentionType: string; position: number | null }>
+	>();
+	for (const mention of allBrandMentions) {
+		const existing = mentionsByCrawlId.get(mention.crawlId) ?? [];
+		existing.push(mention);
+		mentionsByCrawlId.set(mention.crawlId, existing);
+	}
 
 	let citedCount = 0;
 	let totalCount = 0;
@@ -43,64 +101,35 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 	const citationPositions: number[] = [];
 	let competitorOutrankCount = 0;
 
-	for (const query of promptQueries) {
-		const crawls = await ctx.db
-			.select()
-			.from(promptQueryCrawlTable)
-			.where(eq(promptQueryCrawlTable.promptQueryId, query.id))
-			.orderBy(desc(promptQueryCrawlTable.createdAt))
-			.limit(1);
-
-		if (crawls.length === 0) continue;
-
-		const latestCrawl = crawls[0];
+	for (const crawl of latestCrawlByQuery.values()) {
 		totalCount++;
 
-		const sources = await ctx.db
-			.select()
-			.from(crawlSourceTable)
-			.where(eq(crawlSourceTable.crawlId, latestCrawl.id));
-
-		const ownDomainSource = sources.find(
-			(s: typeof crawlSourceTable.$inferSelect) => s.isOwnDomain === "true",
+		const brandMentions = mentionsByCrawlId.get(crawl.id) ?? [];
+		const targetMentions = brandMentions.filter(
+			(m) => m.mentionType === "target",
 		);
-		if (ownDomainSource) {
+		const competitorMentions = brandMentions.filter(
+			(m) => m.mentionType === "competitor",
+		);
+
+		if (targetMentions.length > 0) {
 			citedCount++;
-			if (ownDomainSource.position !== null) {
-				citationPositions.push(ownDomainSource.position);
+			for (const tm of targetMentions) {
+				if (tm.position !== null && tm.position >= 0) {
+					citationPositions.push(tm.position);
+				}
 			}
 		}
 
-		const brandMentions = await ctx.db
-			.select()
-			.from(crawlBrandMentionTable)
-			.where(
-				and(
-					eq(crawlBrandMentionTable.crawlId, latestCrawl.id),
-					eq(crawlBrandMentionTable.mentionType, "target"),
-				),
-			);
+		totalBrandMentions += targetMentions.length;
 
-		totalBrandMentions += brandMentions.length;
-
-		const competitors = await ctx.db
-			.select()
-			.from(competitorTable)
-			.where(eq(competitorTable.domainProjectId, input.domainProjectId));
-
-		for (const competitor of competitors) {
-			const competitorSource = sources.find(
-				(s: typeof crawlSourceTable.$inferSelect) =>
-					s.domain === competitor.domain,
-			);
-			if (competitorSource && ownDomainSource) {
-				const compPosition = competitorSource.position ?? Infinity;
-				const ownPosition = ownDomainSource.position ?? Infinity;
-				if (compPosition < ownPosition) {
+		for (const targetMention of targetMentions) {
+			const ownPosition = targetMention.position ?? Infinity;
+			for (const compMention of competitorMentions) {
+				const compPosition = compMention.position ?? Infinity;
+				if (compPosition >= 0 && compPosition < ownPosition) {
 					competitorOutrankCount++;
 				}
-			} else if (competitorSource && !ownDomainSource) {
-				competitorOutrankCount++;
 			}
 		}
 	}
@@ -108,7 +137,7 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 	const avgCitationPosition =
 		citationPositions.length > 0
 			? Math.round(
-					(citationPositions.reduce((sum, p) => sum + p, 0) /
+					(citationPositions.reduce((sum: number, p: number) => sum + p, 0) /
 						citationPositions.length) *
 						100,
 				) / 100

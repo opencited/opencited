@@ -4,7 +4,6 @@ import { baseActionContextSchema } from "../context";
 import {
 	promptQueryTable,
 	promptQueryCrawlTable,
-	crawlSourceTable,
 	crawlBrandMentionTable,
 } from "@opencited/db";
 
@@ -79,27 +78,6 @@ export const getVisibilityOverviewAction = async (params: {
 		const latestCrawl = crawls[0];
 		const previousCrawl = crawls.length > 1 ? crawls[1] : null;
 
-		const sources = await ctx.db
-			.select()
-			.from(crawlSourceTable)
-			.where(eq(crawlSourceTable.crawlId, latestCrawl.id));
-
-		const ownDomainSource = sources.find(
-			(s: typeof crawlSourceTable.$inferSelect) => s.isOwnDomain === "true",
-		);
-		const cited = !!ownDomainSource;
-		const citationPosition = ownDomainSource?.position ?? null;
-
-		const competitorDomains = new Set(
-			sources
-				.filter(
-					(s: typeof crawlSourceTable.$inferSelect) =>
-						s.isCompetitorDomain === "true",
-				)
-				.map((s: typeof crawlSourceTable.$inferSelect) => s.domain),
-		);
-		const competitorCount = competitorDomains.size;
-
 		const brandMentions = await ctx.db
 			.select()
 			.from(crawlBrandMentionTable)
@@ -109,6 +87,22 @@ export const getVisibilityOverviewAction = async (params: {
 			(m: typeof crawlBrandMentionTable.$inferSelect) =>
 				m.mentionType === "target",
 		);
+		const cited = !!targetMention;
+		const citationPosition =
+			targetMention && targetMention.position >= 0
+				? targetMention.position
+				: null;
+
+		const competitorMentions = brandMentions.filter(
+			(m: typeof crawlBrandMentionTable.$inferSelect) =>
+				m.mentionType === "competitor",
+		);
+		const competitorCount = new Set(
+			competitorMentions
+				.map((m: typeof crawlBrandMentionTable.$inferSelect) => m.competitorId)
+				.filter(Boolean),
+		).size;
+
 		const brandMentioned = !!targetMention;
 		const mentionPosition = targetMention?.relativePosition ?? null;
 
@@ -116,15 +110,19 @@ export const getVisibilityOverviewAction = async (params: {
 		let previousCitationPosition: number | null = null;
 
 		if (previousCrawl) {
-			const previousSources = await ctx.db
+			const previousBrandMentions = await ctx.db
 				.select()
-				.from(crawlSourceTable)
-				.where(eq(crawlSourceTable.crawlId, previousCrawl.id));
+				.from(crawlBrandMentionTable)
+				.where(eq(crawlBrandMentionTable.crawlId, previousCrawl.id));
 
-			const previousOwnSource = previousSources.find(
-				(s: typeof crawlSourceTable.$inferSelect) => s.isOwnDomain === "true",
+			const previousTargetMention = previousBrandMentions.find(
+				(m: typeof crawlBrandMentionTable.$inferSelect) =>
+					m.mentionType === "target",
 			);
-			previousCitationPosition = previousOwnSource?.position ?? null;
+			previousCitationPosition =
+				previousTargetMention && previousTargetMention.position >= 0
+					? previousTargetMention.position
+					: null;
 
 			if (citationPosition !== null && previousCitationPosition !== null) {
 				if (citationPosition < previousCitationPosition) {

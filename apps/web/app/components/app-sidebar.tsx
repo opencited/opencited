@@ -136,11 +136,11 @@ export function AppSidebar() {
 				shortcut: "G",
 			},
 			{
-				name: "Sitemaps",
-				link: "/app/sitemaps",
-				isActive: pathname.includes("sitemaps"),
-				icon: <Database className="size-4" />,
-				shortcut: "S",
+				name: "AI Visibility",
+				link: "/app/ai-visibility",
+				isActive: pathname.includes("ai-visibility"),
+				icon: <Target className="size-4" />,
+				shortcut: "V",
 			},
 			{
 				name: "Prompts",
@@ -149,12 +149,13 @@ export function AppSidebar() {
 				icon: <MessageSquare className="size-4" />,
 				shortcut: "P",
 			},
+
 			{
-				name: "AI Visibility",
-				link: "/app/ai-visibility",
-				isActive: pathname.includes("ai-visibility"),
-				icon: <Target className="size-4" />,
-				shortcut: "V",
+				name: "Sitemaps",
+				link: "/app/sitemaps",
+				isActive: pathname.includes("sitemaps"),
+				icon: <Database className="size-4" />,
+				shortcut: "S",
 			},
 		],
 		[pathname],
@@ -225,40 +226,84 @@ export function AppSidebar() {
 			</SidebarHeader>
 			<SidebarSeparator />
 			<SidebarContent>
+				{!isCollapsed && (
+					<SidebarMenuItem>
+						<DomainDisplay className="text-lg" iconClassName="size-5" />
+					</SidebarMenuItem>
+				)}
 				<SidebarGroup>
-					{!isCollapsed && (
-						<SidebarMenuItem>
-							<DomainDisplay className="text-lg" iconClassName="size-5" />
-						</SidebarMenuItem>
-					)}
 					<SidebarGroupLabel className={cn(isCollapsed && "sr-only")}>
-						Navigation
+						Analytics
 					</SidebarGroupLabel>
 					<SidebarGroupContent>
 						<SidebarMenu>
-							{navigationLinks.map((navItem) => (
-								<SidebarMenuItem key={navItem.link}>
-									<SidebarMenuButton
-										tooltip={
-											isCollapsed
-												? `${navItem.name} (${navItem.shortcut})`
-												: navItem.name
-										}
-										isActive={navItem.isActive}
-										asChild
-									>
-										<Link href={navItem.link}>
-											{navItem.icon}
-											<span>{navItem.name}</span>
-											{!isCollapsed && navItem.shortcut && (
-												<Kbd className="ml-auto text-[9px]">
-													{navItem.shortcut}
-												</Kbd>
-											)}
-										</Link>
-									</SidebarMenuButton>
-								</SidebarMenuItem>
-							))}
+							{navigationLinks
+								.filter((navItem) =>
+									["dashboard", "ai-visibility"].some((slug) =>
+										navItem.link.includes(slug),
+									),
+								)
+								.map((navItem) => (
+									<SidebarMenuItem key={navItem.link}>
+										<SidebarMenuButton
+											tooltip={
+												isCollapsed
+													? `${navItem.name} (${navItem.shortcut})`
+													: navItem.name
+											}
+											isActive={navItem.isActive}
+											asChild
+										>
+											<Link href={navItem.link}>
+												{navItem.icon}
+												<span>{navItem.name}</span>
+												{!isCollapsed && navItem.shortcut && (
+													<Kbd className="ml-auto text-[9px]">
+														{navItem.shortcut}
+													</Kbd>
+												)}
+											</Link>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup>
+					<SidebarGroupLabel className={cn(isCollapsed && "sr-only")}>
+						Content
+					</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							{navigationLinks
+								.filter((navItem) =>
+									["prompts", "sitemaps"].some((slug) =>
+										navItem.link.includes(slug),
+									),
+								)
+								.map((navItem) => (
+									<SidebarMenuItem key={navItem.link}>
+										<SidebarMenuButton
+											tooltip={
+												isCollapsed
+													? `${navItem.name} (${navItem.shortcut})`
+													: navItem.name
+											}
+											isActive={navItem.isActive}
+											asChild
+										>
+											<Link href={navItem.link}>
+												{navItem.icon}
+												<span>{navItem.name}</span>
+												{!isCollapsed && navItem.shortcut && (
+													<Kbd className="ml-auto text-[9px]">
+														{navItem.shortcut}
+													</Kbd>
+												)}
+											</Link>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								))}
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>

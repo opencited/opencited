@@ -5,6 +5,7 @@
     "": {
       "name": "opencited",
       "dependencies": {
+        "@ai-sdk/groq": "^3.0.39",
         "@ai-sdk/openai-compatible": "^2.0.47",
         "@tanstack/react-devtools": "^0.10.5",
         "@tanstack/react-query-devtools": "^5.100.10",
@@ -79,10 +80,13 @@
       "name": "@opencited/actions",
       "version": "0.0.0",
       "dependencies": {
+        "@ai-sdk/groq": "catalog:",
+        "@ai-sdk/openai": "catalog:",
         "@clerk/nextjs": "catalog:",
         "@opencited/crawler": "workspace:*",
         "@opencited/db": "workspace:*",
         "@trpc/server": "catalog:",
+        "ai": "catalog:",
         "drizzle-orm": "catalog:",
         "workflow": "catalog:",
         "zod": "catalog:",
@@ -109,8 +113,6 @@
       "name": "@opencited/crawler",
       "version": "0.0.0",
       "dependencies": {
-        "@ai-sdk/openai": "catalog:",
-        "ai": "catalog:",
         "cheerio": "catalog:",
         "fast-xml-parser": "catalog:",
         "zod": "catalog:",
@@ -227,6 +229,7 @@
     },
   },
   "catalog": {
+    "@ai-sdk/groq": "3.0.39",
     "@ai-sdk/openai": "3.0.63",
     "@biomejs/biome": "2.4.11",
     "@clerk/nextjs": "7.1.0",
@@ -287,6 +290,8 @@
   },
   "packages": {
     "@ai-sdk/gateway": ["@ai-sdk/gateway@3.0.112", "", { "dependencies": { "@ai-sdk/provider": "3.0.10", "@ai-sdk/provider-utils": "4.0.27", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-jiBao9pR4owWyjo0BnuNc7WSQBGOD0thysE4AFgZXaG+zMFbISQXUkJr7ePw/phBvePy7jE5FSA2Lf7lwqUiiQ=="],
+
+    "@ai-sdk/groq": ["@ai-sdk/groq@3.0.39", "", { "dependencies": { "@ai-sdk/provider": "3.0.10", "@ai-sdk/provider-utils": "4.0.27" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-BZAr6DjCbzWQ0Qn1/TSsHo/bmCt4JaAMb4A7HCSUZBQCAcOjne/03D0sVjHnQhUC3TpwcmYiv7tHAviK7BluRw=="],
 
     "@ai-sdk/openai": ["@ai-sdk/openai@3.0.63", "", { "dependencies": { "@ai-sdk/provider": "3.0.10", "@ai-sdk/provider-utils": "4.0.27" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-4yY/m8a57MNNVoJCsXuNblKf6BO4yuAuLKRX4tzSNffBEBSp1FlcWdPE0Z4FkqUeS0AJhYSSqp0GIiA/cIcDNA=="],
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { generateText, Output } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createProvider } from "./provider";
 
 export const toneEnum = z.enum([
 	"Professional",
@@ -105,58 +105,20 @@ export const pageAnalysisSchema = z.object({
 
 export type LLMInsights = z.infer<typeof pageAnalysisSchema>;
 
-interface LLMProviderConfig {
-	baseURL: string;
-	apiKey?: string;
-	model: string;
-}
-
-function getProviderConfig(): LLMProviderConfig {
-	const provider = process.env.LLM_PROVIDER;
-	const baseURL = process.env.LLM_BASE_URL ?? "https://api.openai.com/v1";
-	const apiKey = process.env.LLM_API_KEY;
-	const model = process.env.LLM_MODEL;
-
-	if (!model) {
-		throw new Error(
-			"LLM_MODEL environment variable is required. Please set it to your model identifier (e.g., 'llama3', 'local-model', 'gpt-4o-mini').",
-		);
-	}
-
-	if (provider && provider !== "openai-compatible") {
-		throw new Error(
-			`Unsupported LLM provider: ${provider}. Currently only 'openai-compatible' is supported.`,
-		);
-	}
-
-	return { baseURL, apiKey, model };
-}
-
-function createProvider() {
-	const config = getProviderConfig();
-
-	const provider = createOpenAI({
-		baseURL: config.baseURL,
-		apiKey: config.apiKey,
-	});
-
-	return provider(config.model);
-}
-
-export async function analyzeWithLLM(
+export async function analyzePageAction(
 	text: string,
 ): Promise<LLMInsights | null> {
-	// Truncate to ~8000 characters to stay within typical local LLM context limits
 	const truncatedText = text.slice(0, 8000);
 
 	try {
-		const model = createProvider();
+		const { model, providerOptions } = createProvider();
 
 		const result = await generateText({
 			model,
 			output: Output.object({
 				schema: pageAnalysisSchema,
 			}),
+			providerOptions: providerOptions as any,
 			prompt: `You are an AI assistant that analyzes web page content. Your task is to extract specific insights and return them in a structured JSON format.
 
 You MUST return a JSON object with EXACTLY these fields:

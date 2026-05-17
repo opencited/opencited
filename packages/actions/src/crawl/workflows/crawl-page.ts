@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { fetchPage, extractContent, analyzeWithLLM } from "@opencited/crawler";
-import type { LLMInsights } from "@opencited/crawler";
+import { fetchPage, extractContent } from "@opencited/crawler";
+import { analyzePageAction } from "../../ai/analyzePageAction";
+import type { LLMInsights } from "../../ai/analyzePageAction";
 
 export interface CrawlPageInput {
 	url: string;
@@ -52,7 +53,7 @@ async function doExtractContent(html: string, pageUrl: string) {
 
 async function doAnalyzeWithLLM(text: string) {
 	"use step";
-	return analyzeWithLLM(text);
+	return analyzePageAction(text);
 }
 
 async function doCrawl(

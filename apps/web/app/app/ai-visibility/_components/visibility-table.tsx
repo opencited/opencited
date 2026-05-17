@@ -51,7 +51,7 @@ export function VisibilityTable({
 
 	return (
 		<>
-			<Table className="[&_tr]:border-muted/50">
+			<Table>
 				<TableHeader>
 					<TableRow>
 						<TableHead>Query</TableHead>

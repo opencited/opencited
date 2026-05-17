@@ -21,6 +21,10 @@ import {
 	MessageSquare,
 	Hash,
 	TrendingDown,
+	FileText,
+	CheckCircle,
+	Type,
+	AlertCircle,
 } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
@@ -87,6 +91,13 @@ export default function DashboardPage() {
 		enabled: !!domainProject?.id,
 	});
 
+	const contentHealthQuery = useQuery({
+		...trpc.dashboard.getContentHealth.queryOptions({
+			domainProjectId: domainProject?.id ?? "",
+		}),
+		enabled: !!domainProject?.id,
+	});
+
 	return (
 		<PageShell title="Dashboard">
 			<div className="space-y-6">
@@ -139,6 +150,59 @@ export default function DashboardPage() {
 										label="Competitors outranking you"
 										value={metrics.competitorOutrankCount}
 										description="Queries where competitors rank higher"
+									/>
+								</div>
+							);
+						}}
+					/>
+				</div>
+
+				<div>
+					<h2 className="text-lg font-medium mb-2">Content Health</h2>
+					<QueryCell
+						query={contentHealthQuery}
+						loading={
+							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(4,200px)]">
+								{[1, 2, 3, 4].map((i) => (
+									<EntityCardSkeleton key={i} hasFooter />
+								))}
+							</div>
+						}
+						success={(metrics) => {
+							if (!metrics) return null;
+							return (
+								<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(4,200px)]">
+									<StatCard
+										icon={FileText}
+										label="Pages Crawled"
+										value={metrics.pagesCrawled}
+										description="Pages fetched or analyzed"
+									/>
+									<StatCard
+										icon={CheckCircle}
+										label="Crawl Success Rate"
+										value={
+											metrics.crawlSuccessRate !== null
+												? `${metrics.crawlSuccessRate}%`
+												: "—"
+										}
+										description="Of attempted pages"
+									/>
+									<StatCard
+										icon={Type}
+										label="Avg Word Count"
+										value={
+											metrics.avgWordCount !== null
+												? Math.round(metrics.avgWordCount).toLocaleString()
+												: "—"
+										}
+										description="Per analyzed page"
+									/>
+									<StatCard
+										icon={AlertCircle}
+										label="Errors"
+										value={metrics.errorCount}
+										description="Pages that failed to crawl"
 									/>
 								</div>
 							);

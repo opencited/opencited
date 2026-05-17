@@ -13,7 +13,8 @@
 		"LLM_PROVIDER",
 		"LLM_BASE_URL",
 		"LLM_API_KEY",
-		"LLM_MODEL"
+		"LLM_MODEL",
+		"GROQ_API_KEY"
 	],
 	"tasks": {
 		"build": {

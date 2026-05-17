@@ -9,3 +9,4 @@ export * from "./sitemap";
 export * from "./competitor";
 export * from "./aiVisibility";
 export * from "./dashboard";
+export * from "./ai";

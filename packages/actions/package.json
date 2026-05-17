@@ -18,7 +18,10 @@
 		"@trpc/server": "catalog:",
 		"workflow": "catalog:",
 		"drizzle-orm": "catalog:",
-		"zod": "catalog:"
+		"zod": "catalog:",
+		"ai": "catalog:",
+		"@ai-sdk/openai": "catalog:",
+		"@ai-sdk/groq": "catalog:"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
