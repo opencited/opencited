@@ -18,12 +18,12 @@
 		"@opencited/actions": "workspace:*",
 		"@opencited/browser-crawler": "workspace:*",
 		"@opencited/db": "workspace:*",
-		"@trigger.dev/sdk": "catalog:",
+		"@trigger.dev/sdk": "4.4.6",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
-		"@trigger.dev/build": "catalog:",
+		"@trigger.dev/build": "4.4.6",
 		"@types/node": "catalog:",
 		"typescript": "catalog:"
 	}

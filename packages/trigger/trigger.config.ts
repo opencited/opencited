@@ -22,7 +22,7 @@ export default defineConfig({
 		extensions: [
 			playwright({
 				browsers: ["chromium"],
-				headless: true,
+				version: "1.57.0", // pin to avoid build breakage
 			}),
 		],
 	},
