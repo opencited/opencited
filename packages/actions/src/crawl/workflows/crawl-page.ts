@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { fetchPage, extractContent } from "@opencited/crawler";
-import { analyzePageAction } from "../../ai/analyzePageAction";
 import type { LLMInsights } from "../../ai/analyzePageAction";
 
 export interface CrawlPageInput {
@@ -51,10 +50,11 @@ async function doExtractContent(html: string, pageUrl: string) {
 	return extractContent(html, pageUrl);
 }
 
-async function doAnalyzeWithLLM(text: string) {
-	"use step";
-	return analyzePageAction(text);
-}
+// TODO: Re-enable AI analysis when ready
+// async function doAnalyzeWithLLM(text: string) {
+// 	"use step";
+// 	return analyzePageAction(text);
+// }
 
 async function doCrawl(
 	url: string,
@@ -63,7 +63,9 @@ async function doCrawl(
 	"use step";
 	let pageResult: Awaited<ReturnType<typeof doFetchPage>> | null = null;
 	let contentResult: Awaited<ReturnType<typeof doExtractContent>> | null = null;
-	let llmInsights: LLMInsights | null = null;
+	// TODO: Re-enable AI analysis when ready - change back to `let` when re-enabling
+	// eslint-disable-next-line prefer-const
+	const llmInsights: LLMInsights | null = null;
 	let fetchError: string | null = null;
 	let contentHash: string | null = null;
 
@@ -80,13 +82,14 @@ async function doCrawl(
 			contentResult = null;
 		}
 
-		if (contentResult && contentResult.extractedText.length > 0) {
-			try {
-				llmInsights = await doAnalyzeWithLLM(contentResult.extractedText);
-			} catch {
-				llmInsights = null;
-			}
-		}
+		// TODO: Re-enable AI analysis when ready
+		// if (contentResult && contentResult.extractedText.length > 0) {
+		// 	try {
+		// 		llmInsights = await doAnalyzeWithLLM(contentResult.extractedText);
+		// 	} catch {
+		// 		llmInsights = null;
+		// 	}
+		// }
 
 		try {
 			contentHash = await computeHash(pageResult.html);

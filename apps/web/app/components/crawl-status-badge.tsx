@@ -15,7 +15,7 @@ const STATUS_CONFIG: Record<
 > = {
 	pending: { label: "Pending", variant: "outline" },
 	fetched: { label: "Fetched", variant: "secondary" },
-	analyzed: { label: "Analyzed", variant: "default" },
+	analyzed: { label: "Fetched", variant: "secondary" },
 	error: { label: "Error", variant: "destructive" },
 };
 

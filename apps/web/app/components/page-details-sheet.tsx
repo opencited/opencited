@@ -19,7 +19,6 @@ import {
 } from "@opencited/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-	Brain,
 	Clock,
 	ExternalLink,
 	FileText,
@@ -217,7 +216,6 @@ export function PageDetailsSheet({
 								);
 							}
 
-							const hasAnalysis = !!analysis;
 							const hasCrawlInfo = !!crawledPage.httpStatus;
 
 							return (
@@ -233,15 +231,16 @@ export function PageDetailsSheet({
 													Overview
 												</TabsTrigger>
 
-												{hasAnalysis && (
-													<TabsTrigger
-														value="structure"
-														className="rounded-md px-3 py-2 text-sm data-[state=active]:bg-muted data-[state=active]:shadow-none"
-													>
-														<Type className="h-3.5 w-3.5 mr-2" />
-														Structure
-													</TabsTrigger>
-												)}
+												{analysis?.headingStructure &&
+													hasAnyHeadings(analysis.headingStructure) && (
+														<TabsTrigger
+															value="structure"
+															className="rounded-md px-3 py-2 text-sm data-[state=active]:bg-muted data-[state=active]:shadow-none"
+														>
+															<Type className="h-3.5 w-3.5 mr-2" />
+															Structure
+														</TabsTrigger>
+													)}
 												{analysis?.extractedText && (
 													<TabsTrigger
 														value="content"
@@ -249,15 +248,6 @@ export function PageDetailsSheet({
 													>
 														<FileText className="h-3.5 w-3.5 mr-2" />
 														Content
-													</TabsTrigger>
-												)}
-												{hasAnalysis && (
-													<TabsTrigger
-														value="analysis"
-														className="rounded-md px-3 py-2 text-sm data-[state=active]:bg-muted data-[state=active]:shadow-none"
-													>
-														<Brain className="h-3.5 w-3.5 mr-2" />
-														Analysis
 													</TabsTrigger>
 												)}
 											</TabsList>
@@ -376,121 +366,7 @@ export function PageDetailsSheet({
 														</Grid>
 													</Section>
 												)}
-
-												{!analysis && crawledPage.crawlStatus === "fetched" && (
-													<div className="p-4 rounded-lg bg-muted/30 border border-border/40">
-														<p className="text-sm font-medium">
-															Analysis Pending
-														</p>
-														<p className="text-sm text-muted-foreground mt-1">
-															This page has been fetched but AI analysis hasn't
-															run yet.
-														</p>
-													</div>
-												)}
 											</TabsContent>
-
-											{analysis && (
-												<TabsContent
-													value="analysis"
-													className="mt-0 p-6 space-y-6"
-												>
-													{(analysis.tone ||
-														analysis.sentiment ||
-														analysis.perceivedPageType) && (
-														<Section title="AI Analysis">
-															<Grid>
-																{analysis.tone && (
-																	<Field
-																		label="Tone"
-																		value={
-																			<Badge variant="secondary">
-																				{analysis.tone}
-																			</Badge>
-																		}
-																	/>
-																)}
-																{analysis.sentiment && (
-																	<Field
-																		label="Sentiment"
-																		value={
-																			<span className="flex items-center gap-2">
-																				<Badge variant="secondary">
-																					{analysis.sentiment}
-																				</Badge>
-																				{analysis.sentimentScore && (
-																					<span className="text-xs text-muted-foreground">
-																						{analysis.sentimentScore}/100
-																					</span>
-																				)}
-																			</span>
-																		}
-																	/>
-																)}
-																{analysis.subjectivity && (
-																	<Field
-																		label="Subjectivity"
-																		value={
-																			<Badge variant="secondary">
-																				{analysis.subjectivity}
-																			</Badge>
-																		}
-																	/>
-																)}
-																{analysis.perceivedPageType && (
-																	<Field
-																		label="Page Type"
-																		value={
-																			<Badge variant="secondary">
-																				{analysis.perceivedPageType}
-																			</Badge>
-																		}
-																	/>
-																)}
-																{analysis.perceivedIntent && (
-																	<Field
-																		label="Intent"
-																		value={
-																			<Badge variant="secondary">
-																				{analysis.perceivedIntent}
-																			</Badge>
-																		}
-																	/>
-																)}
-																{analysis.perceivedAudience && (
-																	<Field
-																		label="Audience"
-																		value={
-																			<Badge variant="secondary">
-																				{analysis.perceivedAudience}
-																			</Badge>
-																		}
-																	/>
-																)}
-																{analysis.verbTense && (
-																	<Field
-																		label="Verb Tense"
-																		value={
-																			<Badge variant="secondary">
-																				{analysis.verbTense}
-																			</Badge>
-																		}
-																	/>
-																)}
-															</Grid>
-														</Section>
-													)}
-
-													{analysis.namedEntities &&
-														analysis.namedEntities.length > 0 && (
-															<Section title="Named Entities">
-																<div className="space-y-3">
-																	{renderEntities(analysis.namedEntities)}
-																</div>
-															</Section>
-														)}
-												</TabsContent>
-											)}
 
 											{analysis && (
 												<TabsContent
@@ -674,30 +550,4 @@ function renderHeadings(
 	) : (
 		<p className="text-sm text-muted-foreground">No headings found</p>
 	);
-}
-
-function renderEntities(
-	entities: Array<{ type: string; name: string }>,
-): React.ReactNode {
-	const grouped = entities.reduce<Record<string, string[]>>((acc, entity) => {
-		const type = entity.type || "Unknown";
-		if (!acc[type]) acc[type] = [];
-		acc[type].push(entity.name);
-		return acc;
-	}, {});
-
-	return Object.entries(grouped).map(([type, names]) => (
-		<div key={type} className="space-y-1.5">
-			<p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-				{type}
-			</p>
-			<div className="flex flex-wrap gap-1.5">
-				{names.map((name, i) => (
-					<Badge key={i} variant="outline" className="text-xs">
-						{name}
-					</Badge>
-				))}
-			</div>
-		</div>
-	));
 }
