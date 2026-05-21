@@ -1,10 +1,10 @@
 import { sleep } from "workflow";
 import { start } from "workflow/api";
-import { db } from "@opencited/db";
 import { crawlPageWorkflow } from "./crawl-page";
 import type { CrawlPageResult } from "./crawl-page";
 import { crawledPageUpsertBatchAction } from "../crawledPageUpsertBatchAction";
 import { pageAnalysisUpsertBatchAction } from "../pageAnalysisUpsertBatchAction";
+import { getFreshDbInstance } from "@opencited/db";
 
 export interface CrawlSitemapInput {
 	sitemapId: string;
@@ -45,6 +45,8 @@ function getCrawlStatus(
 
 async function saveBatchResults(results: CrawlPageResult[]) {
 	"use step";
+
+	const db = getFreshDbInstance();
 	const mockCtx = { db, userId: null, isAuthenticated: false };
 
 	const pageInputs = results.map((result) => ({

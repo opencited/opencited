@@ -17,11 +17,13 @@
 		"drizzle-orm": "catalog:",
 		"@neondatabase/serverless": "catalog:",
 		"dotenv": "catalog:",
-		"zod": "catalog:"
+		"zod": "catalog:",
+		"ws": "catalog:"
 	},
 	"devDependencies": {
 		"drizzle-kit": "catalog:",
 		"tsx": "catalog:",
-		"@opencited/typescript-config": "*"
+		"@opencited/typescript-config": "*",
+		"@types/ws": "catalog:"
 	}
 }

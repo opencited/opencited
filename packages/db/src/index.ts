@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/neon-serverless";
-import { Pool } from "@neondatabase/serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
 import * as schema from "./schema";
 import { z } from "zod";
 
@@ -9,81 +10,29 @@ if (!databaseUrl) {
 	throw new Error("DATABASE_URL environment variable is not set");
 }
 
-const pool = new Pool({ connectionString: databaseUrl });
-const db = drizzle({ client: pool, schema });
-export type Db = typeof db;
+export const getFreshDbInstance = () => {
+	const databaseUrl = process.env.DATABASE_URL;
+
+	if (!databaseUrl) {
+		throw new Error("DATABASE_URL environment variable is not set");
+	}
+
+	neonConfig.webSocketConstructor = ws;
+
+	const pool = new Pool({ connectionString: databaseUrl });
+	return drizzle({ client: pool, schema });
+};
+
+export type Db = ReturnType<typeof getFreshDbInstance>;
 export const dbSchema = z.custom<Db>();
 
-export { db, schema };
-export {
-	domainProjectTable,
-	domainProjectSelectSchema,
-	domainProjectBaseInsertSchema,
-	domainProjectInsertSchema,
-	domainProjectUpdateSchema,
-} from "./schema/domainProject";
-export {
-	sitemapTable,
-	sitemapSelectSchema,
-	sitemapBaseInsertSchema,
-	sitemapInsertSchema,
-	sitemapUpdateSchema,
-} from "./schema/sitemap";
-export {
-	sitemapUrlTable,
-	sitemapUrlSelectSchema,
-	sitemapUrlBaseInsertSchema,
-	sitemapUrlInsertSchema,
-	sitemapUrlUpdateSchema,
-} from "./schema/sitemapUrl";
-export {
-	crawledPageTable,
-	crawledPageSelectSchema,
-	crawledPageBaseInsertSchema,
-	crawledPageInsertSchema,
-	crawledPageUpdateSchema,
-	crawlStatusEnum,
-} from "./schema/crawledPage";
-export {
-	pageAnalysisTable,
-	pageAnalysisSelectSchema,
-	pageAnalysisBaseInsertSchema,
-	pageAnalysisInsertSchema,
-	pageAnalysisUpdateSchema,
-} from "./schema/pageAnalysis";
-export {
-	promptQueryTable,
-	promptQuerySelectSchema,
-	promptQueryBaseInsertSchema,
-	promptQueryInsertSchema,
-	promptQueryUpdateSchema,
-} from "./schema/promptQuery";
-export {
-	promptQueryCrawlTable,
-	promptQueryCrawlSelectSchema,
-	promptQueryCrawlBaseInsertSchema,
-	promptQueryCrawlInsertSchema,
-	promptQueryCrawlUpdateSchema,
-	promptQueryCrawlStatusEnum,
-} from "./schema/promptQueryCrawl";
-export {
-	competitorTable,
-	competitorSelectSchema,
-	competitorBaseInsertSchema,
-	competitorInsertSchema,
-	competitorUpdateSchema,
-} from "./schema/competitor";
-export {
-	crawlSourceTable,
-	crawlSourceSelectSchema,
-	crawlSourceBaseInsertSchema,
-	crawlSourceInsertSchema,
-	crawlSourceUpdateSchema,
-} from "./schema/crawlSource";
-export {
-	crawlBrandMentionTable,
-	crawlBrandMentionSelectSchema,
-	crawlBrandMentionBaseInsertSchema,
-	crawlBrandMentionInsertSchema,
-	crawlBrandMentionUpdateSchema,
-} from "./schema/crawlBrandMention";
+export * from "./schema/domainProject";
+export * from "./schema/sitemap";
+export * from "./schema/sitemapUrl";
+export * from "./schema/crawledPage";
+export * from "./schema/pageAnalysis";
+export * from "./schema/promptQuery";
+export * from "./schema/promptQueryCrawl";
+export * from "./schema/competitor";
+export * from "./schema/crawlSource";
+export * from "./schema/crawlBrandMention";
