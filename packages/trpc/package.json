@@ -21,7 +21,7 @@
 		"@clerk/nextjs": "catalog:",
 		"@opencited/actions": "workspace:*",
 		"@opencited/db": "workspace:*",
-		"@opencited/trigger": "workspace:*",
+		"@opencited/queue": "workspace:*",
 		"@trpc/server": "catalog:",
 		"@trpc/client": "catalog:",
 		"drizzle-orm": "catalog:",

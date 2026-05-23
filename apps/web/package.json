@@ -13,11 +13,9 @@
 	},
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
-		"@opencited/trigger": "workspace:*",
 		"@opencited/trpc": "workspace:*",
 		"@opencited/ui": "*",
 		"@tanstack/react-query": "catalog:",
-		"@trigger.dev/sdk": "catalog:",
 		"@trpc/client": "catalog:",
 		"@trpc/server": "catalog:",
 		"@trpc/tanstack-react-query": "catalog:",

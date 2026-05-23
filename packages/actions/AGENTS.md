@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Reusable database action functions. Consumed by `@opencited/trpc` routers and `@opencited/trigger` tasks.
+Reusable database action functions. Consumed by `@opencited/trpc` routers and `@opencited/worker` tasks.
 
 ## Architecture
 
@@ -58,5 +58,5 @@ export const {action}Handler = async (...) => { ... }  // Wraps action for route
 ## Rules
 
 - Actions receive `db` via context — never import `db` from `@opencited/db` directly
-- Actions are framework-agnostic (used by both tRPC and Trigger.dev)
+- Actions are framework-agnostic (used by both tRPC and BullMQ worker)
 - Handlers wrap actions and adapt to specific framework needs

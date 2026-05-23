@@ -5,6 +5,7 @@
 ```sh
 bun run dev                      # dev server for all packages (UI builds CSS in watch mode)
 bun run dev --filter=web         # dev server for specific app
+docker compose up redis          # start Valkey (Redis) for BullMQ worker
 bun run build                    # build all packages
 bun run tsc                     # typecheck all packages (runs next typegen first)
 bun run lint                     # biome lint --write (auto-fixes)
@@ -49,7 +50,8 @@ Agents MUST NOT use `git commit` or `git push`. Git is only to be used for read-
 | `packages/crawler` | `@opencited/crawler` | Sitemap fetching and parsing (used by tRPC) |
 | `packages/browser-crawler` | `@opencited/browser-crawler` | Browser automation with Playwright (Strategy Pattern + Orchestrator) |
 | `packages/actions` | `@opencited/actions` | Vercel Workflow SDK actions (DB operations) |
-| `packages/trigger` | `@opencited/trigger` | Trigger.dev background tasks (Playwright + AI providers) |
+| `packages/queue` | `@opencited/queue` | BullMQ job registry and dispatch (shared between tRPC and worker) |
+| `apps/worker` | `@opencited/worker` | BullMQ worker process (Playwright + AI providers) |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
 | `packages/typescript-config` | `@opencited/typescript-config` | Shared tsconfigs |
 
@@ -77,9 +79,10 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 | `DATABASE_URL` | `packages/db`, `turbo.json` | Neon Postgres connection string |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `apps/web` | Clerk auth |
 | `CLERK_SECRET_KEY` | `apps/web` | Clerk auth |
-| `TRIGGER_SECRET_KEY` | `packages/trigger`, `turbo.json` | Trigger.dev authentication |
-| `OPENAI_API_KEY` | `packages/trigger`, `turbo.json` | LLM analysis for crawler |
+
+| `OPENAI_API_KEY` | `packages/actions`, `turbo.json` | LLM analysis for crawler |
 | `LOGGER_LEVEL` | `packages/browser-crawler` | Browser crawler log level (`silent` | `info` | `debug`) |
+| `REDIS_URL` | `packages/queue`, `apps/worker` | Redis/Valkey connection string for BullMQ |
 
 `turborepo` `globalEnv` includes all env vars required during builds.
 

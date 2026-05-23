@@ -1,8 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, publicProcedure } from "../trpc";
-import { tasks } from "@opencited/trigger";
-import type { perplexityCrawlTask } from "@opencited/trigger";
+import { dispatch } from "@opencited/queue";
 import {
 	startCrawlInputSchema,
 	listCrawlsHandler,
@@ -43,21 +42,16 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 				ctx,
 			});
 
-			// Trigger the task
-			const handle = await tasks.trigger<typeof perplexityCrawlTask>(
-				"perplexity-crawl",
-				{
-					query,
-					promptQueryId: input.promptQueryId,
-					promptQueryCrawlId: crawlId,
-				},
-			);
+			const { jobId } = await dispatch("perplexity-crawl", {
+				query,
+				promptQueryId: input.promptQueryId,
+				promptQueryCrawlId: crawlId,
+			});
 
-			// Update crawl record with trigger run ID and set to running
 			await updateCrawlHandler({
 				input: {
 					id: crawlId,
-					triggerRunId: handle.id,
+					triggerRunId: jobId,
 					status: "running",
 					startedAt: new Date(),
 				},
@@ -66,7 +60,7 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 
 			return {
 				crawlId,
-				runId: handle.id,
+				runId: jobId,
 			};
 		}),
 
