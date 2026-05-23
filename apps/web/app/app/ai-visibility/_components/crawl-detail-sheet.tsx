@@ -438,7 +438,7 @@ export function CrawlDetailSheet({
 										<Card>
 											<CardContent className="p-3">
 												<p className="text-xs text-muted-foreground mb-1">
-													Trigger Run ID
+													Job ID
 												</p>
 												<Badge variant="outline" className="font-mono text-xs">
 													{crawl.triggerRunId}

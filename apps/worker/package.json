@@ -1,0 +1,35 @@
+{
+	"name": "@opencited/worker",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"scripts": {
+		"dev": "bun --watch src/index.ts",
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"tsc": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@bull-board/api": "catalog:",
+		"@bull-board/hono": "catalog:",
+		"@opencited/actions": "workspace:*",
+		"@opencited/browser-crawler": "workspace:*",
+		"@opencited/db": "workspace:*",
+		"@opencited/queue": "workspace:*",
+		"bullmq": "catalog:",
+		"@hono/node-server": "catalog:",
+		"hono": "catalog:",
+		"ioredis": "catalog:",
+		"pino": "catalog:",
+		"pino-pretty": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@opencited/typescript-config": "workspace:*",
+		"@types/node": "catalog:",
+
+		"typescript": "catalog:"
+	}
+}

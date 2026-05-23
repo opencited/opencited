@@ -1,5 +1,5 @@
 {
-	"name": "@opencited/trigger",
+	"name": "@opencited/queue",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
@@ -9,21 +9,15 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"dev": "npx trigger.dev@latest dev",
-		"dev:turbo": "npx trigger.dev@latest dev",
-		"deploy": "npx trigger.dev@latest deploy",
 		"tsc": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@opencited/actions": "workspace:*",
-		"@opencited/browser-crawler": "workspace:*",
-		"@opencited/db": "workspace:*",
-		"@trigger.dev/sdk": "4.4.6",
+		"bullmq": "catalog:",
+		"ioredis": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
-		"@trigger.dev/build": "4.4.6",
 		"@types/node": "catalog:",
 		"typescript": "catalog:"
 	}
