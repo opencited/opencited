@@ -19,7 +19,7 @@
 		"@types/node": "catalog:"
 	},
 	"dependencies": {
-		"@playwright/test": "catalog:",
-		"playwright": "catalog:"
+		"camoufox-js": "catalog:",
+		"playwright-core": "catalog:"
 	}
 }

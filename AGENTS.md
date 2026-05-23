@@ -48,10 +48,10 @@ Agents MUST NOT use `git commit` or `git push`. Git is only to be used for read-
 | `packages/trpc` | `@opencited/trpc` | tRPC server & client (routers, procedures, context) |
 | `packages/db` | `@opencited/db` | Drizzle ORM + Neon Postgres (used only by tRPC) |
 | `packages/crawler` | `@opencited/crawler` | Sitemap fetching and parsing (used by tRPC) |
-| `packages/browser-crawler` | `@opencited/browser-crawler` | Browser automation with Playwright (Strategy Pattern + Orchestrator) |
+| `packages/browser-crawler` | `@opencited/browser-crawler` | Browser automation with Camoufox (Strategy Pattern + Orchestrator) |
 | `packages/actions` | `@opencited/actions` | Vercel Workflow SDK actions (DB operations) |
 | `packages/queue` | `@opencited/queue` | BullMQ job registry and dispatch (shared between tRPC and worker) |
-| `apps/worker` | `@opencited/worker` | BullMQ worker process (Playwright + AI providers) |
+| `apps/worker` | `@opencited/worker` | BullMQ worker process (Camoufox + AI providers) |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
 | `packages/typescript-config` | `@opencited/typescript-config` | Shared tsconfigs |
 

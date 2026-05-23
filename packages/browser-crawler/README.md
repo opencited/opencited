@@ -1,6 +1,6 @@
 # @opencited/browser-crawler
 
-Browser automation package built on Playwright for web crawling and data extraction.
+Browser automation package built on Camoufox for web crawling and data extraction.
 
 ## Quick Start
 
@@ -212,7 +212,7 @@ const result = await crawler.crawl({
 console.log(result.content);
 ```
 
-**Note:** PerplexityProvider uses clipboard extraction. If the UI changes (e.g., copy button selector), the provider will fail fast to alert you to update the selectors.
+**Note:** PerplexityProvider extracts content from the page DOM. Firefox/Camoufox does not support clipboard permissions, so a fallback extracts content from the main answer element.
 
 ## API Reference
 
@@ -294,9 +294,7 @@ evaluate(session: BrowserSession, pageFunction: string): Promise<unknown>
 ```typescript
 interface BrowserOptions {
 	headless?: boolean;
-	browserName?: "chromium" | "firefox" | "webkit";
 	viewport?: { width: number; height: number };
-	userAgent?: string;
 	userDataDir?: string;
 }
 ```
@@ -317,14 +315,12 @@ HEADLESS=false bun run playground
 LOGGER_LEVEL=debug bun run playground
 ```
 
-## Installing Playwright Browsers
-
-If browsers are not installed:
+## Installing Camoufox
 
 ```bash
-bunx playwright install chromium
-bunx playwright install firefox  # optional
-bunx playwright install webkit   # optional
+# Download Camoufox browser binaries
+cd packages/browser-crawler
+bunx camoufox-js fetch
 ```
 
 ## Architecture
@@ -333,8 +329,8 @@ The browser-crawler package uses a **Strategy Pattern + Orchestrator** architect
 
 - **Providers** (`CrawlerProvider` interface): Implement provider-specific automation logic (Perplexity, ChatGPT, etc.)
 - **Crawler** (Orchestrator): Manages browser lifecycle, error handling, and logging
-- **Actions**: Low-level Playwright wrappers (click, type, waitFor, etc.)
-- **Browser**: Browser management (open, close, navigate, etc.)
+- **Actions**: Low-level page interaction wrappers (click, type, waitFor, etc.)
+- **Browser**: Browser management via Camoufox (open, close, navigate, etc.)
 
 The package is **DB-agnostic** — it only extracts data and returns results to the caller. Integration with databases or job queues (BullMQ, Workflow SDK) is handled by the consuming application.
 
