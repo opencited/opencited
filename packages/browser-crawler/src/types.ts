@@ -1,4 +1,4 @@
-import type { Page, Browser, BrowserContext } from "@playwright/test";
+import type { Page, Browser, BrowserContext } from "playwright-core";
 
 export interface BrowserSession {
 	browser?: Browser;

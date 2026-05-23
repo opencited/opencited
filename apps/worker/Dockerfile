@@ -44,7 +44,7 @@ RUN npm install -g bun@1.3.10
 
 WORKDIR /app
 
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 COPY apps/worker/package.json ./apps/worker/
 COPY packages/queue/package.json ./packages/queue/
 COPY packages/actions/package.json ./packages/actions/
@@ -58,7 +58,7 @@ COPY packages/trpc/package.json ./packages/trpc/
 
 RUN bun install --frozen-lockfile
 
-RUN bunx playwright install chromium
+RUN cd packages/browser-crawler && bunx camoufox-js fetch
 
 COPY . .
 

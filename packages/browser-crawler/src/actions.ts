@@ -226,8 +226,24 @@ export async function getClipboard(session: BrowserSession): Promise<string> {
 			"clipboard-write",
 		]);
 		return await session.page.evaluate(() => navigator.clipboard.readText());
-	} catch (error) {
-		console.error("❌ Failed to read clipboard:", error);
-		return "";
+	} catch {
+		console.log(
+			"⚠️  Clipboard permissions not supported, falling back to DOM extraction",
+		);
+		try {
+			const content = await session.page.evaluate(() => {
+				const article = document.querySelector(
+					"article, [class*='prose'], [class*='answer'], [class*='response']",
+				);
+				if (article) return (article as HTMLElement).innerText;
+				const main = document.querySelector("main");
+				if (main) return (main as HTMLElement).innerText;
+				return document.body.innerText;
+			});
+			return content;
+		} catch {
+			console.error("❌ Failed to extract content from DOM");
+			return "";
+		}
 	}
 }

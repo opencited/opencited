@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Browser automation with Playwright for web crawling and data extraction from dynamic/AI-powered sites.
+Browser automation with Camoufox for web crawling and data extraction from dynamic/AI-powered sites.
 
 ## Architecture
 
@@ -10,7 +10,7 @@ Browser automation with Playwright for web crawling and data extraction from dyn
 
 - **Providers** (`CrawlerProvider` interface): Implement provider-specific automation (Perplexity, ChatGPT, etc.)
 - **Crawler** (Orchestrator): Manages browser lifecycle, error handling, logging
-- **Actions**: Low-level Playwright wrappers (click, type, etc.)
+- **Actions**: Low-level page interaction wrappers (click, type, etc.)
 - **Browser**: Browser management (open, close, navigate)
 
 **DB-agnostic**: Only extracts data — integration with databases/job queues is handled by the consumer.
