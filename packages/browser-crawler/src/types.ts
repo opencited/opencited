@@ -6,12 +6,19 @@ export interface BrowserSession {
 	page: Page;
 }
 
+export interface ProxyOptions {
+	server: string;
+	username?: string;
+	password?: string;
+}
+
 export interface BrowserOptions {
 	headless?: boolean;
 	browserName?: "chromium" | "firefox" | "webkit";
 	viewport?: { width: number; height: number } | null;
 	userAgent?: string;
 	userDataDir?: string;
+	proxy?: ProxyOptions;
 }
 
 export interface SnapshotOptions {

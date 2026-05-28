@@ -1,9 +1,12 @@
 import type { Job } from "bullmq";
 import type { Logger } from "pino";
+import type { Redis } from "ioredis";
 import {
 	Crawler,
 	PerplexityProvider,
 	createLogger,
+	AllProxiesFailedError,
+	type ProxyOptions,
 } from "@opencited/browser-crawler";
 import {
 	saveCrawlResultAction,
@@ -15,10 +18,41 @@ import {
 } from "@opencited/actions";
 import type { JobPayload } from "@opencited/queue";
 import { withDb } from "../db";
+import {
+	fetchProxyList,
+	buildProxyOptions,
+	getStickyProxy,
+	setStickyProxy,
+	clearStickyProxy,
+} from "../lib/proxy-resolver";
+
+async function resolveProxies(
+	proxyApiUrl: string,
+	redis: Redis,
+	logger: Logger,
+): Promise<{ proxies: ProxyOptions[]; usedSticky: boolean }> {
+	const stickyProxy = await getStickyProxy(redis);
+	if (stickyProxy) {
+		logger.info(
+			{ server: stickyProxy.server },
+			"Using sticky proxy from last successful crawl",
+		);
+		return { proxies: [stickyProxy], usedSticky: true };
+	}
+
+	const proxyList = await fetchProxyList(proxyApiUrl);
+	const proxies = buildProxyOptions(proxyList);
+	logger.info(
+		{ proxyCount: proxies.length },
+		"Proxy list fetched from ThorData",
+	);
+	return { proxies, usedSticky: false };
+}
 
 export async function handlePerplexityCrawl(
 	job: Job<JobPayload<"perplexity-crawl">>,
 	logger: Logger,
+	redis: Redis,
 ): Promise<void> {
 	const { query, promptQueryId, promptQueryCrawlId } = job.data;
 
@@ -33,17 +67,80 @@ export async function handlePerplexityCrawl(
 		});
 		const provider = new PerplexityProvider();
 
+		const proxyApiUrl = process.env.THORDATA_PROXY_API_URL;
+
 		try {
 			const startTime = Date.now();
-			const result = await crawler.crawl({
-				query,
-				provider,
-				browserOptions: {
-					headless: true,
-					persist: false,
-				},
-			});
+
+			let proxies: ProxyOptions[] | undefined;
+			let singleProxy: ProxyOptions | undefined;
+			let usedSticky = false;
+
+			if (proxyApiUrl) {
+				({ proxies, usedSticky } = await resolveProxies(
+					proxyApiUrl,
+					redis,
+					logger,
+				));
+			} else if (process.env.PROXY_SERVER) {
+				singleProxy = {
+					server: process.env.PROXY_SERVER,
+					username: process.env.PROXY_USERNAME,
+					password: process.env.PROXY_PASSWORD,
+				};
+			}
+
+			const result = await crawler
+				.crawl({
+					query,
+					provider,
+					browserOptions: {
+						headless: true,
+						persist: false,
+						proxy: singleProxy,
+					},
+					proxies,
+				})
+				.catch(async (err) => {
+					// If the sticky proxy failed, clear it and retry with a fresh list
+					if (
+						err instanceof AllProxiesFailedError &&
+						usedSticky &&
+						proxyApiUrl
+					) {
+						logger.warn(
+							{ lastFailureType: err.lastFailureType },
+							"Sticky proxy failed — falling back to fresh ThorData list",
+						);
+						await clearStickyProxy(redis);
+
+						const proxyList = await fetchProxyList(proxyApiUrl);
+						const freshProxies = buildProxyOptions(proxyList);
+						logger.info(
+							{ proxyCount: freshProxies.length },
+							"Retrying with fresh proxy list",
+						);
+
+						return crawler.crawl({
+							query,
+							provider,
+							browserOptions: { headless: true, persist: false },
+							proxies: freshProxies,
+						});
+					}
+					throw err;
+				});
+
 			const endTime = Date.now();
+
+			// Persist the winning proxy for the next job
+			if (result.usedProxy) {
+				await setStickyProxy(redis, result.usedProxy);
+				logger.info(
+					{ server: result.usedProxy.server },
+					"Sticky proxy updated after successful crawl",
+				);
+			}
 
 			logger.info(
 				{
@@ -133,6 +230,10 @@ export async function handlePerplexityCrawl(
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
+
+			// Clear sticky proxy so next job fetches a fresh list
+			await clearStickyProxy(redis);
+			logger.info("Sticky proxy cleared after crawl failure");
 
 			logger.error(
 				{ error: errorMessage, crawlId: promptQueryCrawlId },

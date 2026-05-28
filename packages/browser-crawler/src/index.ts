@@ -35,6 +35,11 @@ export {
 	AuthenticationError,
 	NavigationError,
 	ExtractionError,
+	AllProxiesFailedError,
+	classifyError,
+	shouldRotateProxy,
+	toErrorMessage,
+	type FailureType,
 } from "./errors";
 
 export { PerplexityProvider } from "./providers/perplexity";
@@ -48,6 +53,7 @@ export type {
 export type {
 	BrowserSession,
 	BrowserOptions,
+	ProxyOptions,
 	SnapshotOptions,
 	ExtractContentOptions,
 	ExtractedContent,
