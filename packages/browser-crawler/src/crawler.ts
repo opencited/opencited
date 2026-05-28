@@ -1,5 +1,5 @@
 import { openBrowser, closeBrowser } from "./browser";
-import type { BrowserSession, BrowserOptions } from "./types";
+import type { BrowserSession, BrowserOptions, ProxyOptions } from "./types";
 import type { CrawlerProvider } from "./providers/base";
 import type { CrawlResult, AuthCredentials } from "./providers/types";
 import type { Logger } from "./logger";
@@ -9,7 +9,25 @@ import {
 	AuthenticationError,
 	NavigationError,
 	ExtractionError,
+	AllProxiesFailedError,
+	classifyError,
+	shouldRotateProxy,
+	type FailureType,
 } from "./errors";
+
+const BACKOFF_BASE_MS = 5_000;
+const BACKOFF_MAX_MS = 60_000;
+const BACKOFF_JITTER = 0.3;
+
+function computeBackoff(cycle: number): number {
+	const base = Math.min(BACKOFF_BASE_MS * 2 ** cycle, BACKOFF_MAX_MS);
+	const jitter = base * BACKOFF_JITTER * (Math.random() * 2 - 1);
+	return Math.round(base + jitter);
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export interface CrawlOptions {
 	query: string;
@@ -17,6 +35,17 @@ export interface CrawlOptions {
 	browserOptions?: BrowserOptions & { persist?: boolean };
 	authCredentials?: AuthCredentials;
 	logger?: Logger;
+	proxies?: ProxyOptions[];
+	/**
+	 * Number of full proxy-rotation cycles to attempt before giving up.
+	 * Default: 2
+	 */
+	retryCycles?: number;
+	/**
+	 * Max retries on the same proxy for local/UI failures before rotating.
+	 * Default: 2
+	 */
+	maxAttemptsPerProxy?: number;
 }
 
 export class Crawler {
@@ -27,6 +56,15 @@ export class Crawler {
 	}
 
 	async crawl(options: CrawlOptions): Promise<CrawlResult> {
+		if (options.proxies && options.proxies.length > 0) {
+			return this.crawlWithProxyRotation(
+				options as CrawlOptions & { proxies: ProxyOptions[] },
+			);
+		}
+		return this.crawlSingle(options);
+	}
+
+	private async crawlSingle(options: CrawlOptions): Promise<CrawlResult> {
 		const persist = options.browserOptions?.persist ?? false;
 		const userDataDir = persist
 			? (options.browserOptions?.userDataDir ?? "./.browser-data")
@@ -67,6 +105,145 @@ export class Crawler {
 			await options.provider.cleanup?.(session);
 			await closeBrowser(session, userDataDir);
 		}
+	}
+
+	private async crawlWithProxyRotation(
+		options: CrawlOptions & { proxies: ProxyOptions[] },
+	): Promise<CrawlResult> {
+		const { proxies } = options;
+		const retryCycles = options.retryCycles ?? 2;
+		const maxAttemptsPerProxy = options.maxAttemptsPerProxy ?? 2;
+		const persist = options.browserOptions?.persist ?? false;
+		const userDataDir = persist
+			? (options.browserOptions?.userDataDir ?? "./.browser-data")
+			: undefined;
+
+		this.logger.info(
+			`🔄 Starting crawl with ${proxies.length} proxies, ${retryCycles} cycles (provider: ${options.provider.name})`,
+		);
+
+		let lastError = "";
+		let lastFailureType: FailureType = "unknown";
+		let totalAttempts = 0;
+
+		for (let cycle = 0; cycle < retryCycles; cycle++) {
+			if (cycle > 0) {
+				const backoffMs = computeBackoff(cycle - 1);
+				this.logger.info(
+					`⏳ Cycle ${cycle + 1}/${retryCycles}: waiting ${backoffMs}ms before retry`,
+				);
+				await sleep(backoffMs);
+			}
+
+			this.logger.info(`🔁 Cycle ${cycle + 1}/${retryCycles}`);
+
+			for (let i = 0; i < proxies.length; i++) {
+				const proxy = proxies[i];
+				if (!proxy) continue;
+
+				const isCanary = i === 0 && cycle === 0;
+				// For canary: only 1 attempt on network failures, maxAttemptsPerProxy on UI failures
+				// For non-canary: maxAttemptsPerProxy on UI failures, 1 attempt on network failures
+				let attemptsForThisProxy = 1;
+
+				// We do a first attempt to classify before deciding on retry count
+				let session: BrowserSession | undefined;
+				let _attemptError: unknown;
+				let failureType: FailureType = "unknown";
+				let succeeded = false;
+				let result: CrawlResult | undefined;
+
+				for (
+					let attempt = 0;
+					attempt < Math.max(attemptsForThisProxy, maxAttemptsPerProxy);
+					attempt++
+				) {
+					// After first attempt, check if we should keep retrying this proxy
+					if (attempt > 0 && shouldRotateProxy(failureType)) {
+						this.logger.info(
+							`🔴 Proxy ${i + 1} failure type "${failureType}" — rotating immediately`,
+						);
+						break;
+					}
+					if (attempt > 0 && attempt >= attemptsForThisProxy) {
+						break;
+					}
+
+					totalAttempts++;
+					this.logger.info(
+						`🌐 Proxy ${i + 1}/${proxies.length} attempt ${attempt + 1}: ${proxy.server}${isCanary && attempt === 0 ? " [canary]" : ""}`,
+					);
+
+					try {
+						session = await openBrowser({
+							...options.browserOptions,
+							userDataDir,
+							proxy,
+						});
+
+						await this.safeNavigate(options.provider, session);
+
+						if (options.provider.requiresAuth) {
+							await this.safeAuthenticate(
+								options.provider,
+								session,
+								options.authCredentials,
+							);
+						}
+
+						await this.safeSubmitQuery(
+							options.provider,
+							session,
+							options.query,
+						);
+						await this.safeWaitForResponse(options.provider, session);
+
+						result = await this.safeExtractResult(options.provider, session);
+						result.query = options.query;
+						result.usedProxy = proxy;
+
+						this.logger.info(
+							`✅ Crawl succeeded on proxy ${i + 1}/${proxies.length} (cycle ${cycle + 1}, attempt ${attempt + 1})`,
+						);
+
+						succeeded = true;
+						break;
+					} catch (error) {
+						_attemptError = error;
+						failureType = classifyError(error);
+						lastError = error instanceof Error ? error.message : String(error);
+						lastFailureType = failureType;
+
+						this.logger.warn(
+							`❌ Proxy ${i + 1}/${proxies.length} attempt ${attempt + 1} failed [${failureType}]: ${lastError}`,
+						);
+
+						// After classifying first attempt, set retry count for this proxy
+						if (attempt === 0) {
+							if (shouldRotateProxy(failureType)) {
+								// Network/bot failures: no local retries, rotate immediately
+								attemptsForThisProxy = 1;
+							} else {
+								// UI/local failures: allow retries on same proxy
+								attemptsForThisProxy = isCanary ? 1 : maxAttemptsPerProxy;
+							}
+						}
+					} finally {
+						if (session) {
+							await options.provider.cleanup?.(session);
+							await closeBrowser(session, userDataDir);
+							session = undefined;
+						}
+					}
+				}
+
+				if (succeeded && result) {
+					return result;
+				}
+			}
+		}
+
+		throw new AllProxiesFailedError(totalAttempts, lastError, lastFailureType);
 	}
 
 	private async safeNavigate(

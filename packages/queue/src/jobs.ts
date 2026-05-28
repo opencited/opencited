@@ -14,7 +14,7 @@ export const jobs = {
 			promptQueryCrawlId: z.string(),
 		}),
 		options: {
-			attempts: 3,
+			attempts: 0,
 			backoff: {
 				type: "exponential",
 				delay: 1000,

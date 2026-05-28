@@ -4,6 +4,8 @@ export interface CrawlResult {
 	content: string;
 	metadata: CrawlMetadata;
 	structured?: StructuredCrawlData;
+	/** The proxy that was used to successfully complete this crawl, if any. */
+	usedProxy?: import("../types").ProxyOptions;
 }
 
 export interface CrawlMetadata {

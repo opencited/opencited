@@ -47,11 +47,13 @@ queueEvents.on("failed", ({ jobId, failedReason }) => {
 	logger.error({ jobId, failedReason }, "Job failed");
 });
 
+const sharedRedis = createRedisConnection();
+
 const worker = new Worker(
 	"perplexity-crawl",
 	async (job) => {
 		logger.info({ jobId: job.id, data: job.data }, "Processing job");
-		await handlePerplexityCrawl(job, logger);
+		await handlePerplexityCrawl(job, logger, sharedRedis);
 	},
 	{
 		connection: createRedisConnection(),
@@ -111,6 +113,7 @@ async function shutdown(signal: string) {
 		await worker.close();
 		await queueEvents.close();
 		await perplexityCrawlQueue.close();
+		await sharedRedis.quit();
 		logger.info("Worker closed cleanly");
 	} catch (err) {
 		logger.error(

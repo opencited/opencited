@@ -1,5 +1,5 @@
 import { Camoufox } from "camoufox-js";
-import type { BrowserSession, BrowserOptions } from "./types";
+import type { BrowserSession, BrowserOptions, ProxyOptions } from "./types";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 
 const DEFAULT_OPTIONS: Omit<BrowserOptions, "userDataDir"> & {
@@ -9,6 +9,19 @@ const DEFAULT_OPTIONS: Omit<BrowserOptions, "userDataDir"> & {
 	viewport: null,
 	userDataDir: undefined,
 };
+
+function buildProxyOptions(proxy?: ProxyOptions) {
+	if (!proxy) return {};
+	const result: Record<string, string | boolean> = {
+		proxy: proxy.server,
+		geoip: true,
+	};
+	if (proxy.username && proxy.password) {
+		result.proxyUsername = proxy.username;
+		result.proxyPassword = proxy.password;
+	}
+	return result;
+}
 
 export async function openBrowser(
 	options: BrowserOptions = {},
@@ -35,6 +48,7 @@ export async function openBrowser(
 		context = (await Camoufox({
 			headless: opts.headless,
 			user_data_dir: userDataDir,
+			...buildProxyOptions(opts.proxy),
 		})) as BrowserContext;
 
 		const existingPage = context.pages().find((p) => !p.isClosed());
@@ -49,6 +63,7 @@ export async function openBrowser(
 	} else {
 		browser = (await Camoufox({
 			headless: opts.headless,
+			...buildProxyOptions(opts.proxy),
 		})) as Browser;
 
 		context = await browser.newContext({

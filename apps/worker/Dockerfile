@@ -4,19 +4,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     ca-certificates \
     fonts-liberation \
-    libasound2t64 \
-    libatk-bridge2.0-0t64 \
-    libatk1.0-0t64 \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
     libc6 \
     libcairo2 \
-    libcups2t64 \
+    libcups2 \
     libdbus-1-3 \
     libexpat1 \
     libfontconfig1 \
     libgbm1 \
     libgcc-s1 \
-    libglib2.0-0t64 \
-    libgtk-3-0t64 \
+    libglib2.0-0 \
+    libgtk-3-0 \
     libnspr4 \
     libnss3 \
     libpango-1.0-0 \
@@ -56,7 +56,7 @@ COPY packages/tailwind-config/package.json ./packages/tailwind-config/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/trpc/package.json ./packages/trpc/
 
-RUN bun install --frozen-lockfile
+RUN bun install
 
 RUN cd packages/browser-crawler && bunx camoufox-js fetch
 
