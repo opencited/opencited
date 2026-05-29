@@ -24,7 +24,8 @@
 		"ioredis": "catalog:",
 		"pino": "catalog:",
 		"pino-pretty": "catalog:",
-		"zod": "catalog:"
+		"zod": "catalog:",
+		"@t3-oss/env-core": "catalog:"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",

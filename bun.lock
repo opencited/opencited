@@ -41,6 +41,7 @@
         "@clerk/nextjs": "catalog:",
         "@opencited/trpc": "workspace:*",
         "@opencited/ui": "*",
+        "@t3-oss/env-nextjs": "catalog:",
         "@tanstack/react-query": "catalog:",
         "@trpc/client": "catalog:",
         "@trpc/server": "catalog:",
@@ -58,6 +59,7 @@
         "sonner": "catalog:",
         "tailwind-merge": "catalog:",
         "workflow": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@opencited/tailwind-config": "workspace:*",
@@ -85,6 +87,7 @@
         "@opencited/browser-crawler": "workspace:*",
         "@opencited/db": "workspace:*",
         "@opencited/queue": "workspace:*",
+        "@t3-oss/env-core": "catalog:",
         "bullmq": "catalog:",
         "hono": "catalog:",
         "ioredis": "catalog:",
@@ -107,6 +110,7 @@
         "@clerk/nextjs": "catalog:",
         "@opencited/crawler": "workspace:*",
         "@opencited/db": "workspace:*",
+        "@t3-oss/env-core": "catalog:",
         "@trpc/server": "catalog:",
         "ai": "catalog:",
         "drizzle-orm": "catalog:",
@@ -122,8 +126,10 @@
       "name": "@opencited/browser-crawler",
       "version": "0.0.0",
       "dependencies": {
+        "@t3-oss/env-core": "catalog:",
         "camoufox-js": "catalog:",
         "playwright-core": "catalog:",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@opencited/typescript-config": "workspace:*",
@@ -149,6 +155,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@neondatabase/serverless": "catalog:",
+        "@t3-oss/env-core": "catalog:",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",
         "ws": "catalog:",
@@ -165,6 +172,7 @@
       "name": "@opencited/queue",
       "version": "0.0.0",
       "dependencies": {
+        "@t3-oss/env-core": "catalog:",
         "bullmq": "catalog:",
         "ioredis": "catalog:",
         "zod": "catalog:",
@@ -261,6 +269,8 @@
     "@radix-ui/react-label": "2.1.8",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "1.2.4",
+    "@t3-oss/env-core": "0.12.0",
+    "@t3-oss/env-nextjs": "0.12.0",
     "@tailwindcss/cli": "4.2.2",
     "@tailwindcss/postcss": "4.2.2",
     "@tailwindcss/typography": "0.5.19",
@@ -1077,6 +1087,10 @@
     "@swc/helpers": ["@swc/helpers@0.5.15", "", { "dependencies": { "tslib": "^2.8.0" } }, "sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g=="],
 
     "@swc/types": ["@swc/types@0.1.26", "", { "dependencies": { "@swc/counter": "^0.1.3" } }, "sha512-lyMwd7WGgG79RS7EERZV3T8wMdmPq3xwyg+1nmAM64kIhx5yl+juO2PYIHb7vTiPgPCj8LYjsNV2T5wiQHUEaw=="],
+
+    "@t3-oss/env-core": ["@t3-oss/env-core@0.12.0", "", { "peerDependencies": { "typescript": ">=5.0.0", "valibot": "^1.0.0-beta.7 || ^1.0.0", "zod": "^3.24.0" }, "optionalPeers": ["typescript", "valibot", "zod"] }, "sha512-lOPj8d9nJJTt81mMuN9GMk8x5veOt7q9m11OSnCBJhwp1QrL/qR+M8Y467ULBSm9SunosryWNbmQQbgoiMgcdw=="],
+
+    "@t3-oss/env-nextjs": ["@t3-oss/env-nextjs@0.12.0", "", { "dependencies": { "@t3-oss/env-core": "0.12.0" }, "peerDependencies": { "typescript": ">=5.0.0", "valibot": "^1.0.0-beta.7 || ^1.0.0", "zod": "^3.24.0" }, "optionalPeers": ["typescript", "valibot", "zod"] }, "sha512-rFnvYk1049RnNVUPvY8iQ55AuQh1Rr+qZzQBh3t++RttCGK4COpXGNxS4+45afuQq02lu+QAOy/5955aU8hRKw=="],
 
     "@tailwindcss/cli": ["@tailwindcss/cli@4.2.2", "", { "dependencies": { "@parcel/watcher": "^2.5.1", "@tailwindcss/node": "4.2.2", "@tailwindcss/oxide": "4.2.2", "enhanced-resolve": "^5.19.0", "mri": "^1.2.0", "picocolors": "^1.1.1", "tailwindcss": "4.2.2" }, "bin": { "tailwindcss": "dist/index.mjs" } }, "sha512-iJS+8kAFZ8HPqnh0O5DHCLjo4L6dD97DBQEkrhfSO4V96xeefUus2jqsBs1dUMt3OU9Ks4qIkiY0mpL5UW+4LQ=="],
 

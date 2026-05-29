@@ -9,6 +9,7 @@ import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { useState } from "react";
 import { makeQueryClient } from "./query-client";
 import type { AppRouter } from "@opencited/trpc";
+import { env } from "@/env";
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 
@@ -24,7 +25,7 @@ function getQueryClient() {
 
 function getUrl() {
 	if (typeof window !== "undefined") return "";
-	if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+	if (env.VERCEL_URL) return `https://${env.VERCEL_URL}`;
 	return "http://localhost:3000";
 }
 

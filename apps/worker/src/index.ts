@@ -8,6 +8,7 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { HonoAdapter } from "@bull-board/hono";
 import pino from "pino";
 import { handlePerplexityCrawl } from "./handlers/perplexity-crawl";
+import { env } from "./env";
 
 const logger = pino(
 	process.env.NODE_ENV === "production"
@@ -15,16 +16,7 @@ const logger = pino(
 		: { transport: { target: "pino-pretty" } },
 );
 
-const redisUrl = process.env.REDIS_URL;
-if (!redisUrl) {
-	throw new Error("REDIS_URL environment variable is not set");
-}
-
-function createRedisConnection(): IORedis {
-	return new IORedis(redisUrl!, { maxRetriesPerRequest: null });
-}
-
-const concurrency = Number.parseInt(process.env.WORKER_CONCURRENCY ?? "5", 10);
+const concurrency = env.WORKER_CONCURRENCY;
 const shutdownTimeoutMs = 30_000;
 
 const perplexityCrawlQueue = new Queue("perplexity-crawl", {
@@ -46,6 +38,10 @@ queueEvents.on("completed", ({ jobId }) => {
 queueEvents.on("failed", ({ jobId, failedReason }) => {
 	logger.error({ jobId, failedReason }, "Job failed");
 });
+
+function createRedisConnection(): IORedis {
+	return new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
+}
 
 const sharedRedis = createRedisConnection();
 
@@ -129,9 +125,7 @@ async function shutdown(signal: string) {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
-const port = Number.parseInt(process.env.PORT ?? "3001", 10);
-
-serve({ fetch: app.fetch, port }, (info) => {
+serve({ fetch: app.fetch, port: env.WORKER_PORT }, (info) => {
 	logger.info({ port: info.port }, "Worker dashboard listening");
 });
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { openBrowser, closeBrowser, navigate } from "../src/index";
+import { env } from "../src/env";
 
 async function main() {
 	console.log("🚀 Browser Crawler Playground\n");
@@ -8,7 +9,7 @@ async function main() {
 	const userDataDir = "./.playwrite-playground";
 	let isClosing = false;
 	const session = await openBrowser({
-		headless: process.env.HEADLESS !== "false",
+		headless: env.HEADLESS,
 		userDataDir,
 	});
 

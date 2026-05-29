@@ -72,17 +72,22 @@ All shared versions are pinned in root `package.json` `workspaces.catalog`. Use 
 
 ## Environment files
 
-`.env*` files are gitignored. The `lint` script loads `.env` via `dotenv-cli`.
+`.env*` files are gitignored. Copy `.env.example` to `.env.local` for local development.
 
-| Variable | Used by | Purpose |
-|----------|---------|---------|
-| `DATABASE_URL` | `packages/db`, `turbo.json` | Neon Postgres connection string |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `apps/web` | Clerk auth |
-| `CLERK_SECRET_KEY` | `apps/web` | Clerk auth |
+### Validation
 
-| `OPENAI_API_KEY` | `packages/actions`, `turbo.json` | LLM analysis for crawler |
-| `LOGGER_LEVEL` | `packages/browser-crawler` | Browser crawler log level (`silent` | `info` | `debug`) |
-| `REDIS_URL` | `packages/queue`, `apps/worker` | Redis/Valkey connection string for BullMQ |
+All env variables are validated at startup using T3 Env (`@t3-oss/env-nextjs` for Next.js, `@t3-oss/env-core` for packages). Each app/package has its own `env.ts` file that defines and validates its required variables.
+
+**Rule:** Never read `process.env.*` directly. Always import the typed `env` object from the package's `env.ts` file.
+
+```tsx
+// ❌ WRONG
+const url = process.env.DATABASE_URL;
+
+// ✅ CORRECT
+import { env } from "./env";
+const url = env.DATABASE_URL;
+```
 
 `turborepo` `globalEnv` includes all env vars required during builds.
 

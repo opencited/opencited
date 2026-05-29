@@ -3,7 +3,8 @@
 	"version": "0.0.1",
 	"private": true,
 	"exports": {
-		".": "./src/index.ts"
+		".": "./src/index.ts",
+		"./env": "./src/env.ts"
 	},
 	"scripts": {
 		"generate": "drizzle-kit generate",
@@ -18,6 +19,7 @@
 		"@neondatabase/serverless": "catalog:",
 		"dotenv": "catalog:",
 		"zod": "catalog:",
+		"@t3-oss/env-core": "catalog:",
 		"ws": "catalog:"
 	},
 	"devDependencies": {

@@ -25,6 +25,7 @@ import {
 	setStickyProxy,
 	clearStickyProxy,
 } from "../lib/proxy-resolver";
+import { env } from "../env";
 
 async function resolveProxies(
 	proxyApiUrl: string,
@@ -67,7 +68,7 @@ export async function handlePerplexityCrawl(
 		});
 		const provider = new PerplexityProvider();
 
-		const proxyApiUrl = process.env.THORDATA_PROXY_API_URL;
+		const proxyApiUrl = env.THORDATA_PROXY_API_URL;
 
 		try {
 			const startTime = Date.now();
@@ -82,11 +83,11 @@ export async function handlePerplexityCrawl(
 					redis,
 					logger,
 				));
-			} else if (process.env.PROXY_SERVER) {
+			} else if (env.PROXY_SERVER) {
 				singleProxy = {
-					server: process.env.PROXY_SERVER,
-					username: process.env.PROXY_USERNAME,
-					password: process.env.PROXY_PASSWORD,
+					server: env.PROXY_SERVER,
+					username: env.PROXY_USERNAME,
+					password: env.PROXY_PASSWORD,
 				};
 			}
 

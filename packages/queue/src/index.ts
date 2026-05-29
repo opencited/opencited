@@ -1,17 +1,14 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 import { jobs, type JobName, type JobPayload } from "./jobs";
+import { env } from "./env";
 
 export { jobs, type JobName, type JobPayload } from "./jobs";
 
 const queues = new Map<string, Queue>();
 
 function getRedisConnection(): IORedis {
-	const url = process.env.REDIS_URL;
-	if (!url) {
-		throw new Error("REDIS_URL environment variable is not set");
-	}
-	return new IORedis(url, { maxRetriesPerRequest: null });
+	return new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 }
 
 function getQueue(name: string): Queue {

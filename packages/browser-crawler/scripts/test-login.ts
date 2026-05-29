@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { openBrowser, closeBrowser, navigate } from "../src/index";
 import type { BrowserSession } from "../src/types";
+import { env } from "../src/env";
 
 async function login(session: BrowserSession) {
 	console.log("🔐 Attempting login...");
@@ -67,7 +68,7 @@ async function main() {
 
 	const userDataDir = "./.playwrite-playground";
 	const session = await openBrowser({
-		headless: process.env.HEADLESS !== "false",
+		headless: env.HEADLESS,
 		userDataDir,
 	});
 

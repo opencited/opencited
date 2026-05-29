@@ -1,3 +1,5 @@
+import { env } from "./env";
+
 export type LogLevel = "silent" | "info" | "debug";
 
 export interface Logger {
@@ -37,6 +39,4 @@ export function createLogger(level: LogLevel = "info"): Logger {
 	};
 }
 
-export const defaultLogger = createLogger(
-	(process.env.LOGGER_LEVEL as LogLevel) || "info",
-);
+export const defaultLogger = createLogger(env.LOGGER_LEVEL);

@@ -31,7 +31,9 @@
 		"remark-gfm": "catalog:",
 		"sonner": "catalog:",
 		"tailwind-merge": "catalog:",
-		"workflow": "catalog:"
+		"workflow": "catalog:",
+		"@t3-oss/env-nextjs": "catalog:",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@opencited/tailwind-config": "workspace:*",

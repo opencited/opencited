@@ -101,6 +101,8 @@
 			"sonner": "2.0.7",
 			"lucide-react": "1.8.0",
 			"ws": "8.18.3",
+			"@t3-oss/env-core": "0.12.0",
+			"@t3-oss/env-nextjs": "0.12.0",
 			"@types/ws": "8.18.1"
 		}
 	},

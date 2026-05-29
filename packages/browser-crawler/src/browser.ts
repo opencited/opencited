@@ -1,11 +1,12 @@
 import { Camoufox } from "camoufox-js";
 import type { BrowserSession, BrowserOptions, ProxyOptions } from "./types";
 import type { Browser, BrowserContext, Page } from "playwright-core";
+import { env } from "./env";
 
 const DEFAULT_OPTIONS: Omit<BrowserOptions, "userDataDir"> & {
 	userDataDir?: string;
 } = {
-	headless: process.env.HEADLESS !== "false",
+	headless: env.HEADLESS,
 	viewport: null,
 	userDataDir: undefined,
 };

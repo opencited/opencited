@@ -3,23 +3,12 @@ import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
 import * as schema from "./schema";
 import { z } from "zod";
-
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-	throw new Error("DATABASE_URL environment variable is not set");
-}
+import { env } from "./env";
 
 export const getFreshDbInstance = () => {
-	const databaseUrl = process.env.DATABASE_URL;
-
-	if (!databaseUrl) {
-		throw new Error("DATABASE_URL environment variable is not set");
-	}
-
 	neonConfig.webSocketConstructor = ws;
 
-	const pool = new Pool({ connectionString: databaseUrl });
+	const pool = new Pool({ connectionString: env.DATABASE_URL });
 	return drizzle({ client: pool, schema });
 };
 

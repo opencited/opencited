@@ -1,7 +1,9 @@
 "use server";
 
+import { env } from "@/env";
+
 export async function joinWaitlist(email: string) {
-	const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+	const publishableKey = env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 	if (!publishableKey) {
 		return { error: "Clerk key not configured" };
 	}
@@ -13,7 +15,7 @@ export async function joinWaitlist(email: string) {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+				Authorization: `Bearer ${env.CLERK_SECRET_KEY}`,
 			},
 			body: JSON.stringify({
 				email_address: email,

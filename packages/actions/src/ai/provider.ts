@@ -1,6 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { groq } from "@ai-sdk/groq";
 import type { LanguageModel } from "ai";
+import { env } from "../env";
 
 type ProviderType = "groq" | "openai" | "openai-compatible";
 
@@ -19,10 +20,9 @@ const groqStructuredOutputsModels = new Set([
 ]);
 
 export function getProviderConfig(): LLMProviderConfig {
-	const provider = (process.env.LLM_PROVIDER as ProviderType) ?? "openai";
-	const baseURL = process.env.LLM_BASE_URL;
-	const apiKey = process.env.LLM_API_KEY;
-	const model = process.env.LLM_MODEL;
+	const provider = env.LLM_PROVIDER;
+	const baseURL = env.LLM_BASE_URL;
+	const model = env.LLM_MODEL;
 
 	if (!model) {
 		throw new Error(
@@ -30,9 +30,16 @@ export function getProviderConfig(): LLMProviderConfig {
 		);
 	}
 
-	if (!["groq", "openai", "openai-compatible"].includes(provider)) {
+	const apiKey =
+		provider === "groq"
+			? (env.GROQ_API_KEY ?? env.LLM_API_KEY)
+			: provider === "openai"
+				? (env.OPENAI_API_KEY ?? env.LLM_API_KEY)
+				: env.LLM_API_KEY;
+
+	if (!apiKey) {
 		throw new Error(
-			`Unsupported LLM provider: ${provider}. Supported: 'groq', 'openai', 'openai-compatible'.`,
+			`API key is required for provider '${provider}'. Set ${provider === "groq" ? "GROQ_API_KEY or LLM_API_KEY" : provider === "openai" ? "OPENAI_API_KEY or LLM_API_KEY" : "LLM_API_KEY"}.`,
 		);
 	}
 
