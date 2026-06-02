@@ -19,7 +19,8 @@
 		"WORKER_PORT",
 		"THORDATA_PROXY_API_URL",
 		"STICKY_PROXY_ENABLED",
-		"HEADLESS"
+		"HEADLESS",
+		"DEBUG_PAUSE_ON_FAILURE"
 	],
 	"tasks": {
 		"build": {

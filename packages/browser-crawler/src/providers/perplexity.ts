@@ -1,14 +1,14 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { getClipboard, waitFor } from "../actions";
 import type { BrowserSession } from "../types";
+import type { CrawlerProvider } from "./base";
 import type {
+	CitationSource,
 	CrawlResult,
 	StructuredCrawlData,
-	CitationSource,
 	AnswerFormat,
 } from "./types";
-import type { CrawlerProvider } from "./base";
-import { waitFor, click, getClipboard } from "../actions";
 
 const DEBUG_DIR = path.join(process.cwd(), "debug");
 const BUILD_TIMESTAMP = "2026-05-31T14:00:00Z"; // Update this on each deploy
@@ -31,22 +31,144 @@ export class PerplexityProvider implements CrawlerProvider {
 	}
 
 	async navigate(session: BrowserSession): Promise<void> {
+		console.log("🧭 Navigating to Perplexity homepage...");
 		await session.page.goto("https://www.perplexity.ai/", {
 			waitUntil: "networkidle",
 		});
+		const currentUrl = session.page.url();
+		console.log(`✅ Navigation complete. Current URL: ${currentUrl}`);
+
+		// Debug: Check what's on the page after navigation
+		const pageTitle = await session.page.title();
+		console.log(`📄 Page title: "${pageTitle}"`);
+
+		const bodyTextPreview = await session.page.evaluate(() => {
+			const text = document.body?.innerText || "";
+			return text.substring(0, 200).replace(/\s+/g, " ").trim();
+		});
+		console.log(`📝 Page content preview: "${bodyTextPreview}..."`);
 	}
 
 	async submitQuery(session: BrowserSession, query: string): Promise<void> {
+		console.log(`🔍 Submitting query: "${query.substring(0, 50)}..."`);
 		await this.waitForCloudflareChallenge(session);
-		await waitFor(session, "#ask-input", 10000);
+
+		console.log("⏳ Waiting for search input #ask-input...");
+		const inputFound = await waitFor(session, "#ask-input", 10000);
+
+		if (!inputFound) {
+			console.error("❌ Search input #ask-input not found after 10s");
+			const currentUrl = session.page.url();
+			const pageTitle = await session.page.title();
+			console.error(`📍 Current URL: ${currentUrl}`);
+			console.error(`📄 Page title: "${pageTitle}"`);
+
+			// Debug: Check what selectors exist on the page
+			const availableSelectors = await session.page.evaluate(() => {
+				const selectors = [
+					"#ask-input",
+					"textarea",
+					"input[type='text']",
+					'[role="textbox"]',
+					'[contenteditable="true"]',
+					'[class*="input"]',
+					'[class*="search"]',
+					'[class*="ask"]',
+				];
+				const results: Record<string, boolean> = {};
+				selectors.forEach((sel) => {
+					results[sel] = !!document.querySelector(sel);
+				});
+				return results;
+			});
+			console.error(
+				"🔎 Available input selectors:",
+				JSON.stringify(availableSelectors),
+			);
+
+			// Write debug HTML for analysis
+			const pageContent = await session.page.evaluate(() =>
+				document.body.getHTML(),
+			);
+			const filePath = writeDebugFile("input-not-found", pageContent);
+			console.error(`📁 Page content written to: ${filePath}`);
+
+			throw new Error(
+				`Search input #ask-input not found. URL: ${currentUrl}, Title: "${pageTitle}"`,
+			);
+		}
+
+		console.log("✅ Search input found, filling query...");
 		await session.page.fill("#ask-input", query);
+		console.log("⌨️  Pressing Enter to submit...");
 		await session.page.keyboard.press("Enter");
+
+		// Debug: Verify navigation after submission
+		await session.page.waitForTimeout(1000);
+		const postSubmitUrl = session.page.url();
+		console.log(`📍 Post-submit URL: ${postSubmitUrl}`);
 	}
 
 	async waitForResponse(session: BrowserSession): Promise<void> {
 		await session.page.waitForLoadState("networkidle");
 		await this.waitForCloudflareChallenge(session);
-		await session.page.waitForTimeout(3000);
+
+		console.log("⏳ Waiting for Perplexity response to finish streaming...");
+		const maxWait = 60000;
+		const pollInterval = 300;
+		let elapsed = 0;
+		let seenContent = false;
+		let lastContentLength = 0;
+		let stableSince = 0;
+
+		while (elapsed < maxWait) {
+			const state = await session.page.evaluate(() => {
+				const stopButton = document.querySelector(
+					'button[aria-label*="Stop" i], button[aria-label*="stop" i]',
+				);
+				const isStreaming = !!stopButton;
+
+				const contentEl = document.querySelector(
+					'div[id^="markdown-content-"] .prose, [id^="markdown-content-"]',
+				);
+				const contentLength = contentEl?.textContent?.length ?? 0;
+
+				return { isStreaming, contentLength };
+			});
+
+			if (state.contentLength > 0) {
+				seenContent = true;
+			}
+
+			if (state.contentLength !== lastContentLength) {
+				lastContentLength = state.contentLength;
+				stableSince = elapsed;
+			}
+
+			const stableFor = elapsed - stableSince;
+
+			if (!state.isStreaming && seenContent && stableFor >= 2000) {
+				console.log(
+					`✅ Response finished (content: ${state.contentLength} chars, stable for ${stableFor}ms)`,
+				);
+				return;
+			}
+
+			if (state.isStreaming) {
+				if (elapsed % 5000 < pollInterval) {
+					console.log(
+						`⏳ Still streaming... (${elapsed / 1000}s, content: ${state.contentLength} chars)`,
+					);
+				}
+			}
+
+			await session.page.waitForTimeout(pollInterval);
+			elapsed += pollInterval;
+		}
+
+		console.log(
+			`⚠️  Response wait timed out at ${elapsed / 1000}s (content: ${lastContentLength} chars)`,
+		);
 	}
 
 	private async waitForCloudflareChallenge(
@@ -59,16 +181,22 @@ export class PerplexityProvider implements CrawlerProvider {
 
 		while (elapsed < maxWait) {
 			const hasChallenge = await session.page.evaluate(() => {
-				const html = document.documentElement.innerHTML;
+				const bodyText = (document.body?.innerText || "")
+					.replace(/\s+/g, " ")
+					.trim();
+				const title = (document.title || "").trim();
+
 				return (
-					html.includes("__CF$cv$params") ||
-					html.includes("challenge-platform") ||
-					html.includes("Checking your connection") ||
-					html.includes("Verifying you are human") ||
+					bodyText.includes("Checking your connection") ||
+					bodyText.includes("Verifying you are human") ||
+					bodyText.includes("turnstile") ||
+					bodyText.includes("captcha") ||
+					bodyText.includes("recaptcha") ||
+					bodyText.includes("our systems have detected unusual traffic") ||
+					/challenge/i.test(title) ||
 					!!document.querySelector('iframe[src*="challenges"]') ||
-					!!document.querySelector('iframe[src*="cdn-cgi"]') ||
-					!!document.querySelector('[class*="cf-"]') ||
-					!!document.querySelector('[id*="cf-"]')
+					!!document.querySelector("form#captcha-form") ||
+					!!document.querySelector('iframe[src*="recaptcha"]')
 				);
 			});
 
@@ -90,20 +218,74 @@ export class PerplexityProvider implements CrawlerProvider {
 	async extractResult(session: BrowserSession): Promise<CrawlResult> {
 		const startTime = Date.now();
 
+		// Debug: Log page state before extraction
+		const currentUrl = session.page.url();
+		const pageTitle = await session.page.title();
+		console.log(`📍 Extracting from URL: ${currentUrl}`);
+		console.log(`📄 Page title: "${pageTitle}"`);
+
 		await this.waitForCloudflareChallenge(session);
 
-		console.log("Locating copy button...");
+		// Debug: Check if page has answer content before looking for copy button
+		const pageState = await session.page.evaluate(() => {
+			const bodyText = document.body?.innerText || "";
+			const hasAskInput = !!document.querySelector("#ask-input");
+			const hasCopyButton = !!document.querySelector(
+				'button[aria-label="Copy"]',
+			);
+			const hasProse = !!document.querySelector(
+				'[class*="prose"], [class*="answer"]',
+			);
+			const hasLoading = /loading|generating|thinking|searching/i.test(
+				bodyText,
+			);
+			const hasLoginWall = /sign up and repeat your request/i.test(bodyText);
+			const textPreview = bodyText
+				.substring(0, 300)
+				.replace(/\s+/g, " ")
+				.trim();
+
+			return {
+				hasAskInput,
+				hasCopyButton,
+				hasProse,
+				hasLoading,
+				hasLoginWall,
+				textPreview,
+				elementCount: document.querySelectorAll("*").length,
+			};
+		});
+		console.log(
+			"🔍 Page state before extraction:",
+			JSON.stringify(pageState, null, 2),
+		);
+
+		if (pageState.hasLoginWall) {
+			console.log(
+				"Login wall detected - Perplexity requires sign-in to view answer",
+			);
+			throw new Error(
+				"Login wall detected - Perplexity requires sign-in to view answer",
+			);
+		}
+
+		if (pageState.hasLoading) {
+			console.log("⏳ Page appears to be loading/generating, waiting 5s...");
+			await session.page.waitForTimeout(5000);
+		}
+
+		console.log("📋 Locating copy button...");
 		const copyButtonLocated = await waitFor(
 			session,
 			'button[aria-label="Copy"]',
-			20000,
+			40000,
 		);
-		console.log("Copy button located:", copyButtonLocated);
+		console.log("✅ Copy button located:", copyButtonLocated);
 
 		let content: string;
 
 		if (copyButtonLocated) {
-			console.log("Attempting to click copy button...");
+			console.log("🖱️  Attempting to click copy button...");
 
 			// Debug: Check button state before clicking
 			const buttonState = await session.page.evaluate(() => {
@@ -111,6 +293,7 @@ export class PerplexityProvider implements CrawlerProvider {
 				if (!btn) return { found: false };
 				const rect = btn.getBoundingClientRect();
 				const styles = window.getComputedStyle(btn);
+				const parent = btn.parentElement;
 				return {
 					found: true,
 					visible: rect.width > 0 && rect.height > 0,
@@ -118,76 +301,165 @@ export class PerplexityProvider implements CrawlerProvider {
 					visibility: styles.visibility,
 					opacity: styles.opacity,
 					dataState: btn.getAttribute("data-state"),
+					ariaDisabled: btn.getAttribute("aria-disabled"),
 					classes: btn.className,
+					parentTag: parent?.tagName,
+					parentClasses: parent?.className,
 				};
 			});
-			console.log("Copy button state:", JSON.stringify(buttonState));
+			console.log(
+				"🔘 Copy button state:",
+				JSON.stringify(buttonState, null, 2),
+			);
 
 			let clicked = false;
 
-			// Try Playwright click first
-			try {
-				clicked = await click(session, 'button[aria-label="Copy"]');
-			} catch {
-				console.log("Playwright click failed, trying JS click...");
-			}
+			// Try JS click first (more reliable for React apps)
+			clicked = await session.page.evaluate(() => {
+				const btn = document.querySelector('button[aria-label="Copy"]');
+				if (btn) {
+					(btn as HTMLElement).click();
+					return true;
+				}
+				return false;
+			});
+			console.log("✅ JS click result:", clicked);
 
-			// Fallback: JavaScript click
-			if (!clicked) {
-				clicked = await session.page.evaluate(() => {
-					const btn = document.querySelector('button[aria-label="Copy"]');
-					if (btn) {
-						(btn as HTMLElement).click();
-						return true;
-					}
-					return false;
-				});
-				console.log("JS click result:", clicked);
-			}
-
-			console.log("Copy button clicked:", clicked);
+			console.log("📋 Copy button clicked:", clicked);
 			if (clicked) {
 				await session.page.waitForTimeout(1000);
-				console.log("Attempting to read from clipboard...");
+				console.log("📖 Attempting to read from clipboard...");
 				content = await getClipboard(session);
-				console.log("Clipboard content retrieved:", !!content);
+				console.log("📖 Clipboard content retrieved:", !!content);
+				console.log(
+					`📊 Clipboard content length: ${content?.length || 0} chars`,
+				);
 				if (!content) {
 					console.error("⚠️  Clipboard is empty, using DOM extraction");
 					content = await session.page.evaluate(() => document.body.getHTML());
 				}
 			} else {
-				console.log("Click failed, writing page content to debug file...");
+				console.log("❌ Click failed, writing page content to debug file...");
 				const pageContent = await session.page.evaluate(() =>
 					document.body.getHTML(),
 				);
 				const filePath = writeDebugFile("click-failed", pageContent);
-				console.log(`Page content written to: ${filePath}`);
+				console.log(`📁 Page content written to: ${filePath}`);
 				try {
-					console.log("Attempting to read from clipboard as fallback...");
+					console.log("📖 Attempting to read from clipboard as fallback...");
 					content = await getClipboard(session);
-					console.log("Clipboard content retrieved in fallback:", !!content);
+					console.log("📖 Clipboard content retrieved in fallback:", !!content);
 				} catch {
 					console.error("⚠️  Clipboard also failed, using DOM extraction");
 					content = pageContent;
 				}
 			}
 		} else {
+			console.log("❌ Copy button not found after 40s wait");
+			// Debug: Log what's on the page
+			const pageSummary = await session.page.evaluate(() => {
+				const bodyText = document.body?.innerText || "";
+				const buttons = Array.from(document.querySelectorAll("button")).map(
+					(btn) => ({
+						label:
+							btn.getAttribute("aria-label") ||
+							btn.textContent?.trim().substring(0, 30),
+						classes: btn.className.substring(0, 50),
+					}),
+				);
+				const links = Array.from(document.querySelectorAll("a[href]"))
+					.slice(0, 10)
+					.map((a) => ({
+						href: (a as HTMLAnchorElement).href,
+						text: a.textContent?.trim().substring(0, 30),
+					}));
+
+				return {
+					url: window.location.href,
+					title: document.title,
+					buttonCount: buttons.length,
+					buttons: buttons.slice(0, 10),
+					linkCount: links.length,
+					links,
+					bodyTextPreview: bodyText
+						.substring(0, 500)
+						.replace(/\s+/g, " ")
+						.trim(),
+				};
+			});
+			console.log("🔍 Page summary:", JSON.stringify(pageSummary, null, 2));
+
+			// Check for login wall that appeared during the copy button wait
+			const lateLoginWall = await session.page.evaluate(() => {
+				const bodyText = document.body?.innerText || "";
+				return /sign up and repeat your request/i.test(bodyText);
+			});
+
+			if (lateLoginWall) {
+				console.log(
+					"🚫 Late login wall detected — throwing AuthenticationError",
+				);
+				throw new Error(
+					"Login wall detected - Perplexity requires sign-in to view answer",
+				);
+			}
+
+			console.log(
+				"✅ No login wall detected, proceeding with clipboard fallback",
+			);
+
 			const pageContent = await session.page.evaluate(() =>
 				document.body.getHTML(),
 			);
+			console.log(`📄 Page HTML length: ${pageContent.length} chars`);
 			const filePath = writeDebugFile("button-not-found", pageContent);
-			console.log(
-				`Copy button not found, page content written to: ${filePath}`,
-			);
+			console.log(`📁 Page content written to: ${filePath}`);
 			try {
+				console.log("📖 Attempting clipboard as fallback...");
 				content = await getClipboard(session);
+				console.log(
+					`📖 Clipboard content retrieved: ${!!content} (length: ${content?.length ?? 0} chars)`,
+				);
+				if (content) {
+					console.log(`📋 Clipboard preview: "${content.substring(0, 100)}"`);
+				}
 			} catch (error) {
 				console.error("⚠️  Clipboard also failed, using DOM extraction", error);
 				content = pageContent;
+				console.log(
+					`📄 Using DOM extraction (length: ${content.length} chars)`,
+				);
 			}
 		}
 
 		const structured = await this.extractStructuredData(session);
+
+		const loadTimeMs = Date.now() - startTime;
+		console.log(`✅ Extraction complete in ${loadTimeMs}ms`);
+		console.log(`📊 Content length: ${content.length} chars`);
+		console.log(`📊 Content preview: "${content.substring(0, 150)}"`);
+		console.log(`📊 Citations: ${structured.citations.length}`);
+		console.log(
+			`📊 Related questions: ${structured.relatedQuestions?.length ?? 0}`,
+		);
+
+		// Validate content quality before returning
+		const isLikelyLoginWall = /sign up and repeat your request/i.test(content);
+		const isTooShort = content.length < 50;
+		if (isLikelyLoginWall) {
+			console.log("⚠️  Content appears to be a login wall message — throwing");
+			throw new Error(
+				"Login wall detected in extracted content - Perplexity requires sign-in",
+			);
+		}
+		if (isTooShort) {
+			console.log(
+				`⚠️  Content too short (${content.length} chars) — likely extraction failure`,
+			);
+			throw new Error(
+				`Extraction failed: content too short (${content.length} chars). Page may require authentication.`,
+			);
+		}
 
 		return {
 			provider: this.name,
@@ -197,7 +469,7 @@ export class PerplexityProvider implements CrawlerProvider {
 				url: session.page.url(),
 				title: await session.page.title(),
 				timestamp: new Date(),
-				loadTimeMs: Date.now() - startTime,
+				loadTimeMs,
 			},
 			structured,
 		};

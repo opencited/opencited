@@ -9,6 +9,8 @@ export {
 	goForward,
 } from "./browser";
 
+export { captureDebugInfo } from "./debug";
+
 export {
 	click,
 	type,

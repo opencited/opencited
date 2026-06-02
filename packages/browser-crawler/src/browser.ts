@@ -1,8 +1,8 @@
-import { Camoufox } from "camoufox-js";
 import { exec, execSync } from "node:child_process";
-import type { BrowserSession, BrowserOptions, ProxyOptions } from "./types";
+import { Camoufox } from "camoufox-js";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import { env } from "./env";
+import type { BrowserOptions, BrowserSession, ProxyOptions } from "./types";
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,7 +28,7 @@ const DEFAULT_OPTIONS: Omit<BrowserOptions, "userDataDir"> & {
 	userDataDir?: string;
 } = {
 	headless: env.HEADLESS,
-	viewport: null,
+	viewport: { width: 1366, height: 768 },
 	userDataDir: undefined,
 };
 
@@ -45,10 +45,24 @@ function buildProxyOptions(proxy?: ProxyOptions) {
 	return result;
 }
 
+function buildWindowOption(
+	viewport?: { width: number; height: number } | null,
+) {
+	return viewport
+		? { window: [viewport.width, viewport.height] as [number, number] }
+		: {};
+}
+
 export async function openBrowser(
 	options: BrowserOptions = {},
 ): Promise<BrowserSession> {
-	const opts = { ...DEFAULT_OPTIONS, ...options };
+	const opts = {
+		...DEFAULT_OPTIONS,
+		...options,
+		...{
+			viewport: options.viewport ?? DEFAULT_OPTIONS.viewport ?? undefined,
+		},
+	};
 
 	const isPersistent = !!opts.userDataDir;
 
@@ -56,9 +70,24 @@ export async function openBrowser(
 		`🌐 Opening Camoufox browser (headless: ${opts.headless}, persistent: ${isPersistent})...`,
 	);
 
+	if (opts.proxy) {
+		console.log(`🔗 Using proxy: ${opts.proxy.server}`);
+	}
+
 	let browser: Browser | undefined;
 	let context: BrowserContext;
 	let page: Page;
+
+	const launchTimeoutMs = 30_000;
+	const launchTimeout = new Promise<never>((_, reject) => {
+		setTimeout(() => {
+			reject(
+				new Error(
+					`Browser launch timeout (${launchTimeoutMs}ms) - proxy may be unreachable: ${opts.proxy?.server ?? "none"}`,
+				),
+			);
+		}, launchTimeoutMs);
+	});
 
 	if (opts.userDataDir) {
 		const userDataDir = opts.userDataDir.startsWith("/")
@@ -67,14 +96,23 @@ export async function openBrowser(
 
 		console.log(`📁 Using persistent session: ${userDataDir}`);
 
-		context = (await Camoufox({
-			headless: opts.headless,
-			user_data_dir: userDataDir,
-			...buildProxyOptions(opts.proxy),
-		})) as BrowserContext;
+		context = (await Promise.race([
+			Camoufox({
+				headless: opts.headless,
+				user_data_dir: userDataDir,
+				...buildProxyOptions(opts.proxy),
+				...buildWindowOption(opts.viewport),
+			}),
+			launchTimeout,
+		])) as BrowserContext;
+
+		console.log("✅ Camoufox persistent context created");
 
 		const existingPage = context.pages().find((p) => !p.isClosed());
 		page = existingPage ?? (await context.newPage());
+		if (opts.viewport) {
+			await page.setViewportSize(opts.viewport);
+		}
 		if (existingPage) {
 			try {
 				await page.waitForLoadState("domcontentloaded", { timeout: 2000 });
@@ -86,16 +124,25 @@ export async function openBrowser(
 		console.log(
 			"Creating Camoufox instance with a temporary session (no persistence)",
 		);
-		browser = (await Camoufox({
-			headless: opts.headless,
-			...buildProxyOptions(opts.proxy),
-		})) as Browser;
+		browser = (await Promise.race([
+			Camoufox({
+				headless: opts.headless,
+				...buildProxyOptions(opts.proxy),
+				...buildWindowOption(opts.viewport),
+			}),
+			launchTimeout,
+		])) as Browser;
+		console.log("✅ Camoufox browser launched");
+
 		console.log("Creating new browser context...");
 		context = await browser.newContext({
 			viewport: opts.viewport ?? undefined,
 		});
+		console.log("✅ Browser context created");
+
 		console.log("Creating new page...");
 		page = await context.newPage();
+		console.log("✅ Page created");
 	}
 
 	console.log("✅ Browser ready");
@@ -113,11 +160,19 @@ export async function closeBrowser(
 	}
 
 	// 1. Close context first (prevents memory leaks from page wrappers)
-	await session.context.close().catch(() => null);
+	try {
+		await session.context.close();
+	} catch {
+		// ignore
+	}
 
 	// 2. Close browser (non-persistent sessions)
 	if (session.browser) {
-		await session.browser.close().catch(() => null);
+		try {
+			await session.browser.close();
+		} catch {
+			// ignore
+		}
 	}
 
 	// 3. Kill Xvfb virtual display processes (headless virtual mode)

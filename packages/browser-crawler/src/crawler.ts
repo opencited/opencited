@@ -1,4 +1,5 @@
 import { openBrowser, closeBrowser } from "./browser";
+import { captureDebugInfo } from "./debug";
 import type { BrowserSession, BrowserOptions, ProxyOptions } from "./types";
 import type { CrawlerProvider } from "./providers/base";
 import type { CrawlResult, AuthCredentials } from "./providers/types";
@@ -101,6 +102,17 @@ export class Crawler {
 			this.logger.info(`✅ Crawl completed successfully`);
 
 			return result;
+		} catch (error) {
+			const failureType = classifyError(error);
+			const step = error instanceof CrawlerError ? error.step : "unknown";
+			await captureDebugInfo(
+				session,
+				error,
+				options.provider.name,
+				step,
+				failureType,
+			);
+			throw error;
 		} finally {
 			await options.provider.cleanup?.(session);
 			await closeBrowser(session, userDataDir);
@@ -211,12 +223,41 @@ export class Crawler {
 					} catch (error) {
 						_attemptError = error;
 						failureType = classifyError(error);
-						lastError = error instanceof Error ? error.message : String(error);
+						const errorMessage =
+							error instanceof Error ? error.message : String(error);
+						const errorCause =
+							error instanceof Error && error.cause
+								? error.cause instanceof Error
+									? error.cause.message
+									: String(error.cause)
+								: null;
+						const errorStep =
+							error instanceof CrawlerError ? error.step : "unknown";
+						const errorProvider =
+							error instanceof CrawlerError ? error.provider : "unknown";
+						lastError = errorMessage;
 						lastFailureType = failureType;
 
 						this.logger.warn(
 							`❌ Proxy ${i + 1}/${proxies.length} attempt ${attempt + 1} failed [${failureType}]: ${lastError}`,
 						);
+						if (errorCause) {
+							this.logger.warn(`   ↳ Root cause: ${errorCause}`);
+						}
+						this.logger.warn(
+							`   ↳ Step: ${errorStep} (provider: ${errorProvider})`,
+						);
+
+						if (session) {
+							await captureDebugInfo(
+								session,
+								error,
+								options.provider.name,
+								errorStep,
+								failureType,
+								proxy.server,
+							);
+						}
 
 						// After classifying first attempt, set retry count for this proxy
 						if (attempt === 0) {

@@ -11,6 +11,8 @@ export const env = createEnv({
 				if (v === "virtual") return "virtual" as const;
 				return v === "true";
 			}),
+		DEBUG_PAUSE_ON_FAILURE: z.coerce.boolean().default(false),
+		DEBUG_PAUSE_DURATION_MS: z.coerce.number().default(60000),
 	},
 	runtimeEnv: process.env,
 });

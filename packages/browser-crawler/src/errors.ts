@@ -18,40 +18,50 @@ export function toErrorMessage(err: unknown): string {
 
 export function classifyError(err: unknown): FailureType {
 	const msg = toErrorMessage(err).toLowerCase();
+	const causeMsg =
+		err instanceof Error && err.cause
+			? toErrorMessage(err.cause).toLowerCase()
+			: "";
+	const combined = `${msg} ${causeMsg}`;
 
 	if (
 		/err_proxy|err_connection|err_tunnel|err_ssl|err_timed_out|proxy connect failed|tunnel connection|ssl_error|pr_connect|sec_error/i.test(
-			msg,
+			combined,
 		)
 	)
 		return "connection_error";
-	if (/bot.?detect|cloudflare|captcha|turnstile|challenge/i.test(msg))
+	if (/browser launch timeout|proxy.*unreachable/i.test(combined))
+		return "connection_error";
+	if (/bot.?detect|cloudflare|captcha|turnstile|challenge/i.test(combined))
 		return "bot_detection";
 	if (
 		/rate.?limit|too many|usage.?limit|status\s*429|403.*forbidden|access.?denied/i.test(
-			msg,
+			combined,
 		)
 	)
 		return "rate_limited";
 	if (
 		/send failed|no send button|no generation|typing failed|input has no content before submit|editor is empty before submit|submission.*failed|all submission/i.test(
-			msg,
+			combined,
 		)
 	)
 		return "submission_failed";
 	if (
 		/no.*editor|editor for .* not found|editor.*not.*ready|editor blocked by overlay|no_editor|search box not found/i.test(
-			msg,
+			combined,
 		)
 	)
 		return "no_editor";
-	if (/session expired|login wall|redirected to login|logged.?out/i.test(msg))
+	if (
+		/session expired|login wall|redirected to login|logged.?out/i.test(combined)
+	)
 		return "logged_out";
-	if (/extraction.*fail|empty.*response/i.test(msg)) return "extraction_failed";
-	if (/timed?\s*out/i.test(msg)) return "timeout";
+	if (/extraction.*fail|empty.*response/i.test(combined))
+		return "extraction_failed";
+	if (/timed?\s*out/i.test(combined)) return "timeout";
 	if (
 		/window is null|protocol error|browser has been closed|target crashed|browser.*disconnect/i.test(
-			msg,
+			combined,
 		)
 	)
 		return "browser_crash";

@@ -1,9 +1,9 @@
-import type { BrowserSession } from "./types";
 import type {
+	BrowserSession,
 	ExtractContentOptions,
 	ExtractedContent,
-	LinkInfo,
 	ImageInfo,
+	LinkInfo,
 } from "./types";
 
 export async function click(
@@ -11,7 +11,7 @@ export async function click(
 	selector: string,
 ): Promise<boolean> {
 	try {
-		await session.page.click(selector);
+		await session.page.click(selector, { timeout: 5000 });
 		console.log(`✅ Clicked: ${selector}`);
 		return true;
 	} catch (error) {
@@ -220,19 +220,27 @@ export async function getText(
 }
 
 export async function getClipboard(session: BrowserSession): Promise<string> {
+	const clipboardTimeoutMs = 5000;
+
 	try {
-		return await session.page.evaluate(() => navigator.clipboard.readText());
+		const clipboardPromise = session.page.evaluate(() =>
+			navigator.clipboard.readText(),
+		);
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			setTimeout(
+				() => reject(new Error("Clipboard read timeout (5s)")),
+				clipboardTimeoutMs,
+			);
+		});
+		return await Promise.race([clipboardPromise, timeoutPromise]);
 	} catch (error) {
 		console.log(
 			"⚠️  Clipboard read failed, falling back to DOM extraction",
 			error,
 		);
 		try {
-			const pageContent = await session.page.evaluate(() =>
-				document.body.getHTML(),
-			);
-			console.error("⚠️  Copy button not found, page content:\n", pageContent);
-			const content = await session.page.evaluate(() => {
+			const domTimeoutMs = 5000;
+			const domPromise = session.page.evaluate(() => {
 				const article = document.querySelector(
 					"article, [class*='prose'], [class*='answer'], [class*='response']",
 				);
@@ -241,7 +249,13 @@ export async function getClipboard(session: BrowserSession): Promise<string> {
 				if (main) return (main as HTMLElement).innerText;
 				return document.body.innerText;
 			});
-			return content;
+			const timeoutPromise = new Promise<never>((_, reject) => {
+				setTimeout(
+					() => reject(new Error("DOM extraction timeout (5s)")),
+					domTimeoutMs,
+				);
+			});
+			return await Promise.race([domPromise, timeoutPromise]);
 		} catch (error) {
 			console.error("❌ Failed to extract content from DOM", error);
 			return "";
