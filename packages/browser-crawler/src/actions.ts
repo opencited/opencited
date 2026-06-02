@@ -221,16 +221,17 @@ export async function getText(
 
 export async function getClipboard(session: BrowserSession): Promise<string> {
 	try {
-		await session.context.grantPermissions([
-			"clipboard-read",
-			"clipboard-write",
-		]);
 		return await session.page.evaluate(() => navigator.clipboard.readText());
-	} catch {
+	} catch (error) {
 		console.log(
-			"⚠️  Clipboard permissions not supported, falling back to DOM extraction",
+			"⚠️  Clipboard read failed, falling back to DOM extraction",
+			error,
 		);
 		try {
+			const pageContent = await session.page.evaluate(() =>
+				document.body.getHTML(),
+			);
+			console.error("⚠️  Copy button not found, page content:\n", pageContent);
 			const content = await session.page.evaluate(() => {
 				const article = document.querySelector(
 					"article, [class*='prose'], [class*='answer'], [class*='response']",
@@ -241,8 +242,8 @@ export async function getClipboard(session: BrowserSession): Promise<string> {
 				return document.body.innerText;
 			});
 			return content;
-		} catch {
-			console.error("❌ Failed to extract content from DOM");
+		} catch (error) {
+			console.error("❌ Failed to extract content from DOM", error);
 			return "";
 		}
 	}

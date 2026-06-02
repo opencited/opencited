@@ -2,12 +2,12 @@ services:
   redis:
     image: valkey/valkey:8
     ports:
-      - "127.0.0.1:6379:6379"
+      - "6379:6379"
     volumes:
       - redis-data:/data
-    command: valkey-server --maxmemory ${REDIS_MAXMEMORY:-256mb} --maxmemory-policy allkeys-lru
+    command: valkey-server --requirepass ${REDIS_PASSWORD:-changeme} --maxmemory ${REDIS_MAXMEMORY:-256mb} --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,18 +22,13 @@ services:
       context: .
       dockerfile: apps/worker/Dockerfile
     ports:
-      - "127.0.0.1:3001:3001"
+      - "3001:3001"
+    env_file:
+      - path: .env.local
+        required: false
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=redis://redis:6379
-      - LLM_PROVIDER=${LLM_PROVIDER}
-      - LLM_API_KEY=${LLM_API_KEY}
-      - LLM_MODEL=${LLM_MODEL}
-      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-5}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-changeme}@redis:6379
       - NODE_ENV=production
-      - PROXY_SERVER=${PROXY_SERVER:-}
-      - PROXY_USERNAME=${PROXY_USERNAME:-}
-      - PROXY_PASSWORD=${PROXY_PASSWORD:-}
     deploy:
       resources:
         limits:

@@ -135,6 +135,8 @@ The web app is a standard Next.js application. Deploy to:
 
 The worker runs background jobs (browser crawling, AI analysis) and requires Playwright/Chromium. It must be deployed via Docker.
 
+#### Quick Deploy (Recommended)
+
 1. **Clone the repository on your VM**
 
 ```bash
@@ -142,13 +144,51 @@ git clone https://github.com/opencited/opencited.git
 cd opencited
 ```
 
-2. **Create `.env` file** with the required environment variables (see [Worker Configuration](#worker-configuration) below)
+2. **Create `.env.local` file** with the required environment variables (see [Worker Configuration](#worker-configuration) below)
 
-3. **Build and start** using the production Docker Compose file:
+```bash
+cp apps/worker/.env.worker.example .env.local
+# Edit .env.local with your values
+```
+
+3. **Deploy using the deployment script**
+
+```bash
+chmod +x scripts/deploy-worker.sh
+./scripts/deploy-worker.sh setup
+```
+
+The script validates Docker, checks your `.env.local`, builds the image, and starts services.
+
+#### Manual Deploy
+
+If you prefer to run commands manually:
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+#### Deployment Commands
+
+| Command | Description |
+|---------|-------------|
+| `./scripts/deploy-worker.sh setup` | Full setup: validate, build, start |
+| `./scripts/deploy-worker.sh deploy` | Build and start (Docker already installed) |
+| `./scripts/deploy-worker.sh update` | Pull latest code, rebuild, restart |
+| `./scripts/deploy-worker.sh restart` | Restart services without rebuilding |
+| `./scripts/deploy-worker.sh stop` | Stop all services |
+| `./scripts/deploy-worker.sh status` | Show service status and resource usage |
+| `./scripts/deploy-worker.sh logs` | View live logs |
+| `./scripts/deploy-worker.sh logs-f` | View last 100 lines of logs |
+
+#### VM Requirements
+
+| Resource | Minimum | Recommended |
+|----------|---------|-------------|
+| **RAM** | 4GB | 8GB+ |
+| **CPU** | 2 cores | 4+ cores |
+| **Disk** | 20GB | 40GB+ |
+| **OS** | Ubuntu 22.04+, Debian 12+, or any Linux with Docker support |
 
 The production compose file (`docker-compose.prod.yml`) runs both Valkey and the worker with health checks and auto-restart. See the [Dockerfile](apps/worker/Dockerfile) for the worker image configuration.
 
@@ -157,6 +197,13 @@ The production compose file (`docker-compose.prod.yml`) runs both Valkey and the
 ```bash
 curl http://localhost:3001/health
 ```
+
+#### Troubleshooting
+
+- **Build fails**: Ensure you have at least 4GB RAM available during Docker build
+- **Worker crashes**: Check logs with `./scripts/deploy-worker.sh logs`
+- **Redis connection error**: Verify Redis is healthy with `./scripts/deploy-worker.sh status`
+- **Out of memory**: Reduce `WORKER_CONCURRENCY` in `.env.local` (default: 5, each job uses ~200-500MB)
 
 ### Worker Configuration
 
@@ -183,6 +230,32 @@ Use these endpoints with your monitoring system or reverse proxy.
 
 - **Vertical**: Increase `WORKER_CONCURRENCY` (each job spawns a Chromium instance, ~200-500MB RAM per job)
 - **Horizontal**: Run multiple worker instances pointing to the same Redis — BullMQ handles job distribution automatically
+
+### External Access
+
+The worker VM exposes two ports for external access:
+
+| Port | Service | Purpose |
+|------|---------|---------|
+| `3001` | Worker HTTP | Health check (`/health`) and Bull Board dashboard (`/admin/queues`) |
+| `6379` | Redis (Valkey) | Web app connects here to dispatch jobs via BullMQ |
+
+**Connecting your web app to the worker Redis:**
+
+Set `REDIS_URL` in your web app's environment to:
+
+```
+REDIS_URL=redis://:<REDIS_PASSWORD>@<vm-ip>:6379
+```
+
+Replace `<REDIS_PASSWORD>` with the value from your `.env.local` and `<vm-ip>` with your VM's public IP.
+
+**Firewall:** Make sure your VM's firewall allows ports 3001 and 6379:
+
+```bash
+sudo ufw allow 3001
+sudo ufw allow 6379
+```
 
 ## Committing
 

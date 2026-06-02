@@ -82,4 +82,4 @@ class MyProvider implements CrawlerProvider {
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LOGGER_LEVEL` | `info` | `silent` | `info` | `debug` |
-| `HEADLESS` | `true` | Show browser UI when `false` |
+| `HEADLESS` | `true` | `true`, `false`, or `virtual` (virtual display) |

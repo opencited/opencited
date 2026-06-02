@@ -1,0 +1,17 @@
+node_modules
+.next
+.turbo
+dist
+.env*
+!.env.example
+.git
+.github
+.husky
+.vscode
+.agents
+.opencode
+*.md
+!README.md
+docker-compose.yml
+docker-compose.prod.yml
+bun.lockb
