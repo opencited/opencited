@@ -286,14 +286,14 @@ evaluate(session: BrowserSession, pageFunction: string): Promise<unknown>
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HEADLESS` | `true` | Set to `false` to show browser UI |
+| `HEADLESS` | `true` | `true`, `false`, or `virtual` (virtual display) |
 | `LOGGER_LEVEL` | `info` | Log level: `silent` \| `info` \| `debug` |
 
 ### Browser Options
 
 ```typescript
 interface BrowserOptions {
-	headless?: boolean;
+	headless?: boolean | "virtual";
 	viewport?: { width: number; height: number };
 	userDataDir?: string;
 }

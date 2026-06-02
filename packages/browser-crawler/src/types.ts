@@ -13,7 +13,7 @@ export interface ProxyOptions {
 }
 
 export interface BrowserOptions {
-	headless?: boolean;
+	headless?: boolean | "virtual";
 	browserName?: "chromium" | "firefox" | "webkit";
 	viewport?: { width: number; height: number } | null;
 	userAgent?: string;

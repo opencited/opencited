@@ -1,7 +1,28 @@
 import { Camoufox } from "camoufox-js";
+import { exec, execSync } from "node:child_process";
 import type { BrowserSession, BrowserOptions, ProxyOptions } from "./types";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import { env } from "./env";
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function killXvfbProcesses(): void {
+	try {
+		execSync("pkill -TERM -f 'Xvfb' 2>/dev/null || true");
+	} catch {
+		// No Xvfb processes found
+	}
+}
+
+function killOrphanedProcesses(): Promise<void> {
+	return new Promise((resolve) => {
+		exec("pkill -f 'camoufox\\|chromium' 2>/dev/null || true", () => {
+			resolve();
+		});
+	});
+}
 
 const DEFAULT_OPTIONS: Omit<BrowserOptions, "userDataDir"> & {
 	userDataDir?: string;
@@ -62,15 +83,18 @@ export async function openBrowser(
 			}
 		}
 	} else {
+		console.log(
+			"Creating Camoufox instance with a temporary session (no persistence)",
+		);
 		browser = (await Camoufox({
 			headless: opts.headless,
 			...buildProxyOptions(opts.proxy),
 		})) as Browser;
-
+		console.log("Creating new browser context...");
 		context = await browser.newContext({
 			viewport: opts.viewport ?? undefined,
 		});
-
+		console.log("Creating new page...");
 		page = await context.newPage();
 	}
 
@@ -88,16 +112,23 @@ export async function closeBrowser(
 		console.log(`💾 Session persisted in: ${userDataDir}`);
 	}
 
-	try {
-		if (session.browser) {
-			await session.browser.close();
-		} else {
-			await session.context.close();
-		}
-	} catch (_error) {
-		console.log("⚠️  Browser already closed or closing");
-		return;
+	// 1. Close context first (prevents memory leaks from page wrappers)
+	await session.context.close().catch(() => null);
+
+	// 2. Close browser (non-persistent sessions)
+	if (session.browser) {
+		await session.browser.close().catch(() => null);
 	}
+
+	// 3. Kill Xvfb virtual display processes (headless virtual mode)
+	killXvfbProcesses();
+
+	// 4. Give the OS time to clean up the browser process
+	await sleep(1500);
+
+	// 5. Kill any orphaned processes that weren't properly cleaned up
+	await killOrphanedProcesses();
+
 	console.log("✅ Browser closed");
 }
 

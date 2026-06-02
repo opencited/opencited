@@ -5,9 +5,12 @@ export const env = createEnv({
 	server: {
 		LOGGER_LEVEL: z.enum(["silent", "info", "debug"]).default("info"),
 		HEADLESS: z
-			.enum(["true", "false"])
+			.union([z.literal("true"), z.literal("false"), z.literal("virtual")])
 			.default("true")
-			.transform((v: string) => v === "true"),
+			.transform((v: string) => {
+				if (v === "virtual") return "virtual" as const;
+				return v === "true";
+			}),
 	},
 	runtimeEnv: process.env,
 });

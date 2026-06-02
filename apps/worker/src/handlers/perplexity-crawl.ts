@@ -21,9 +21,9 @@ import { withDb } from "../db";
 import {
 	fetchProxyList,
 	buildProxyOptions,
-	getStickyProxy,
 	setStickyProxy,
 	clearStickyProxy,
+	getStickyProxy,
 } from "../lib/proxy-resolver";
 import { env } from "../env";
 
@@ -31,14 +31,17 @@ async function resolveProxies(
 	proxyApiUrl: string,
 	redis: Redis,
 	logger: Logger,
+	stickyProxyEnabled: boolean,
 ): Promise<{ proxies: ProxyOptions[]; usedSticky: boolean }> {
-	const stickyProxy = await getStickyProxy(redis);
-	if (stickyProxy) {
-		logger.info(
-			{ server: stickyProxy.server },
-			"Using sticky proxy from last successful crawl",
-		);
-		return { proxies: [stickyProxy], usedSticky: true };
+	if (stickyProxyEnabled) {
+		const stickyProxy = await getStickyProxy(redis);
+		if (stickyProxy) {
+			logger.info(
+				{ server: stickyProxy.server },
+				"Using sticky proxy from last successful crawl",
+			);
+			return { proxies: [stickyProxy], usedSticky: true };
+		}
 	}
 
 	const proxyList = await fetchProxyList(proxyApiUrl);
@@ -82,6 +85,7 @@ export async function handlePerplexityCrawl(
 					proxyApiUrl,
 					redis,
 					logger,
+					env.STICKY_PROXY_ENABLED,
 				));
 			} else if (env.PROXY_SERVER) {
 				singleProxy = {
@@ -96,7 +100,7 @@ export async function handlePerplexityCrawl(
 					query,
 					provider,
 					browserOptions: {
-						headless: true,
+						headless: env.HEADLESS,
 						persist: false,
 						proxy: singleProxy,
 					},
@@ -135,7 +139,7 @@ export async function handlePerplexityCrawl(
 			const endTime = Date.now();
 
 			// Persist the winning proxy for the next job
-			if (result.usedProxy) {
+			if (result.usedProxy && env.STICKY_PROXY_ENABLED) {
 				await setStickyProxy(redis, result.usedProxy);
 				logger.info(
 					{ server: result.usedProxy.server },
@@ -233,8 +237,10 @@ export async function handlePerplexityCrawl(
 				error instanceof Error ? error.message : String(error);
 
 			// Clear sticky proxy so next job fetches a fresh list
-			await clearStickyProxy(redis);
-			logger.info("Sticky proxy cleared after crawl failure");
+			if (env.STICKY_PROXY_ENABLED) {
+				await clearStickyProxy(redis);
+				logger.info("Sticky proxy cleared after crawl failure");
+			}
 
 			logger.error(
 				{ error: errorMessage, crawlId: promptQueryCrawlId },

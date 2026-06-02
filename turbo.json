@@ -14,7 +14,12 @@
 		"LLM_BASE_URL",
 		"LLM_API_KEY",
 		"LLM_MODEL",
-		"GROQ_API_KEY"
+		"GROQ_API_KEY",
+		"WORKER_CONCURRENCY",
+		"WORKER_PORT",
+		"THORDATA_PROXY_API_URL",
+		"STICKY_PROXY_ENABLED",
+		"HEADLESS"
 	],
 	"tasks": {
 		"build": {
@@ -54,6 +59,10 @@
 			"persistent": true
 		},
 		"dev:turbo": {
+			"cache": false,
+			"persistent": true
+		},
+		"start": {
 			"cache": false,
 			"persistent": true
 		}

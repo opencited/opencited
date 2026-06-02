@@ -1,4 +1,4 @@
-FROM node:24-slim
+FROM node:24-slim AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
@@ -44,25 +44,37 @@ RUN npm install -g bun@1.3.10
 
 WORKDIR /app
 
-COPY package.json bun.lock ./
-COPY apps/worker/package.json ./apps/worker/
-COPY packages/queue/package.json ./packages/queue/
-COPY packages/actions/package.json ./packages/actions/
-COPY packages/browser-crawler/package.json ./packages/browser-crawler/
-COPY packages/db/package.json ./packages/db/
-COPY packages/crawler/package.json ./packages/crawler/
-COPY packages/typescript-config/package.json ./packages/typescript-config/
-COPY packages/tailwind-config/package.json ./packages/tailwind-config/
-COPY packages/ui/package.json ./packages/ui/
-COPY packages/trpc/package.json ./packages/trpc/
+# ---
+FROM base AS prepare
 
-RUN bun install
-
-RUN cd packages/browser-crawler && bunx camoufox-js fetch
+RUN npm install -g turbo@2.9.6
 
 COPY . .
 
-RUN bun run build --filter=@opencited/worker
+RUN turbo prune @opencited/worker --docker
+
+# ---
+FROM base AS builder
+
+COPY --from=prepare /app/out/json/ .
+
+RUN bun install
+
+COPY --from=prepare /app/out/full/ .
+
+RUN bun turbo build --filter=@opencited/worker
+
+RUN cd packages/browser-crawler && bunx camoufox-js fetch
+
+# ---
+FROM base AS runner
+
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/bun.lock ./bun.lock
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/apps/worker ./apps/worker
+COPY --from=builder /root/.cache/camoufox /root/.cache/camoufox
 
 EXPOSE 3001
 
