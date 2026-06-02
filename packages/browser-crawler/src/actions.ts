@@ -5,17 +5,21 @@ import type {
 	ImageInfo,
 	LinkInfo,
 } from "./types";
+import type { Logger } from "./logger";
+import { defaultLogger } from "./logger";
 
 export async function click(
 	session: BrowserSession,
 	selector: string,
+	logger?: Logger,
 ): Promise<boolean> {
+	const log = logger ?? defaultLogger;
 	try {
 		await session.page.click(selector, { timeout: 5000 });
-		console.log(`✅ Clicked: ${selector}`);
+		log.info(`Clicked: ${selector}`);
 		return true;
 	} catch (error) {
-		console.error(`❌ Failed to click ${selector}:`, error);
+		log.error(`Failed to click ${selector}:`, error);
 		return false;
 	}
 }
@@ -24,13 +28,15 @@ export async function type(
 	session: BrowserSession,
 	selector: string,
 	text: string,
+	logger?: Logger,
 ): Promise<boolean> {
+	const log = logger ?? defaultLogger;
 	try {
 		await session.page.fill(selector, text);
-		console.log(`✅ Typed "${text}" into: ${selector}`);
+		log.info(`Typed "${text}" into: ${selector}`);
 		return true;
 	} catch (error) {
-		console.error(`❌ Failed to type into ${selector}:`, error);
+		log.error(`Failed to type into ${selector}:`, error);
 		return false;
 	}
 }
@@ -38,13 +44,15 @@ export async function type(
 export async function press(
 	session: BrowserSession,
 	key: string,
+	logger?: Logger,
 ): Promise<boolean> {
+	const log = logger ?? defaultLogger;
 	try {
 		await session.page.keyboard.press(key);
-		console.log(`✅ Pressed: ${key}`);
+		log.info(`Pressed: ${key}`);
 		return true;
 	} catch (error) {
-		console.error(`❌ Failed to press ${key}:`, error);
+		log.error(`Failed to press ${key}:`, error);
 		return false;
 	}
 }
@@ -52,13 +60,15 @@ export async function press(
 export async function hover(
 	session: BrowserSession,
 	selector: string,
+	logger?: Logger,
 ): Promise<boolean> {
+	const log = logger ?? defaultLogger;
 	try {
 		await session.page.hover(selector);
-		console.log(`✅ Hovered: ${selector}`);
+		log.info(`Hovered: ${selector}`);
 		return true;
 	} catch (error) {
-		console.error(`❌ Failed to hover ${selector}:`, error);
+		log.error(`Failed to hover ${selector}:`, error);
 		return false;
 	}
 }
@@ -67,7 +77,9 @@ export async function waitFor(
 	session: BrowserSession,
 	selector: string,
 	timeout?: number,
+	logger?: Logger,
 ): Promise<boolean> {
+	const log = logger ?? defaultLogger;
 	try {
 		await session.page.waitForSelector(selector, {
 			state: "visible",
@@ -75,7 +87,7 @@ export async function waitFor(
 		});
 		return true;
 	} catch (error) {
-		console.error(`❌ Element not found: ${selector}`, error);
+		log.error(`Element not found: ${selector}`, error);
 		return false;
 	}
 }
@@ -189,12 +201,14 @@ export async function extractContent(
 export async function evaluate(
 	session: BrowserSession,
 	pageFunction: string,
+	logger?: Logger,
 ): Promise<unknown> {
+	const log = logger ?? defaultLogger;
 	try {
 		const result = await session.page.evaluate(pageFunction);
 		return result;
 	} catch (error) {
-		console.error(`❌ Evaluation failed:`, error);
+		log.error(`Evaluation failed:`, error);
 		throw error;
 	}
 }
@@ -219,7 +233,11 @@ export async function getText(
 	return await session.page.evaluate(() => document.body.innerText);
 }
 
-export async function getClipboard(session: BrowserSession): Promise<string> {
+export async function getClipboard(
+	session: BrowserSession,
+	logger?: Logger,
+): Promise<string> {
+	const log = logger ?? defaultLogger;
 	const clipboardTimeoutMs = 5000;
 
 	try {
@@ -234,10 +252,7 @@ export async function getClipboard(session: BrowserSession): Promise<string> {
 		});
 		return await Promise.race([clipboardPromise, timeoutPromise]);
 	} catch (error) {
-		console.log(
-			"⚠️  Clipboard read failed, falling back to DOM extraction",
-			error,
-		);
+		log.warn("Clipboard read failed, falling back to DOM extraction", error);
 		try {
 			const domTimeoutMs = 5000;
 			const domPromise = session.page.evaluate(() => {
@@ -257,7 +272,7 @@ export async function getClipboard(session: BrowserSession): Promise<string> {
 			});
 			return await Promise.race([domPromise, timeoutPromise]);
 		} catch (error) {
-			console.error("❌ Failed to extract content from DOM", error);
+			log.error("Failed to extract content from DOM", error);
 			return "";
 		}
 	}

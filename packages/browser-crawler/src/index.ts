@@ -30,6 +30,7 @@ export {
 	defaultLogger,
 	type Logger,
 	type LogLevel,
+	type LoggerContext,
 } from "./logger";
 
 export {

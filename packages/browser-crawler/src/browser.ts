@@ -3,6 +3,8 @@ import { Camoufox } from "camoufox-js";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import { env } from "./env";
 import type { BrowserOptions, BrowserSession, ProxyOptions } from "./types";
+import type { Logger } from "./logger";
+import { defaultLogger } from "./logger";
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -55,7 +57,9 @@ function buildWindowOption(
 
 export async function openBrowser(
 	options: BrowserOptions = {},
+	logger?: Logger,
 ): Promise<BrowserSession> {
+	const log = logger ?? defaultLogger;
 	const opts = {
 		...DEFAULT_OPTIONS,
 		...options,
@@ -66,12 +70,12 @@ export async function openBrowser(
 
 	const isPersistent = !!opts.userDataDir;
 
-	console.log(
-		`🌐 Opening Camoufox browser (headless: ${opts.headless}, persistent: ${isPersistent})...`,
+	log.info(
+		`Opening Camoufox browser (headless: ${opts.headless}, persistent: ${isPersistent})...`,
 	);
 
 	if (opts.proxy) {
-		console.log(`🔗 Using proxy: ${opts.proxy.server}`);
+		log.info(`Using proxy: ${opts.proxy.server}`);
 	}
 
 	let browser: Browser | undefined;
@@ -94,7 +98,7 @@ export async function openBrowser(
 			? opts.userDataDir
 			: `${process.cwd()}/${opts.userDataDir}`;
 
-		console.log(`📁 Using persistent session: ${userDataDir}`);
+		log.info(`Using persistent session: ${userDataDir}`);
 
 		context = (await Promise.race([
 			Camoufox({
@@ -106,7 +110,7 @@ export async function openBrowser(
 			launchTimeout,
 		])) as BrowserContext;
 
-		console.log("✅ Camoufox persistent context created");
+		log.info("Camoufox persistent context created");
 
 		const existingPage = context.pages().find((p) => !p.isClosed());
 		page = existingPage ?? (await context.newPage());
@@ -121,7 +125,7 @@ export async function openBrowser(
 			}
 		}
 	} else {
-		console.log(
+		log.info(
 			"Creating Camoufox instance with a temporary session (no persistence)",
 		);
 		browser = (await Promise.race([
@@ -132,31 +136,33 @@ export async function openBrowser(
 			}),
 			launchTimeout,
 		])) as Browser;
-		console.log("✅ Camoufox browser launched");
+		log.info("Camoufox browser launched");
 
-		console.log("Creating new browser context...");
+		log.info("Creating new browser context...");
 		context = await browser.newContext({
 			viewport: opts.viewport ?? undefined,
 		});
-		console.log("✅ Browser context created");
+		log.info("Browser context created");
 
-		console.log("Creating new page...");
+		log.info("Creating new page...");
 		page = await context.newPage();
-		console.log("✅ Page created");
+		log.info("Page created");
 	}
 
-	console.log("✅ Browser ready");
+	log.info("Browser ready");
 	return { browser, context, page };
 }
 
 export async function closeBrowser(
 	session: BrowserSession,
 	userDataDir?: string,
+	logger?: Logger,
 ): Promise<void> {
-	console.log("🔒 Closing browser...");
+	const log = logger ?? defaultLogger;
+	log.info("Closing browser...");
 
 	if (userDataDir) {
-		console.log(`💾 Session persisted in: ${userDataDir}`);
+		log.info(`Session persisted in: ${userDataDir}`);
 	}
 
 	// 1. Close context first (prevents memory leaks from page wrappers)
@@ -184,16 +190,18 @@ export async function closeBrowser(
 	// 5. Kill any orphaned processes that weren't properly cleaned up
 	await killOrphanedProcesses();
 
-	console.log("✅ Browser closed");
+	log.info("Browser closed");
 }
 
 export async function navigate(
 	session: BrowserSession,
 	url: string,
+	logger?: Logger,
 ): Promise<void> {
-	console.log(`🔗 Navigating to: ${url}`);
+	const log = logger ?? defaultLogger;
+	log.info(`Navigating to: ${url}`);
 	await session.page.goto(url, { waitUntil: "networkidle" });
-	console.log(`✅ Loaded: ${session.page.url()}`);
+	log.info(`Loaded: ${session.page.url()}`);
 }
 
 export async function takeSnapshot(session: BrowserSession): Promise<string> {
@@ -204,24 +212,38 @@ export async function takeSnapshot(session: BrowserSession): Promise<string> {
 export async function screenshot(
 	session: BrowserSession,
 	filename?: string,
+	logger?: Logger,
 ): Promise<string> {
+	const log = logger ?? defaultLogger;
 	const path = filename ?? `screenshot-${Date.now()}.png`;
 	await session.page.screenshot({ path, fullPage: true });
-	console.log(`📸 Screenshot saved: ${path}`);
+	log.info(`Screenshot saved: ${path}`);
 	return path;
 }
 
-export async function reload(session: BrowserSession): Promise<void> {
-	console.log("🔄 Reloading page...");
+export async function reload(
+	session: BrowserSession,
+	logger?: Logger,
+): Promise<void> {
+	const log = logger ?? defaultLogger;
+	log.info("Reloading page...");
 	await session.page.reload({ waitUntil: "networkidle" });
 }
 
-export async function goBack(session: BrowserSession): Promise<void> {
-	console.log("⬅️ Going back...");
+export async function goBack(
+	session: BrowserSession,
+	logger?: Logger,
+): Promise<void> {
+	const log = logger ?? defaultLogger;
+	log.info("Going back...");
 	await session.page.goBack({ waitUntil: "networkidle" });
 }
 
-export async function goForward(session: BrowserSession): Promise<void> {
-	console.log("➡️ Going forward...");
+export async function goForward(
+	session: BrowserSession,
+	logger?: Logger,
+): Promise<void> {
+	const log = logger ?? defaultLogger;
+	log.info("Going forward...");
 	await session.page.goForward({ waitUntil: "networkidle" });
 }

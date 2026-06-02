@@ -142,7 +142,7 @@ const logger = createLogger("info");
 
 async function main() {
   const crawler = new Crawler({ logger });
-  const provider = new PerplexityProvider();
+  const provider = new PerplexityProvider(logger);
 
   logger.info("=" .repeat(60));
   logger.info("STEP 1: CRAWLING PERPLEXITY");

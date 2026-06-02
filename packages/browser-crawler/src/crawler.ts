@@ -71,10 +71,13 @@ export class Crawler {
 			? (options.browserOptions?.userDataDir ?? "./.browser-data")
 			: undefined;
 
-		const session = await openBrowser({
-			...options.browserOptions,
-			userDataDir,
-		});
+		const session = await openBrowser(
+			{
+				...options.browserOptions,
+				userDataDir,
+			},
+			this.logger,
+		);
 
 		try {
 			this.logger.info(
@@ -111,11 +114,13 @@ export class Crawler {
 				options.provider.name,
 				step,
 				failureType,
+				undefined,
+				this.logger,
 			);
 			throw error;
 		} finally {
 			await options.provider.cleanup?.(session);
-			await closeBrowser(session, userDataDir);
+			await closeBrowser(session, userDataDir, this.logger);
 		}
 	}
 
@@ -187,11 +192,14 @@ export class Crawler {
 					);
 
 					try {
-						session = await openBrowser({
-							...options.browserOptions,
-							userDataDir,
-							proxy,
-						});
+						session = await openBrowser(
+							{
+								...options.browserOptions,
+								userDataDir,
+								proxy,
+							},
+							this.logger,
+						);
 
 						await this.safeNavigate(options.provider, session);
 
@@ -256,6 +264,7 @@ export class Crawler {
 								errorStep,
 								failureType,
 								proxy.server,
+								this.logger,
 							);
 						}
 
@@ -272,7 +281,7 @@ export class Crawler {
 					} finally {
 						if (session) {
 							await options.provider.cleanup?.(session);
-							await closeBrowser(session, userDataDir);
+							await closeBrowser(session, userDataDir, this.logger);
 							session = undefined;
 						}
 					}

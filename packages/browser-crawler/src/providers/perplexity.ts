@@ -9,9 +9,11 @@ import type {
 	StructuredCrawlData,
 	AnswerFormat,
 } from "./types";
+import type { Logger } from "../logger";
+import { defaultLogger } from "../logger";
 
 const DEBUG_DIR = path.join(process.cwd(), "debug");
-const BUILD_TIMESTAMP = "2026-05-31T14:00:00Z"; // Update this on each deploy
+const BUILD_TIMESTAMP = "2026-05-31T14:00:00Z";
 
 function writeDebugFile(label: string, content: string): string {
 	fs.mkdirSync(DEBUG_DIR, { recursive: true });
@@ -25,45 +27,45 @@ function writeDebugFile(label: string, content: string): string {
 export class PerplexityProvider implements CrawlerProvider {
 	readonly name = "perplexity";
 	readonly requiresAuth = false;
+	private logger: Logger;
 
-	constructor() {
-		console.log(`📦 PerplexityProvider loaded (build: ${BUILD_TIMESTAMP})`);
+	constructor(logger?: Logger) {
+		this.logger = logger ?? defaultLogger;
+		this.logger.info(`PerplexityProvider loaded (build: ${BUILD_TIMESTAMP})`);
 	}
 
 	async navigate(session: BrowserSession): Promise<void> {
-		console.log("🧭 Navigating to Perplexity homepage...");
+		this.logger.info("Navigating to Perplexity homepage...");
 		await session.page.goto("https://www.perplexity.ai/", {
 			waitUntil: "networkidle",
 		});
 		const currentUrl = session.page.url();
-		console.log(`✅ Navigation complete. Current URL: ${currentUrl}`);
+		this.logger.info(`Navigation complete. Current URL: ${currentUrl}`);
 
-		// Debug: Check what's on the page after navigation
 		const pageTitle = await session.page.title();
-		console.log(`📄 Page title: "${pageTitle}"`);
+		this.logger.info(`Page title: "${pageTitle}"`);
 
 		const bodyTextPreview = await session.page.evaluate(() => {
 			const text = document.body?.innerText || "";
 			return text.substring(0, 200).replace(/\s+/g, " ").trim();
 		});
-		console.log(`📝 Page content preview: "${bodyTextPreview}..."`);
+		this.logger.info(`Page content preview: "${bodyTextPreview}..."`);
 	}
 
 	async submitQuery(session: BrowserSession, query: string): Promise<void> {
-		console.log(`🔍 Submitting query: "${query.substring(0, 50)}..."`);
+		this.logger.info(`Submitting query: "${query.substring(0, 50)}..."`);
 		await this.waitForCloudflareChallenge(session);
 
-		console.log("⏳ Waiting for search input #ask-input...");
-		const inputFound = await waitFor(session, "#ask-input", 10000);
+		this.logger.info("Waiting for search input #ask-input...");
+		const inputFound = await waitFor(session, "#ask-input", 10000, this.logger);
 
 		if (!inputFound) {
-			console.error("❌ Search input #ask-input not found after 10s");
+			this.logger.error("Search input #ask-input not found after 10s");
 			const currentUrl = session.page.url();
 			const pageTitle = await session.page.title();
-			console.error(`📍 Current URL: ${currentUrl}`);
-			console.error(`📄 Page title: "${pageTitle}"`);
+			this.logger.error(`Current URL: ${currentUrl}`);
+			this.logger.error(`Page title: "${pageTitle}"`);
 
-			// Debug: Check what selectors exist on the page
 			const availableSelectors = await session.page.evaluate(() => {
 				const selectors = [
 					"#ask-input",
@@ -81,39 +83,37 @@ export class PerplexityProvider implements CrawlerProvider {
 				});
 				return results;
 			});
-			console.error(
-				"🔎 Available input selectors:",
+			this.logger.error(
+				"Available input selectors:",
 				JSON.stringify(availableSelectors),
 			);
 
-			// Write debug HTML for analysis
 			const pageContent = await session.page.evaluate(() =>
 				document.body.getHTML(),
 			);
 			const filePath = writeDebugFile("input-not-found", pageContent);
-			console.error(`📁 Page content written to: ${filePath}`);
+			this.logger.error(`Page content written to: ${filePath}`);
 
 			throw new Error(
 				`Search input #ask-input not found. URL: ${currentUrl}, Title: "${pageTitle}"`,
 			);
 		}
 
-		console.log("✅ Search input found, filling query...");
+		this.logger.info("Search input found, filling query...");
 		await session.page.fill("#ask-input", query);
-		console.log("⌨️  Pressing Enter to submit...");
+		this.logger.info("Pressing Enter to submit...");
 		await session.page.keyboard.press("Enter");
 
-		// Debug: Verify navigation after submission
 		await session.page.waitForTimeout(1000);
 		const postSubmitUrl = session.page.url();
-		console.log(`📍 Post-submit URL: ${postSubmitUrl}`);
+		this.logger.info(`Post-submit URL: ${postSubmitUrl}`);
 	}
 
 	async waitForResponse(session: BrowserSession): Promise<void> {
 		await session.page.waitForLoadState("networkidle");
 		await this.waitForCloudflareChallenge(session);
 
-		console.log("⏳ Waiting for Perplexity response to finish streaming...");
+		this.logger.info("Waiting for Perplexity response to finish streaming...");
 		const maxWait = 60000;
 		const pollInterval = 300;
 		let elapsed = 0;
@@ -148,16 +148,16 @@ export class PerplexityProvider implements CrawlerProvider {
 			const stableFor = elapsed - stableSince;
 
 			if (!state.isStreaming && seenContent && stableFor >= 2000) {
-				console.log(
-					`✅ Response finished (content: ${state.contentLength} chars, stable for ${stableFor}ms)`,
+				this.logger.info(
+					`Response finished (content: ${state.contentLength} chars, stable for ${stableFor}ms)`,
 				);
 				return;
 			}
 
 			if (state.isStreaming) {
 				if (elapsed % 5000 < pollInterval) {
-					console.log(
-						`⏳ Still streaming... (${elapsed / 1000}s, content: ${state.contentLength} chars)`,
+					this.logger.info(
+						`Still streaming... (${elapsed / 1000}s, content: ${state.contentLength} chars)`,
 					);
 				}
 			}
@@ -166,15 +166,15 @@ export class PerplexityProvider implements CrawlerProvider {
 			elapsed += pollInterval;
 		}
 
-		console.log(
-			`⚠️  Response wait timed out at ${elapsed / 1000}s (content: ${lastContentLength} chars)`,
+		this.logger.info(
+			`Response wait timed out at ${elapsed / 1000}s (content: ${lastContentLength} chars)`,
 		);
 	}
 
 	private async waitForCloudflareChallenge(
 		session: BrowserSession,
 	): Promise<void> {
-		console.log("Checking for Cloudflare challenge...");
+		this.logger.info("Checking for Cloudflare challenge...");
 		const maxWait = 15000;
 		const interval = 1000;
 		let elapsed = 0;
@@ -201,11 +201,11 @@ export class PerplexityProvider implements CrawlerProvider {
 			});
 
 			if (!hasChallenge) {
-				console.log("No Cloudflare challenge detected");
+				this.logger.info("No Cloudflare challenge detected");
 				return;
 			}
 
-			console.log(
+			this.logger.info(
 				`Cloudflare challenge detected, waiting... (${elapsed / 1000}s)`,
 			);
 			await session.page.waitForTimeout(interval);
@@ -218,15 +218,13 @@ export class PerplexityProvider implements CrawlerProvider {
 	async extractResult(session: BrowserSession): Promise<CrawlResult> {
 		const startTime = Date.now();
 
-		// Debug: Log page state before extraction
 		const currentUrl = session.page.url();
 		const pageTitle = await session.page.title();
-		console.log(`📍 Extracting from URL: ${currentUrl}`);
-		console.log(`📄 Page title: "${pageTitle}"`);
+		this.logger.info(`Extracting from URL: ${currentUrl}`);
+		this.logger.info(`Page title: "${pageTitle}"`);
 
 		await this.waitForCloudflareChallenge(session);
 
-		// Debug: Check if page has answer content before looking for copy button
 		const pageState = await session.page.evaluate(() => {
 			const bodyText = document.body?.innerText || "";
 			const hasAskInput = !!document.querySelector("#ask-input");
@@ -255,13 +253,13 @@ export class PerplexityProvider implements CrawlerProvider {
 				elementCount: document.querySelectorAll("*").length,
 			};
 		});
-		console.log(
-			"🔍 Page state before extraction:",
+		this.logger.info(
+			"Page state before extraction:",
 			JSON.stringify(pageState, null, 2),
 		);
 
 		if (pageState.hasLoginWall) {
-			console.log(
+			this.logger.info(
 				"Login wall detected - Perplexity requires sign-in to view answer",
 			);
 			throw new Error(
@@ -270,24 +268,24 @@ export class PerplexityProvider implements CrawlerProvider {
 		}
 
 		if (pageState.hasLoading) {
-			console.log("⏳ Page appears to be loading/generating, waiting 5s...");
+			this.logger.info("Page appears to be loading/generating, waiting 5s...");
 			await session.page.waitForTimeout(5000);
 		}
 
-		console.log("📋 Locating copy button...");
+		this.logger.info("Locating copy button...");
 		const copyButtonLocated = await waitFor(
 			session,
 			'button[aria-label="Copy"]',
 			40000,
+			this.logger,
 		);
-		console.log("✅ Copy button located:", copyButtonLocated);
+		this.logger.info(`Copy button located: ${copyButtonLocated}`);
 
 		let content: string;
 
 		if (copyButtonLocated) {
-			console.log("🖱️  Attempting to click copy button...");
+			this.logger.info("Attempting to click copy button...");
 
-			// Debug: Check button state before clicking
 			const buttonState = await session.page.evaluate(() => {
 				const btn = document.querySelector('button[aria-label="Copy"]');
 				if (!btn) return { found: false };
@@ -307,14 +305,13 @@ export class PerplexityProvider implements CrawlerProvider {
 					parentClasses: parent?.className,
 				};
 			});
-			console.log(
-				"🔘 Copy button state:",
+			this.logger.info(
+				"Copy button state:",
 				JSON.stringify(buttonState, null, 2),
 			);
 
 			let clicked = false;
 
-			// Try JS click first (more reliable for React apps)
 			clicked = await session.page.evaluate(() => {
 				const btn = document.querySelector('button[aria-label="Copy"]');
 				if (btn) {
@@ -323,40 +320,41 @@ export class PerplexityProvider implements CrawlerProvider {
 				}
 				return false;
 			});
-			console.log("✅ JS click result:", clicked);
+			this.logger.info(`JS click result: ${clicked}`);
 
-			console.log("📋 Copy button clicked:", clicked);
+			this.logger.info(`Copy button clicked: ${clicked}`);
 			if (clicked) {
 				await session.page.waitForTimeout(1000);
-				console.log("📖 Attempting to read from clipboard...");
-				content = await getClipboard(session);
-				console.log("📖 Clipboard content retrieved:", !!content);
-				console.log(
-					`📊 Clipboard content length: ${content?.length || 0} chars`,
+				this.logger.info("Attempting to read from clipboard...");
+				content = await getClipboard(session, this.logger);
+				this.logger.info(`Clipboard content retrieved: ${!!content}`);
+				this.logger.info(
+					`Clipboard content length: ${content?.length || 0} chars`,
 				);
 				if (!content) {
-					console.error("⚠️  Clipboard is empty, using DOM extraction");
+					this.logger.warn("Clipboard is empty, using DOM extraction");
 					content = await session.page.evaluate(() => document.body.getHTML());
 				}
 			} else {
-				console.log("❌ Click failed, writing page content to debug file...");
+				this.logger.info("Click failed, writing page content to debug file...");
 				const pageContent = await session.page.evaluate(() =>
 					document.body.getHTML(),
 				);
 				const filePath = writeDebugFile("click-failed", pageContent);
-				console.log(`📁 Page content written to: ${filePath}`);
+				this.logger.info(`Page content written to: ${filePath}`);
 				try {
-					console.log("📖 Attempting to read from clipboard as fallback...");
-					content = await getClipboard(session);
-					console.log("📖 Clipboard content retrieved in fallback:", !!content);
+					this.logger.info("Attempting to read from clipboard as fallback...");
+					content = await getClipboard(session, this.logger);
+					this.logger.info(
+						`Clipboard content retrieved in fallback: ${!!content}`,
+					);
 				} catch {
-					console.error("⚠️  Clipboard also failed, using DOM extraction");
+					this.logger.warn("Clipboard also failed, using DOM extraction");
 					content = pageContent;
 				}
 			}
 		} else {
-			console.log("❌ Copy button not found after 40s wait");
-			// Debug: Log what's on the page
+			this.logger.info("Copy button not found after 40s wait");
 			const pageSummary = await session.page.evaluate(() => {
 				const bodyText = document.body?.innerText || "";
 				const buttons = Array.from(document.querySelectorAll("button")).map(
@@ -387,47 +385,46 @@ export class PerplexityProvider implements CrawlerProvider {
 						.trim(),
 				};
 			});
-			console.log("🔍 Page summary:", JSON.stringify(pageSummary, null, 2));
+			this.logger.info("Page summary:", JSON.stringify(pageSummary, null, 2));
 
-			// Check for login wall that appeared during the copy button wait
 			const lateLoginWall = await session.page.evaluate(() => {
 				const bodyText = document.body?.innerText || "";
 				return /sign up and repeat your request/i.test(bodyText);
 			});
 
 			if (lateLoginWall) {
-				console.log(
-					"🚫 Late login wall detected — throwing AuthenticationError",
+				this.logger.info(
+					"Late login wall detected — throwing AuthenticationError",
 				);
 				throw new Error(
 					"Login wall detected - Perplexity requires sign-in to view answer",
 				);
 			}
 
-			console.log(
-				"✅ No login wall detected, proceeding with clipboard fallback",
+			this.logger.info(
+				"No login wall detected, proceeding with clipboard fallback",
 			);
 
 			const pageContent = await session.page.evaluate(() =>
 				document.body.getHTML(),
 			);
-			console.log(`📄 Page HTML length: ${pageContent.length} chars`);
+			this.logger.info(`Page HTML length: ${pageContent.length} chars`);
 			const filePath = writeDebugFile("button-not-found", pageContent);
-			console.log(`📁 Page content written to: ${filePath}`);
+			this.logger.info(`Page content written to: ${filePath}`);
 			try {
-				console.log("📖 Attempting clipboard as fallback...");
-				content = await getClipboard(session);
-				console.log(
-					`📖 Clipboard content retrieved: ${!!content} (length: ${content?.length ?? 0} chars)`,
+				this.logger.info("Attempting clipboard as fallback...");
+				content = await getClipboard(session, this.logger);
+				this.logger.info(
+					`Clipboard content retrieved: ${!!content} (length: ${content?.length ?? 0} chars)`,
 				);
 				if (content) {
-					console.log(`📋 Clipboard preview: "${content.substring(0, 100)}"`);
+					this.logger.info(`Clipboard preview: "${content.substring(0, 100)}"`);
 				}
 			} catch (error) {
-				console.error("⚠️  Clipboard also failed, using DOM extraction", error);
+				this.logger.warn("Clipboard also failed, using DOM extraction", error);
 				content = pageContent;
-				console.log(
-					`📄 Using DOM extraction (length: ${content.length} chars)`,
+				this.logger.info(
+					`Using DOM extraction (length: ${content.length} chars)`,
 				);
 			}
 		}
@@ -435,26 +432,25 @@ export class PerplexityProvider implements CrawlerProvider {
 		const structured = await this.extractStructuredData(session);
 
 		const loadTimeMs = Date.now() - startTime;
-		console.log(`✅ Extraction complete in ${loadTimeMs}ms`);
-		console.log(`📊 Content length: ${content.length} chars`);
-		console.log(`📊 Content preview: "${content.substring(0, 150)}"`);
-		console.log(`📊 Citations: ${structured.citations.length}`);
-		console.log(
-			`📊 Related questions: ${structured.relatedQuestions?.length ?? 0}`,
+		this.logger.info(`Extraction complete in ${loadTimeMs}ms`);
+		this.logger.info(`Content length: ${content.length} chars`);
+		this.logger.info(`Content preview: "${content.substring(0, 150)}"`);
+		this.logger.info(`Citations: ${structured.citations.length}`);
+		this.logger.info(
+			`Related questions: ${structured.relatedQuestions?.length ?? 0}`,
 		);
 
-		// Validate content quality before returning
 		const isLikelyLoginWall = /sign up and repeat your request/i.test(content);
 		const isTooShort = content.length < 50;
 		if (isLikelyLoginWall) {
-			console.log("⚠️  Content appears to be a login wall message — throwing");
+			this.logger.info("Content appears to be a login wall message — throwing");
 			throw new Error(
 				"Login wall detected in extracted content - Perplexity requires sign-in",
 			);
 		}
 		if (isTooShort) {
-			console.log(
-				`⚠️  Content too short (${content.length} chars) — likely extraction failure`,
+			this.logger.info(
+				`Content too short (${content.length} chars) — likely extraction failure`,
 			);
 			throw new Error(
 				`Extraction failed: content too short (${content.length} chars). Page may require authentication.`,

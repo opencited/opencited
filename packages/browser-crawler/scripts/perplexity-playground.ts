@@ -5,7 +5,7 @@ async function main() {
 	const logger = createLogger("debug");
 
 	const crawler = new Crawler({ logger });
-	const provider = new PerplexityProvider();
+	const provider = new PerplexityProvider(logger);
 
 	try {
 		const result = await crawler.crawl({

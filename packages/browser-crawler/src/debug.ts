@@ -3,6 +3,8 @@ import * as path from "node:path";
 import { screenshot } from "./browser";
 import type { BrowserSession } from "./types";
 import type { FailureType } from "./errors";
+import type { Logger } from "./logger";
+import { defaultLogger } from "./logger";
 import { env } from "./env";
 
 const DEBUG_DIR = path.join(__dirname, "..", "debug");
@@ -14,7 +16,9 @@ export async function captureDebugInfo(
 	step: string,
 	failureType: FailureType,
 	proxyServer?: string,
+	logger?: Logger,
 ): Promise<void> {
+	const log = logger ?? defaultLogger;
 	if (!env.DEBUG_PAUSE_ON_FAILURE) return;
 
 	fs.mkdirSync(DEBUG_DIR, { recursive: true });
@@ -29,28 +33,28 @@ export async function captureDebugInfo(
 	);
 	fs.writeFileSync(htmlPath, html, "utf-8");
 
-	await screenshot(session, pngPath);
+	await screenshot(session, pngPath, log);
 
 	const url = session.page.url();
 	const title = await session.page.title();
 	const errorMsg = error instanceof Error ? error.message : String(error);
 
-	console.log("🔴 DEBUG PAUSE ACTIVATED");
-	console.log(`   Provider: ${provider}`);
-	console.log(`   Step: ${step}`);
-	console.log(`   Failure type: ${failureType}`);
-	console.log(`   URL: ${url}`);
-	console.log(`   Title: ${title}`);
-	console.log(`   Error: ${errorMsg}`);
-	if (proxyServer) console.log(`   Proxy: ${proxyServer}`);
-	console.log(`   HTML: ${htmlPath}`);
-	console.log(`   Screenshot: ${pngPath}`);
-	console.log(
-		`   ⏸️  Browser will pause for ${env.DEBUG_PAUSE_DURATION_MS / 1000}s — interact with it now`,
+	log.error("DEBUG PAUSE ACTIVATED");
+	log.error(`Provider: ${provider}`);
+	log.error(`Step: ${step}`);
+	log.error(`Failure type: ${failureType}`);
+	log.error(`URL: ${url}`);
+	log.error(`Title: ${title}`);
+	log.error(`Error: ${errorMsg}`);
+	if (proxyServer) log.error(`Proxy: ${proxyServer}`);
+	log.error(`HTML: ${htmlPath}`);
+	log.error(`Screenshot: ${pngPath}`);
+	log.error(
+		`Browser will pause for ${env.DEBUG_PAUSE_DURATION_MS / 1000}s — interact with it now`,
 	);
 
 	await new Promise((resolve) =>
 		setTimeout(resolve, env.DEBUG_PAUSE_DURATION_MS),
 	);
-	console.log("▶️  Debug pause complete, continuing...");
+	log.info("Debug pause complete, continuing...");
 }
