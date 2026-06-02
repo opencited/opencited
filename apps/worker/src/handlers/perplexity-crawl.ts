@@ -1,12 +1,11 @@
 import type { Job } from "bullmq";
-import type { Logger as PinoLogger } from "pino";
 import type { Redis } from "ioredis";
+import type { Logger as CrawlerLogger } from "@opencited/logger";
 import {
 	Crawler,
 	PerplexityProvider,
 	AllProxiesFailedError,
 	type ProxyOptions,
-	type Logger as CrawlerLogger,
 	type LoggerContext,
 } from "@opencited/browser-crawler";
 import {
@@ -28,57 +27,40 @@ import {
 } from "../lib/proxy-resolver";
 import { env } from "../env";
 
-function pinoToCrawlerLogger(pino: PinoLogger): CrawlerLogger {
-	return {
-		info: (msg, ...args) => {
-			const ctx = args[0] && typeof args[0] === "object" ? args[0] : {};
-			pino.info(ctx, msg);
-		},
-		warn: (msg, ...args) => {
-			const ctx = args[0] && typeof args[0] === "object" ? args[0] : {};
-			pino.warn(ctx, msg);
-		},
-		error: (msg, ...args) => {
-			const ctx = args[0] && typeof args[0] === "object" ? args[0] : {};
-			pino.error(ctx, msg);
-		},
-		debug: (msg, ...args) => {
-			const ctx = args[0] && typeof args[0] === "object" ? args[0] : {};
-			pino.debug(ctx, msg);
-		},
-		withContext: (ctx: LoggerContext) => pinoToCrawlerLogger(pino.child(ctx)),
-	};
+function adaptLogger(
+	base: CrawlerLogger,
+	context: LoggerContext,
+): CrawlerLogger {
+	return base.withContext(context);
 }
 
 async function resolveProxies(
 	proxyApiUrl: string,
 	redis: Redis,
-	logger: PinoLogger,
+	logger: CrawlerLogger,
 	stickyProxyEnabled: boolean,
 ): Promise<{ proxies: ProxyOptions[]; usedSticky: boolean }> {
 	if (stickyProxyEnabled) {
 		const stickyProxy = await getStickyProxy(redis);
 		if (stickyProxy) {
-			logger.info(
-				{ server: stickyProxy.server },
-				"Using sticky proxy from last successful crawl",
-			);
+			logger.info("Using sticky proxy from last successful crawl", {
+				server: stickyProxy.server,
+			});
 			return { proxies: [stickyProxy], usedSticky: true };
 		}
 	}
 
 	const proxyList = await fetchProxyList(proxyApiUrl);
 	const proxies = buildProxyOptions(proxyList);
-	logger.info(
-		{ proxyCount: proxies.length },
-		"Proxy list fetched from ThorData",
-	);
+	logger.info("Proxy list fetched from ThorData", {
+		proxyCount: proxies.length,
+	});
 	return { proxies, usedSticky: false };
 }
 
 export async function handlePerplexityCrawl(
 	job: Job<JobPayload<"perplexity-crawl">>,
-	logger: PinoLogger,
+	logger: CrawlerLogger,
 	redis: Redis,
 ): Promise<void> {
 	const { query, promptQueryId, promptQueryCrawlId } = job.data;
@@ -89,14 +71,12 @@ export async function handlePerplexityCrawl(
 			ctx: { db, userId: null, isAuthenticated: false },
 		});
 
-		const crawlLogger: CrawlerLogger = pinoToCrawlerLogger(
-			logger.child({
-				jobId: job.id ?? undefined,
-				promptQueryCrawlId,
-				promptQueryId,
-				provider: "perplexity",
-			}),
-		);
+		const crawlLogger = adaptLogger(logger, {
+			jobId: job.id ?? undefined,
+			promptQueryCrawlId,
+			promptQueryId,
+			provider: "perplexity",
+		});
 
 		const provider = new PerplexityProvider(crawlLogger);
 		const crawler = new Crawler({ logger: crawlLogger });
@@ -143,17 +123,16 @@ export async function handlePerplexityCrawl(
 						proxyApiUrl
 					) {
 						logger.warn(
-							{ lastFailureType: err.lastFailureType },
 							"Sticky proxy failed — falling back to fresh ThorData list",
+							{ lastFailureType: err.lastFailureType },
 						);
 						await clearStickyProxy(redis);
 
 						const proxyList = await fetchProxyList(proxyApiUrl);
 						const freshProxies = buildProxyOptions(proxyList);
-						logger.info(
-							{ proxyCount: freshProxies.length },
-							"Retrying with fresh proxy list",
-						);
+						logger.info("Retrying with fresh proxy list", {
+							proxyCount: freshProxies.length,
+						});
 
 						return crawler.crawl({
 							query,
@@ -169,22 +148,18 @@ export async function handlePerplexityCrawl(
 
 			if (result.usedProxy && env.STICKY_PROXY_ENABLED) {
 				await setStickyProxy(redis, result.usedProxy);
-				logger.info(
-					{ server: result.usedProxy.server },
-					"Sticky proxy updated after successful crawl",
-				);
+				logger.info("Sticky proxy updated after successful crawl", {
+					server: result.usedProxy.server,
+				});
 			}
 
-			logger.info(
-				{
-					url: result.metadata.url,
-					title: result.metadata.title,
-					contentLength: result.content.length,
-					loadTimeMs: result.metadata.loadTimeMs,
-					citationsCount: result.structured?.citations.length ?? 0,
-				},
-				"Browser crawl completed",
-			);
+			logger.info("Browser crawl completed", {
+				url: result.metadata.url,
+				title: result.metadata.title,
+				contentLength: result.content.length,
+				loadTimeMs: result.metadata.loadTimeMs,
+				citationsCount: result.structured?.citations.length ?? 0,
+			});
 
 			await saveCrawlResultAction({
 				input: {
@@ -227,15 +202,11 @@ export async function handlePerplexityCrawl(
 					knownCompetitors: crawlContext.knownCompetitors,
 				});
 
-				logger.info(
-					{
-						brandMentionsCount: intelligence.brandMentions.length,
-						discoveredCompetitorsCount:
-							intelligence.discoveredCompetitors.length,
-						answerFormat: intelligence.answerFormat,
-					},
-					"LLM extraction completed",
-				);
+				logger.info("LLM extraction completed", {
+					brandMentionsCount: intelligence.brandMentions.length,
+					discoveredCompetitorsCount: intelligence.discoveredCompetitors.length,
+					answerFormat: intelligence.answerFormat,
+				});
 
 				const saveResult = await saveBrandIntelligenceAction({
 					input: {
@@ -247,18 +218,15 @@ export async function handlePerplexityCrawl(
 					ctx: { db, userId: null, isAuthenticated: false },
 				});
 
-				logger.info(
-					{
-						mentionsSaved: saveResult.mentionsSaved,
-						competitorsCreated: saveResult.competitorsCreated,
-						competitorsMatched: saveResult.competitorsMatched,
-					},
-					"Brand intelligence saved",
-				);
+				logger.info("Brand intelligence saved", {
+					mentionsSaved: saveResult.mentionsSaved,
+					competitorsCreated: saveResult.competitorsCreated,
+					competitorsMatched: saveResult.competitorsMatched,
+				});
 			} catch (llmError) {
 				const llmErrorMessage =
 					llmError instanceof Error ? llmError.message : String(llmError);
-				logger.error({ error: llmErrorMessage }, "LLM extraction failed");
+				logger.error("LLM extraction failed", { error: llmErrorMessage });
 			}
 		} catch (error) {
 			const errorMessage =
@@ -269,10 +237,10 @@ export async function handlePerplexityCrawl(
 				logger.info("Sticky proxy cleared after crawl failure");
 			}
 
-			logger.error(
-				{ error: errorMessage, crawlId: promptQueryCrawlId },
-				"Crawl task failed",
-			);
+			logger.error("Crawl task failed", {
+				error: errorMessage,
+				crawlId: promptQueryCrawlId,
+			});
 
 			await failCrawlAction({
 				input: {

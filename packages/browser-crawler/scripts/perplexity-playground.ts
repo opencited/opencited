@@ -2,7 +2,7 @@
 import { Crawler, createLogger, PerplexityProvider } from "../src/index";
 
 async function main() {
-	const logger = createLogger("debug");
+	const logger = createLogger({ level: "debug" });
 
 	const crawler = new Crawler({ logger });
 	const provider = new PerplexityProvider(logger);

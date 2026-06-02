@@ -3,7 +3,6 @@ import * as z from "zod";
 
 export const env = createEnv({
 	server: {
-		LOGGER_LEVEL: z.enum(["silent", "info", "debug"]).default("info"),
 		HEADLESS: z
 			.union([z.literal("true"), z.literal("false"), z.literal("virtual")])
 			.default("true")

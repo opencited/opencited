@@ -6,15 +6,11 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { HonoAdapter } from "@bull-board/hono";
-import pino from "pino";
+import { createLogger, flush } from "@opencited/logger";
 import { handlePerplexityCrawl } from "./handlers/perplexity-crawl";
 import { env } from "./env";
 
-const logger = pino(
-	process.env.NODE_ENV === "production"
-		? {}
-		: { transport: { target: "pino-pretty" } },
-);
+const logger = createLogger();
 
 const concurrency = env.WORKER_CONCURRENCY;
 const shutdownTimeoutMs = 30_000;
@@ -28,15 +24,15 @@ const queueEvents = new QueueEvents("perplexity-crawl", {
 });
 
 queueEvents.on("active", ({ jobId }) => {
-	logger.info({ jobId }, "Job active");
+	logger.info("Job active", { jobId });
 });
 
 queueEvents.on("completed", ({ jobId }) => {
-	logger.info({ jobId }, "Job completed");
+	logger.info("Job completed", { jobId });
 });
 
 queueEvents.on("failed", ({ jobId, failedReason }) => {
-	logger.error({ jobId, failedReason }, "Job failed");
+	logger.error("Job failed", { jobId, failedReason });
 });
 
 function createRedisConnection(): IORedis {
@@ -48,7 +44,7 @@ const sharedRedis = createRedisConnection();
 const worker = new Worker(
 	"perplexity-crawl",
 	async (job) => {
-		logger.info({ jobId: job.id, data: job.data }, "Processing job");
+		logger.info("Processing job", { jobId: job.id, data: job.data });
 		await handlePerplexityCrawl(job, logger, sharedRedis);
 	},
 	{
@@ -57,16 +53,18 @@ const worker = new Worker(
 	},
 );
 
-worker.on("completed", (job) => {
-	logger.info({ jobId: job.id }, "Worker: job completed");
+worker.on("completed", async (job) => {
+	logger.info("Worker: job completed", { jobId: job.id });
+	await flush();
 });
 
-worker.on("failed", (job, err) => {
-	logger.error({ jobId: job?.id, error: err.message }, "Worker: job failed");
+worker.on("failed", async (job, err) => {
+	logger.error("Worker: job failed", { jobId: job?.id, error: err.message });
+	await flush();
 });
 
 worker.on("error", (err) => {
-	logger.error({ error: err.message }, "Worker error");
+	logger.error("Worker error", { error: err.message });
 });
 
 const app = new Hono();
@@ -97,7 +95,7 @@ async function shutdown(signal: string) {
 	if (shuttingDown) return;
 	shuttingDown = true;
 
-	logger.info({ signal }, "Shutting down gracefully...");
+	logger.info("Shutting down gracefully...", { signal });
 
 	const forceKillTimer = setTimeout(() => {
 		logger.warn("Forced shutdown after timeout");
@@ -110,12 +108,12 @@ async function shutdown(signal: string) {
 		await queueEvents.close();
 		await perplexityCrawlQueue.close();
 		await sharedRedis.quit();
+		await flush();
 		logger.info("Worker closed cleanly");
 	} catch (err) {
-		logger.error(
-			{ error: err instanceof Error ? err.message : String(err) },
-			"Error during shutdown",
-		);
+		logger.error("Error during shutdown", {
+			error: err instanceof Error ? err.message : String(err),
+		});
 	}
 
 	clearTimeout(forceKillTimer);
@@ -126,7 +124,7 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
 serve({ fetch: app.fetch, port: env.WORKER_PORT }, (info) => {
-	logger.info({ port: info.port }, "Worker dashboard listening");
+	logger.info("Worker dashboard listening", { port: info.port });
 });
 
-logger.info({ concurrency }, "Worker started");
+logger.info("Worker started", { concurrency });

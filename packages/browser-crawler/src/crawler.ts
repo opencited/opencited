@@ -3,8 +3,8 @@ import { captureDebugInfo } from "./debug";
 import type { BrowserSession, BrowserOptions, ProxyOptions } from "./types";
 import type { CrawlerProvider } from "./providers/base";
 import type { CrawlResult, AuthCredentials } from "./providers/types";
-import type { Logger } from "./logger";
-import { defaultLogger } from "./logger";
+import type { Logger } from "@opencited/logger";
+import { defaultLogger } from "@opencited/logger";
 import {
 	CrawlerError,
 	AuthenticationError,

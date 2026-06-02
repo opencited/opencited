@@ -3,8 +3,8 @@ import { Camoufox } from "camoufox-js";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import { env } from "./env";
 import type { BrowserOptions, BrowserSession, ProxyOptions } from "./types";
-import type { Logger } from "./logger";
-import { defaultLogger } from "./logger";
+import type { Logger } from "@opencited/logger";
+import { defaultLogger } from "@opencited/logger";
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));

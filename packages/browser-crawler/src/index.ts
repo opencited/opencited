@@ -31,7 +31,7 @@ export {
 	type Logger,
 	type LogLevel,
 	type LoggerContext,
-} from "./logger";
+} from "@opencited/logger";
 
 export {
 	CrawlerError,

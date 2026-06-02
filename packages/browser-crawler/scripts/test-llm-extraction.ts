@@ -138,7 +138,7 @@ async function callLlm(prompt: string): Promise<string> {
   return data.choices[0].message.content;
 }
 
-const logger = createLogger("info");
+const logger = createLogger({ level: "info" });
 
 async function main() {
   const crawler = new Crawler({ logger });

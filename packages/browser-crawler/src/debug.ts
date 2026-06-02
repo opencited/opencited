@@ -3,8 +3,8 @@ import * as path from "node:path";
 import { screenshot } from "./browser";
 import type { BrowserSession } from "./types";
 import type { FailureType } from "./errors";
-import type { Logger } from "./logger";
-import { defaultLogger } from "./logger";
+import type { Logger } from "@opencited/logger";
+import { defaultLogger } from "@opencited/logger";
 import { env } from "./env";
 
 const DEBUG_DIR = path.join(__dirname, "..", "debug");

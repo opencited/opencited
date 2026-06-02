@@ -24,7 +24,6 @@ src/
 ├── browser.ts         # browser lifecycle
 ├── actions.ts         # page interactions
 ├── errors.ts          # typed error classes
-├── logger.ts          # pluggable logging
 ├── types.ts           # shared types
 └── providers/
     ├── base.ts        # CrawlerProvider interface
@@ -81,5 +80,8 @@ class MyProvider implements CrawlerProvider {
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LOGGER_LEVEL` | `info` | `silent` | `info` | `debug` |
 | `HEADLESS` | `true` | `true`, `false`, or `virtual` (virtual display) |
+
+## Logging
+
+Uses `@opencited/logger` for structured logging with pluggable transports. See the [logger package docs](../logger/AGENTS.md).

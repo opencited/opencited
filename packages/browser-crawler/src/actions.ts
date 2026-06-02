@@ -5,8 +5,8 @@ import type {
 	ImageInfo,
 	LinkInfo,
 } from "./types";
-import type { Logger } from "./logger";
-import { defaultLogger } from "./logger";
+import type { Logger } from "@opencited/logger";
+import { defaultLogger } from "@opencited/logger";
 
 export async function click(
 	session: BrowserSession,

@@ -1,5 +1,5 @@
 {
-	"name": "@opencited/browser-crawler",
+	"name": "@opencited/logger",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
@@ -10,19 +10,16 @@
 		"./env": "./src/env.ts"
 	},
 	"scripts": {
-		"tsc": "tsc --noEmit",
-		"playground": "HEADLESS=false bun run scripts/playground.ts",
-		"test": "bun run scripts/test.ts"
+		"tsc": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
-		"typescript": "catalog:",
-		"@types/node": "catalog:"
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
 	},
 	"dependencies": {
-		"@opencited/logger": "workspace:*",
-		"camoufox-js": "catalog:",
-		"playwright-core": "catalog:",
+		"@axiomhq/js": "catalog:",
+		"@axiomhq/logging": "catalog:",
 		"@t3-oss/env-core": "catalog:",
 		"zod": "catalog:"
 	}

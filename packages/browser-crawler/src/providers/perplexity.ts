@@ -9,8 +9,8 @@ import type {
 	StructuredCrawlData,
 	AnswerFormat,
 } from "./types";
-import type { Logger } from "../logger";
-import { defaultLogger } from "../logger";
+import type { Logger } from "@opencited/logger";
+import { defaultLogger } from "@opencited/logger";
 
 const DEBUG_DIR = path.join(process.cwd(), "debug");
 const BUILD_TIMESTAMP = "2026-05-31T14:00:00Z";
