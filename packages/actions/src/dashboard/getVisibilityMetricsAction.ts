@@ -17,8 +17,6 @@ export const getDashboardVisibilityMetricsOutputSchema = z.object({
 		total: z.number(),
 	}),
 	brandMentionCount: z.number(),
-	avgCitationPosition: z.number().nullable(),
-	competitorOutrankCount: z.number(),
 });
 
 export const getDashboardVisibilityMetricsContextSchema =
@@ -39,8 +37,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 		return {
 			citedInRatio: { cited: 0, total: 0 },
 			brandMentionCount: 0,
-			avgCitationPosition: null,
-			competitorOutrankCount: 0,
 		};
 	}
 
@@ -59,8 +55,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 		return {
 			citedInRatio: { cited: 0, total: 0 },
 			brandMentionCount: 0,
-			avgCitationPosition: null,
-			competitorOutrankCount: 0,
 		};
 	}
 
@@ -98,8 +92,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 	let citedCount = 0;
 	let totalCount = 0;
 	let totalBrandMentions = 0;
-	const citationPositions: number[] = [];
-	let competitorOutrankCount = 0;
 
 	for (const crawl of latestCrawlByQuery.values()) {
 		totalCount++;
@@ -108,40 +100,13 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 		const targetMentions = brandMentions.filter(
 			(m) => m.mentionType === "target",
 		);
-		const competitorMentions = brandMentions.filter(
-			(m) => m.mentionType === "competitor",
-		);
 
 		if (targetMentions.length > 0) {
 			citedCount++;
-			for (const tm of targetMentions) {
-				if (tm.position !== null && tm.position >= 0) {
-					citationPositions.push(tm.position);
-				}
-			}
 		}
 
 		totalBrandMentions += targetMentions.length;
-
-		for (const targetMention of targetMentions) {
-			const ownPosition = targetMention.position ?? Infinity;
-			for (const compMention of competitorMentions) {
-				const compPosition = compMention.position ?? Infinity;
-				if (compPosition >= 0 && compPosition < ownPosition) {
-					competitorOutrankCount++;
-				}
-			}
-		}
 	}
-
-	const avgCitationPosition =
-		citationPositions.length > 0
-			? Math.round(
-					(citationPositions.reduce((sum: number, p: number) => sum + p, 0) /
-						citationPositions.length) *
-						100,
-				) / 100
-			: null;
 
 	return {
 		citedInRatio: {
@@ -149,8 +114,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 			total: totalCount,
 		},
 		brandMentionCount: totalBrandMentions,
-		avgCitationPosition,
-		competitorOutrankCount,
 	};
 };
 

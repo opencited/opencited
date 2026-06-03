@@ -1,10 +1,11 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
 import {
 	promptQueryCrawlTable,
 	promptQueryCrawlSelectSchema,
 	promptQueryCrawlStatusEnum,
+	crawlBrandMentionTable,
 } from "@opencited/db";
 
 export const listRunLogsInputSchema = z.object({
@@ -17,7 +18,11 @@ export const listRunLogsInputSchema = z.object({
 });
 
 export const listRunLogsOutputSchema = z.object({
-	runs: z.array(promptQueryCrawlSelectSchema),
+	runs: z.array(
+		promptQueryCrawlSelectSchema.extend({
+			cited: z.boolean(),
+		}),
+	),
 	total: z.number(),
 });
 
@@ -64,8 +69,37 @@ export const listRunLogsAction = async (params: {
 			.where(whereClause),
 	]);
 
+	if (runs.length === 0) {
+		return {
+			runs: [],
+			total: countResult.length,
+		};
+	}
+
+	type CrawlRow = typeof promptQueryCrawlTable.$inferSelect;
+	type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
+
+	const crawlIds = runs.map((r: CrawlRow) => r.id);
+
+	const brandMentions = await ctx.db
+		.select()
+		.from(crawlBrandMentionTable)
+		.where(inArray(crawlBrandMentionTable.crawlId, crawlIds));
+
+	const mentionedCrawlIds = new Set<string>();
+	for (const mention of brandMentions) {
+		if (mention.mentionType === "target") {
+			mentionedCrawlIds.add(mention.crawlId);
+		}
+	}
+
+	const runsWithCited = runs.map((run: CrawlRow) => ({
+		...run,
+		cited: mentionedCrawlIds.has(run.id),
+	}));
+
 	return {
-		runs,
+		runs: runsWithCited,
 		total: countResult.length,
 	};
 };

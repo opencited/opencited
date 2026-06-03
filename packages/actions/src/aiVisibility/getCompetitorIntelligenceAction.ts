@@ -13,7 +13,6 @@ export const getCompetitorIntelligenceOutputSchema = z.array(
 		competitorName: z.string(),
 		competitorDomain: z.string(),
 		mentionedInCount: z.number(),
-		avgPosition: z.number().nullable(),
 		appearsBeforeYouCount: z.number(),
 		appearsAfterYouCount: z.number(),
 	}),
@@ -79,7 +78,6 @@ export const getCompetitorIntelligenceAction = async (params: {
 				competitorName: competitor.name,
 				competitorDomain: competitor.domain,
 				mentionedInCount: 0,
-				avgPosition: null,
 				appearsBeforeYouCount: 0,
 				appearsAfterYouCount: 0,
 			}),
@@ -124,21 +122,11 @@ export const getCompetitorIntelligenceAction = async (params: {
 				competitorName: competitor.name,
 				competitorDomain: competitor.domain,
 				mentionedInCount: 0,
-				avgPosition: null,
 				appearsBeforeYouCount: 0,
 				appearsAfterYouCount: 0,
 			});
 			continue;
 		}
-
-		const positions = mentions
-			.map((m: { position: number | null }) => m.position)
-			.filter((p: number | null): p is number => p !== null && p >= 0);
-		const avgPosition =
-			positions.length > 0
-				? positions.reduce((sum: number, p: number) => sum + p, 0) /
-					positions.length
-				: null;
 
 		let appearsBeforeYouCount = 0;
 		let appearsAfterYouCount = 0;
@@ -172,7 +160,6 @@ export const getCompetitorIntelligenceAction = async (params: {
 			competitorName: competitor.name,
 			competitorDomain: competitor.domain,
 			mentionedInCount,
-			avgPosition: avgPosition ? Math.round(avgPosition * 100) / 100 : null,
 			appearsBeforeYouCount,
 			appearsAfterYouCount,
 		});

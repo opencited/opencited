@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
 import {
@@ -28,13 +28,17 @@ export const getCrawlHistoryOutputSchema = z.array(
 
 export const getCrawlHistoryContextSchema = baseActionContextSchema;
 
+type CrawlRow = typeof promptQueryCrawlTable.$inferSelect;
+type SourceRow = typeof crawlSourceTable.$inferSelect;
+type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
+
 export const getCrawlHistoryAction = async (params: {
 	input: z.infer<typeof getCrawlHistoryInputSchema>;
 	ctx: z.infer<typeof getCrawlHistoryContextSchema>;
 }) => {
 	const { input, ctx } = params;
 
-	const crawls = await ctx.db
+	const crawls: CrawlRow[] = await ctx.db
 		.select()
 		.from(promptQueryCrawlTable)
 		.where(
@@ -45,28 +49,49 @@ export const getCrawlHistoryAction = async (params: {
 		)
 		.orderBy(desc(promptQueryCrawlTable.createdAt));
 
+	if (crawls.length === 0) {
+		return [];
+	}
+
+	const crawlIds = crawls.map((c: CrawlRow) => c.id);
+
+	const sources: SourceRow[] = await ctx.db
+		.select()
+		.from(crawlSourceTable)
+		.where(inArray(crawlSourceTable.crawlId, crawlIds));
+
+	const brandMentions: MentionRow[] = await ctx.db
+		.select()
+		.from(crawlBrandMentionTable)
+		.where(inArray(crawlBrandMentionTable.crawlId, crawlIds));
+
+	const sourcesByCrawlId = new Map<string, SourceRow[]>();
+	for (const source of sources) {
+		const existing = sourcesByCrawlId.get(source.crawlId) ?? [];
+		existing.push(source);
+		sourcesByCrawlId.set(source.crawlId, existing);
+	}
+
+	const mentionsByCrawlId = new Map<string, MentionRow[]>();
+	for (const mention of brandMentions) {
+		const existing = mentionsByCrawlId.get(mention.crawlId) ?? [];
+		existing.push(mention);
+		mentionsByCrawlId.set(mention.crawlId, existing);
+	}
+
 	const results: z.infer<typeof getCrawlHistoryOutputSchema> = [];
 
 	for (const crawl of crawls) {
-		const sources = await ctx.db
-			.select()
-			.from(crawlSourceTable)
-			.where(eq(crawlSourceTable.crawlId, crawl.id));
-
-		const ownDomainSource = sources.find(
-			(s: typeof crawlSourceTable.$inferSelect) => s.isOwnDomain === "true",
+		const crawlSources = sourcesByCrawlId.get(crawl.id) ?? [];
+		const ownDomainSource = crawlSources.find(
+			(s: SourceRow) => s.isOwnDomain === "true",
 		);
 		const cited = !!ownDomainSource;
 		const citationPosition = ownDomainSource?.position ?? null;
 
-		const brandMentions = await ctx.db
-			.select()
-			.from(crawlBrandMentionTable)
-			.where(eq(crawlBrandMentionTable.crawlId, crawl.id));
-
-		const targetMention = brandMentions.find(
-			(m: typeof crawlBrandMentionTable.$inferSelect) =>
-				m.mentionType === "target",
+		const crawlMentions = mentionsByCrawlId.get(crawl.id) ?? [];
+		const targetMention = crawlMentions.find(
+			(m: MentionRow) => m.mentionType === "target",
 		);
 		const brandMentioned = !!targetMention;
 		const mentionPosition = targetMention?.relativePosition ?? null;

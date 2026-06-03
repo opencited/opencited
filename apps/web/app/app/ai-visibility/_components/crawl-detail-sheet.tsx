@@ -121,38 +121,8 @@ export function CrawlDetailSheet({
 					<SheetTitle className="truncate">
 						{crawl?.query ?? "Loading..."}
 					</SheetTitle>
-					<SheetDescription>
-						<div className="flex items-center justify-between gap-2">
-							<span>
-								Created <TimeAgo date={crawl?.createdAt ?? new Date()} />
-							</span>
-							<Select
-								value={selectedCrawlId}
-								onValueChange={(val) => {
-									setSelectedCrawlId(val);
-									setActiveTab("answer");
-								}}
-							>
-								<SelectTrigger className="w-min shrink-0">
-									<SelectValue placeholder="Select a run" />
-								</SelectTrigger>
-								<SelectContent>
-									{crawlHistoryQuery.data?.map((run) => (
-										<SelectItem key={run.id} value={run.id}>
-											<div className="flex items-center gap-2">
-												<span className="text-xs">
-													{format(new Date(run.createdAt), "MMM d, h:mm a")}
-												</span>
-												<PromptQueryCrawlStatusBadge
-													status={run.status}
-													size="sm"
-												/>
-											</div>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
+					<SheetDescription className="text-left">
+						Created <TimeAgo date={crawl?.createdAt ?? new Date()} />
 					</SheetDescription>
 				</SheetHeader>
 
@@ -161,17 +131,46 @@ export function CrawlDetailSheet({
 					onValueChange={setActiveTab}
 					className="flex-1 overflow-hidden flex flex-col mt-4"
 				>
-					<TabsList className="justify-start w-fit">
-						<TabsTrigger value="answer">Answer</TabsTrigger>
-						<TabsTrigger value="sources">
-							Sources {crawl?.sourceCount ? `(${crawl.sourceCount})` : ""}
-						</TabsTrigger>
-						<TabsTrigger value="mentions">
-							Mentions{" "}
-							{crawl?.brandMentionCount ? `(${crawl.brandMentionCount})` : ""}
-						</TabsTrigger>
-						<TabsTrigger value="details">Details</TabsTrigger>
-					</TabsList>
+					<div className="flex items-center justify-between">
+						<TabsList className="justify-start w-fit">
+							<TabsTrigger value="answer">Answer</TabsTrigger>
+							<TabsTrigger value="sources">
+								Sources {crawl?.sourceCount ? `(${crawl.sourceCount})` : ""}
+							</TabsTrigger>
+							<TabsTrigger value="mentions">
+								Mentions{" "}
+								{crawl?.brandMentionCount ? `(${crawl.brandMentionCount})` : ""}
+							</TabsTrigger>
+							<TabsTrigger value="details">Details</TabsTrigger>
+						</TabsList>
+
+						<Select
+							value={selectedCrawlId}
+							onValueChange={(val) => {
+								setSelectedCrawlId(val);
+								setActiveTab("answer");
+							}}
+						>
+							<SelectTrigger className="w-min shrink-0">
+								<SelectValue placeholder="Select a run" />
+							</SelectTrigger>
+							<SelectContent className="max-h-[400px] overflow-y-auto">
+								{crawlHistoryQuery.data?.map((run) => (
+									<SelectItem key={run.id} value={run.id}>
+										<div className="flex items-center gap-2">
+											<span className="text-xs">
+												{format(new Date(run.createdAt), "MMM d, h:mm a")}
+											</span>
+											<PromptQueryCrawlStatusBadge
+												status={run.status}
+												size="sm"
+											/>
+										</div>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
 
 					<div className="flex-1 overflow-y-auto mt-4">
 						<TabsContent value="answer" className="mt-0">

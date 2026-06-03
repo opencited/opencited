@@ -19,8 +19,6 @@ import {
 	ArrowRight,
 	Target,
 	MessageSquare,
-	Hash,
-	TrendingDown,
 	FileText,
 	CheckCircle,
 	Type,
@@ -107,7 +105,7 @@ export default function DashboardPage() {
 						query={visibilityMetricsQuery}
 						loading={
 							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(4,200px)]">
-								{[1, 2, 3, 4].map((i) => (
+								{[1, 2].map((i) => (
 									<EntityCardSkeleton key={i} hasFooter />
 								))}
 							</div>
@@ -134,22 +132,6 @@ export default function DashboardPage() {
 										label="Brand mentions"
 										value={metrics.brandMentionCount}
 										description="Total target mentions"
-									/>
-									<StatCard
-										icon={Hash}
-										label="Avg citation position"
-										value={
-											metrics.avgCitationPosition !== null
-												? `#${metrics.avgCitationPosition}`
-												: "—"
-										}
-										description="Average rank when cited"
-									/>
-									<StatCard
-										icon={TrendingDown}
-										label="Competitors outranking you"
-										value={metrics.competitorOutrankCount}
-										description="Queries where competitors rank higher"
 									/>
 								</div>
 							);
@@ -246,8 +228,10 @@ export default function DashboardPage() {
 													<span className="text-sm truncate text-foreground">
 														{run.query}
 													</span>
-													{run.status === "completed" && (
+													{run.cited ? (
 														<Badge variant="success">Cited</Badge>
+													) : (
+														<Badge variant="outline">Not cited</Badge>
 													)}
 												</div>
 												<span className="text-xs text-muted-foreground shrink-0">

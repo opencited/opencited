@@ -36,7 +36,7 @@ export function DomainDisplay({
 			error={(_error) => (
 				<div
 					className={cn(
-						"flex items-center gap-2 px-2 py-1 text-sm text-destructive",
+						"inline-flex items-center gap-2 px-2 py-1 text-sm text-destructive",
 						className,
 					)}
 				>
@@ -50,7 +50,7 @@ export function DomainDisplay({
 				return (
 					<div
 						className={cn(
-							"flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground",
+							"inline-flex items-center gap-2 px-2 py-1 text-sm text-muted-foreground",
 							className,
 						)}
 					>

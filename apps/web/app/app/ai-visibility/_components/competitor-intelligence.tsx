@@ -76,7 +76,6 @@ export function CompetitorIntelligence({
 									<TableRow>
 										<TableHead>Competitor</TableHead>
 										<TableHead>Mentioned In</TableHead>
-										<TableHead>Avg Position</TableHead>
 										<TableHead>Before You</TableHead>
 										<TableHead>After You</TableHead>
 									</TableRow>
@@ -104,15 +103,6 @@ export function CompetitorIntelligence({
 												<span className="text-sm">
 													{competitor.mentionedInCount} queries
 												</span>
-											</TableCell>
-											<TableCell>
-												{competitor.avgPosition !== null ? (
-													<span className="text-sm">
-														#{competitor.avgPosition}
-													</span>
-												) : (
-													<span className="text-muted-foreground">—</span>
-												)}
 											</TableCell>
 											<TableCell>
 												{competitor.appearsBeforeYouCount > 0 ? (

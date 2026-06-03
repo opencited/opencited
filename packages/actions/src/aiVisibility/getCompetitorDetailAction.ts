@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
 import {
@@ -39,6 +39,18 @@ export const getCompetitorDetailOutputSchema = z.object({
 
 export const getCompetitorDetailContextSchema = baseActionContextSchema;
 
+type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
+type CrawlRow = {
+	id: string;
+	promptQueryId: string;
+	createdAt: Date;
+};
+type PromptQueryRow = {
+	id: string;
+	query: string;
+};
+type SourceRow = typeof crawlSourceTable.$inferSelect;
+
 export const getCompetitorDetailAction = async (params: {
 	input: z.infer<typeof getCompetitorDetailInputSchema>;
 	ctx: z.infer<typeof getCompetitorDetailContextSchema>;
@@ -55,59 +67,104 @@ export const getCompetitorDetailAction = async (params: {
 		throw new Error("Competitor not found");
 	}
 
-	const mentions = await ctx.db
+	const mentions: MentionRow[] = await ctx.db
 		.select()
 		.from(crawlBrandMentionTable)
 		.where(eq(crawlBrandMentionTable.competitorId, input.competitorId))
 		.orderBy(desc(crawlBrandMentionTable.createdAt));
+
+	if (mentions.length === 0) {
+		return {
+			competitor: {
+				id: competitor[0].id,
+				name: competitor[0].name,
+				domain: competitor[0].domain,
+			},
+			mentions: [],
+		};
+	}
+
+	const crawlIds: string[] = [
+		...new Set(mentions.map((m: MentionRow) => m.crawlId)),
+	];
+
+	const crawls: CrawlRow[] = await ctx.db
+		.select({
+			id: promptQueryCrawlTable.id,
+			promptQueryId: promptQueryCrawlTable.promptQueryId,
+			createdAt: promptQueryCrawlTable.createdAt,
+		})
+		.from(promptQueryCrawlTable)
+		.where(inArray(promptQueryCrawlTable.id, crawlIds));
+
+	const promptQueryIds: string[] = [
+		...new Set(crawls.map((c: CrawlRow) => c.promptQueryId)),
+	];
+
+	const promptQueries: PromptQueryRow[] = await ctx.db
+		.select({
+			id: promptQueryTable.id,
+			query: promptQueryTable.query,
+		})
+		.from(promptQueryTable)
+		.where(inArray(promptQueryTable.id, promptQueryIds));
+
+	const sources: SourceRow[] = await ctx.db
+		.select()
+		.from(crawlSourceTable)
+		.where(inArray(crawlSourceTable.crawlId, crawlIds));
+
+	const crawlMap = new Map<
+		string,
+		Pick<CrawlRow, "promptQueryId" | "createdAt">
+	>(
+		crawls.map((c: CrawlRow) => [
+			c.id,
+			{ promptQueryId: c.promptQueryId, createdAt: c.createdAt },
+		]),
+	);
+
+	const promptQueryMap = new Map<string, string>(
+		promptQueries.map((pq: PromptQueryRow) => [pq.id, pq.query]),
+	);
+
+	const sourcesByCrawlId = new Map<string, SourceRow[]>();
+	for (const source of sources) {
+		const existing = sourcesByCrawlId.get(source.crawlId) ?? [];
+		existing.push(source);
+		sourcesByCrawlId.set(source.crawlId, existing);
+	}
 
 	const mentionResults: z.infer<
 		typeof getCompetitorDetailOutputSchema
 	>["mentions"] = [];
 
 	for (const mention of mentions) {
-		const crawl = await ctx.db
-			.select({
-				promptQueryId: promptQueryCrawlTable.promptQueryId,
-				createdAt: promptQueryCrawlTable.createdAt,
-			})
-			.from(promptQueryCrawlTable)
-			.where(eq(promptQueryCrawlTable.id, mention.crawlId))
-			.limit(1);
+		const crawl = crawlMap.get(mention.crawlId);
+		if (!crawl) continue;
 
-		if (crawl.length === 0) continue;
+		const query = promptQueryMap.get(crawl.promptQueryId);
+		if (!query) continue;
 
-		const promptQuery = await ctx.db
-			.select()
-			.from(promptQueryTable)
-			.where(eq(promptQueryTable.id, crawl[0].promptQueryId))
-			.limit(1);
+		const crawlSources = sourcesByCrawlId.get(mention.crawlId) ?? [];
 
-		if (promptQuery.length === 0) continue;
-
-		const sources = await ctx.db
-			.select()
-			.from(crawlSourceTable)
-			.where(eq(crawlSourceTable.crawlId, mention.crawlId));
-
-		const ownDomainSource = sources.find(
-			(s: typeof crawlSourceTable.$inferSelect) => s.isOwnDomain === "true",
+		const ownDomainSource = crawlSources.find(
+			(s: SourceRow) => s.isOwnDomain === "true",
 		);
-		const competitorSource = sources.find(
-			(s: typeof crawlSourceTable.$inferSelect) =>
-				s.domain === competitor[0].domain,
+		const competitorSource = crawlSources.find(
+			(s: SourceRow) => s.domain === competitor[0].domain,
 		);
 
 		mentionResults.push({
-			query: promptQuery[0].query,
-			queryId: promptQuery[0].id,
+			query,
+			queryId: crawl.promptQueryId,
 			crawlId: mention.crawlId,
 			context: mention.context,
 			mentionType: mention.mentionType,
 			relativePosition: mention.relativePosition,
 			isRecommendation: mention.isRecommendation === "true",
 			objection: mention.objection,
-			crawlDate: crawl[0].createdAt,
+			crawlDate: crawl.createdAt,
 			ownPosition: ownDomainSource?.position ?? null,
 			competitorPosition: competitorSource?.position ?? null,
 		});

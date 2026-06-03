@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
 import {
@@ -31,26 +31,61 @@ export const getVisibilityOverviewOutputSchema = z.array(
 
 export const getVisibilityOverviewContextSchema = baseActionContextSchema;
 
+type PromptQueryRow = typeof promptQueryTable.$inferSelect;
+type CrawlRow = typeof promptQueryCrawlTable.$inferSelect;
+type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
+
 export const getVisibilityOverviewAction = async (params: {
 	input: z.infer<typeof getVisibilityOverviewInputSchema>;
 	ctx: z.infer<typeof getVisibilityOverviewContextSchema>;
 }) => {
 	const { input, ctx } = params;
 
-	const promptQueries = await ctx.db
+	const promptQueries: PromptQueryRow[] = await ctx.db
 		.select()
 		.from(promptQueryTable)
 		.where(eq(promptQueryTable.domainProjectId, input.domainProjectId));
 
+	if (promptQueries.length === 0) {
+		return [];
+	}
+
+	const queryIds = promptQueries.map((q: PromptQueryRow) => q.id);
+
+	const allCrawls: CrawlRow[] = await ctx.db
+		.select()
+		.from(promptQueryCrawlTable)
+		.where(inArray(promptQueryCrawlTable.promptQueryId, queryIds))
+		.orderBy(desc(promptQueryCrawlTable.createdAt));
+
+	const crawlsByQueryId = new Map<string, CrawlRow[]>();
+	for (const crawl of allCrawls) {
+		const existing = crawlsByQueryId.get(crawl.promptQueryId) ?? [];
+		existing.push(crawl);
+		crawlsByQueryId.set(crawl.promptQueryId, existing);
+	}
+
+	const crawlIds = allCrawls.map((c: CrawlRow) => c.id);
+
+	let allBrandMentions: MentionRow[] = [];
+	if (crawlIds.length > 0) {
+		allBrandMentions = await ctx.db
+			.select()
+			.from(crawlBrandMentionTable)
+			.where(inArray(crawlBrandMentionTable.crawlId, crawlIds));
+	}
+
+	const mentionsByCrawlId = new Map<string, MentionRow[]>();
+	for (const mention of allBrandMentions) {
+		const existing = mentionsByCrawlId.get(mention.crawlId) ?? [];
+		existing.push(mention);
+		mentionsByCrawlId.set(mention.crawlId, existing);
+	}
+
 	const results: z.infer<typeof getVisibilityOverviewOutputSchema> = [];
 
 	for (const query of promptQueries) {
-		const crawls = await ctx.db
-			.select()
-			.from(promptQueryCrawlTable)
-			.where(eq(promptQueryCrawlTable.promptQueryId, query.id))
-			.orderBy(desc(promptQueryCrawlTable.createdAt));
-
+		const crawls = crawlsByQueryId.get(query.id) ?? [];
 		const totalCrawls = crawls.length;
 
 		if (totalCrawls === 0) {
@@ -75,32 +110,27 @@ export const getVisibilityOverviewAction = async (params: {
 			continue;
 		}
 
-		const latestCrawl = crawls[0];
+		const latestCrawl = crawls[0]!;
 		const previousCrawl = crawls.length > 1 ? crawls[1] : null;
 
-		const brandMentions = await ctx.db
-			.select()
-			.from(crawlBrandMentionTable)
-			.where(eq(crawlBrandMentionTable.crawlId, latestCrawl.id));
+		const brandMentions = mentionsByCrawlId.get(latestCrawl.id) ?? [];
 
 		const targetMention = brandMentions.find(
-			(m: typeof crawlBrandMentionTable.$inferSelect) =>
-				m.mentionType === "target",
+			(m: MentionRow) => m.mentionType === "target",
 		);
 		const cited = !!targetMention;
 		const citationPosition =
-			targetMention && targetMention.position >= 0
+			targetMention &&
+			targetMention.position !== null &&
+			targetMention.position >= 0
 				? targetMention.position
 				: null;
 
 		const competitorMentions = brandMentions.filter(
-			(m: typeof crawlBrandMentionTable.$inferSelect) =>
-				m.mentionType === "competitor",
+			(m: MentionRow) => m.mentionType === "competitor",
 		);
 		const competitorCount = new Set(
-			competitorMentions
-				.map((m: typeof crawlBrandMentionTable.$inferSelect) => m.competitorId)
-				.filter(Boolean),
+			competitorMentions.map((m: MentionRow) => m.competitorId).filter(Boolean),
 		).size;
 
 		const brandMentioned = !!targetMention;
@@ -110,17 +140,16 @@ export const getVisibilityOverviewAction = async (params: {
 		let previousCitationPosition: number | null = null;
 
 		if (previousCrawl) {
-			const previousBrandMentions = await ctx.db
-				.select()
-				.from(crawlBrandMentionTable)
-				.where(eq(crawlBrandMentionTable.crawlId, previousCrawl.id));
+			const previousBrandMentions =
+				mentionsByCrawlId.get(previousCrawl.id) ?? [];
 
 			const previousTargetMention = previousBrandMentions.find(
-				(m: typeof crawlBrandMentionTable.$inferSelect) =>
-					m.mentionType === "target",
+				(m: MentionRow) => m.mentionType === "target",
 			);
 			previousCitationPosition =
-				previousTargetMention && previousTargetMention.position >= 0
+				previousTargetMention &&
+				previousTargetMention.position !== null &&
+				previousTargetMention.position >= 0
 					? previousTargetMention.position
 					: null;
 
