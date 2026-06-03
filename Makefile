@@ -71,10 +71,15 @@ install-camoufox-deps: ## Install Camoufox browser dependencies (Linux only)
 	@if [ "$$(uname)" = "Linux" ]; then \
 		echo "Installing Camoufox browser dependencies..."; \
 		sudo apt-get update; \
+		if [ "$$(. /etc/os-release && echo $$VERSION_CODENAME)" = "noble" ]; then \
+			ALSOUND_PKG="libasound2t64"; \
+		else \
+			ALSOUND_PKG="libasound2"; \
+		fi; \
 		sudo apt-get install -y --no-install-recommends \
 			fonts-liberation \
 			xvfb \
-			libasound2 \
+			$$ALSOUND_PKG \
 			libatk-bridge2.0-0 \
 			libatk1.0-0 \
 			libc6 \
