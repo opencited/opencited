@@ -5,11 +5,17 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    command: valkey-server --requirepass ${REDIS_PASSWORD:-changeme} --maxmemory ${REDIS_MAXMEMORY:-256mb} --maxmemory-policy allkeys-lru
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT:-512m}
 
 volumes:
   redis-data:
