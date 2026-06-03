@@ -55,6 +55,14 @@ function buildWindowOption(
 		: {};
 }
 
+function buildCamouConfig() {
+	return {
+		config: {
+			"headers.Accept-Language": "en-US,en;q=0.9",
+		},
+	};
+}
+
 export async function openBrowser(
 	options: BrowserOptions = {},
 	logger?: Logger,
@@ -106,6 +114,7 @@ export async function openBrowser(
 				user_data_dir: userDataDir,
 				...buildProxyOptions(opts.proxy),
 				...buildWindowOption(opts.viewport),
+				...buildCamouConfig(),
 			}),
 			launchTimeout,
 		])) as BrowserContext;
@@ -133,6 +142,7 @@ export async function openBrowser(
 				headless: opts.headless,
 				...buildProxyOptions(opts.proxy),
 				...buildWindowOption(opts.viewport),
+				...buildCamouConfig(),
 			}),
 			launchTimeout,
 		])) as Browser;
