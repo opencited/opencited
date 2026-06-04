@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import type { Logger } from "@opencited/logger";
 import { defaultLogger } from "@opencited/logger";
+import { toMarkdown } from "./turndown";
 
 const DEBUG_DIR = path.join(process.cwd(), "debug");
 const BUILD_TIMESTAMP = "2026-05-31T14:00:00Z";
@@ -333,7 +334,13 @@ export class PerplexityProvider implements CrawlerProvider {
 				);
 				if (!content) {
 					this.logger.warn("Clipboard is empty, using DOM extraction");
-					content = await session.page.evaluate(() => document.body.getHTML());
+					const html = await session.page.evaluate(() => {
+						const answerEl = document.querySelector(
+							'div[id^="markdown-content-"] .prose',
+						);
+						return answerEl?.getHTML() ?? document.body.getHTML();
+					});
+					content = toMarkdown(html);
 				}
 			} else {
 				this.logger.info("Click failed, writing page content to debug file...");
@@ -350,7 +357,13 @@ export class PerplexityProvider implements CrawlerProvider {
 					);
 				} catch {
 					this.logger.warn("Clipboard also failed, using DOM extraction");
-					content = pageContent;
+					const html = await session.page.evaluate(() => {
+						const answerEl = document.querySelector(
+							'div[id^="markdown-content-"] .prose',
+						);
+						return answerEl?.getHTML() ?? document.body.getHTML();
+					});
+					content = toMarkdown(html);
 				}
 			}
 		} else {
@@ -413,16 +426,33 @@ export class PerplexityProvider implements CrawlerProvider {
 			this.logger.info(`Page content written to: ${filePath}`);
 			try {
 				this.logger.info("Attempting clipboard as fallback...");
-				content = await getClipboard(session, this.logger);
+				const clipboardContent = await getClipboard(session, this.logger);
 				this.logger.info(
-					`Clipboard content retrieved: ${!!content} (length: ${content?.length ?? 0} chars)`,
+					`Clipboard content retrieved: ${!!clipboardContent} (length: ${clipboardContent?.length ?? 0} chars)`,
 				);
-				if (content) {
-					this.logger.info(`Clipboard preview: "${content.substring(0, 100)}"`);
+				if (clipboardContent) {
+					this.logger.info(
+						`Clipboard preview: "${clipboardContent.substring(0, 100)}"`,
+					);
+					content = clipboardContent;
+				} else {
+					const html = await session.page.evaluate(() => {
+						const answerEl = document.querySelector(
+							'div[id^="markdown-content-"] .prose',
+						);
+						return answerEl?.getHTML() ?? document.body.getHTML();
+					});
+					content = toMarkdown(html);
 				}
 			} catch (error) {
 				this.logger.warn("Clipboard also failed, using DOM extraction", error);
-				content = pageContent;
+				const html = await session.page.evaluate(() => {
+					const answerEl = document.querySelector(
+						'div[id^="markdown-content-"] .prose',
+					);
+					return answerEl?.getHTML() ?? document.body.getHTML();
+				});
+				content = toMarkdown(html);
 				this.logger.info(
 					`Using DOM extraction (length: ${content.length} chars)`,
 				);

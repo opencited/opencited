@@ -17,13 +17,15 @@
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
 		"typescript": "catalog:",
-		"@types/node": "catalog:"
+		"@types/node": "catalog:",
+		"@types/turndown": "catalog:"
 	},
 	"dependencies": {
 		"@opencited/logger": "workspace:*",
 		"camoufox-js": "catalog:",
 		"playwright-core": "catalog:",
 		"@t3-oss/env-core": "catalog:",
-		"zod": "catalog:"
+		"zod": "catalog:",
+		"turndown": "catalog:"
 	}
 }
