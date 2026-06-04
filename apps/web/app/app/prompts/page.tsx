@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import { PageShell } from "@/app/components/page-shell";
 import {
@@ -10,6 +10,7 @@ import {
 	CardContent,
 	CardHeader,
 	CardTitle,
+	Spinner,
 } from "@opencited/ui";
 import { Plus, Trash2, Clock, Calendar, Terminal } from "lucide-react";
 import { Skeleton } from "@opencited/ui";
@@ -19,12 +20,10 @@ import { RunCrawlButton } from "./_components/run-crawl-button";
 import { TimeAgo } from "@/app/components/time-ago";
 import { QueryCell } from "@/app/components/query-cell";
 import { format } from "date-fns";
-import { useCrawlPolling } from "./_components/use-crawl-polling";
 import { useConfirmation } from "@/app/hooks/use-confirmation";
 
 export default function PromptsPage() {
 	const trpc = useTRPC();
-	const _queryClient = useQueryClient();
 	const { confirm, dialog } = useConfirmation();
 
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -34,9 +33,6 @@ export default function PromptsPage() {
 		createdAt: string;
 		lastCrawledAt: string | null;
 	} | null>(null);
-	const [runningCrawlIds, setRunningCrawlIds] = useState<Set<string>>(
-		new Set(),
-	);
 	const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
 
 	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
@@ -55,24 +51,6 @@ export default function PromptsPage() {
 			},
 		}),
 	);
-
-	const { completedCrawlIds } = useCrawlPolling({
-		runningCrawlIds,
-		enabled: true,
-	});
-
-	useEffect(() => {
-		if (completedCrawlIds.size === 0) return;
-
-		setRunningCrawlIds((prev) => {
-			const next = new Set(prev);
-			for (const id of completedCrawlIds) {
-				next.delete(id);
-			}
-			return next;
-		});
-		promptsQuery.refetch();
-	}, [completedCrawlIds, promptsQuery]);
 
 	const handleDeletePrompt = useCallback(
 		async (id: string, query: string) => {
@@ -119,7 +97,7 @@ export default function PromptsPage() {
 				const prompt = promptsQuery.data?.find(
 					(p) => p.id === selectedPromptId,
 				);
-				if (prompt && !runningCrawlIds.has(prompt.id)) {
+				if (prompt) {
 					const button = document.querySelector(
 						`[data-prompt-id="${selectedPromptId}"] .run-crawl-btn`,
 					) as HTMLButtonElement;
@@ -153,13 +131,14 @@ export default function PromptsPage() {
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [selectedPromptId, promptsQuery.data, runningCrawlIds]);
+	}, [selectedPromptId, promptsQuery.data]);
 
 	if (domainProjectQuery.isLoading) {
 		return (
 			<PageShell title="Prompts">
 				<div className="flex items-center justify-center py-12">
-					<p className="text-muted-foreground">Loading...</p>
+					<Spinner className="h-5 w-5" />
+					<span className="ml-2 text-muted-foreground">Loading prompts...</span>
 				</div>
 			</PageShell>
 		);
@@ -254,8 +233,6 @@ export default function PromptsPage() {
 					return (
 						<div className="grid gap-3 p-4 sm:p-0 md:grid-cols-2 lg:grid-cols-3">
 							{prompts.map((prompt, _index) => {
-								const isRunning = runningCrawlIds.has(prompt.id);
-
 								return (
 									<Card
 										key={prompt.id}
@@ -318,18 +295,13 @@ export default function PromptsPage() {
 														e.stopPropagation();
 														handleDeletePrompt(prompt.id, prompt.query);
 													}}
-													className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8 text-muted-foreground hover:text-destructive"
+													className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8 hover:text-destructive"
 												>
 													<Trash2 className="h-4 w-4" />
 												</Button>
 												<RunCrawlButton
 													promptQueryId={prompt.id}
-													isRunning={isRunning}
-													onCrawlStart={() => {
-														setRunningCrawlIds((prev) =>
-															new Set(prev).add(prompt.id),
-														);
-													}}
+													domainProjectId={domainProject.id}
 												/>
 											</div>
 										</CardContent>

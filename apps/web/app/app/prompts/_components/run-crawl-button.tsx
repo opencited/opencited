@@ -1,37 +1,50 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
 import { Button, Spinner } from "@opencited/ui";
 import { useConfirmation } from "@/app/hooks/use-confirmation";
+import { useActiveCrawls } from "@/app/hooks/use-active-crawls";
 
 import { toast } from "sonner";
 
 interface RunCrawlButtonProps {
 	promptQueryId: string;
-	isRunning?: boolean;
-	onCrawlStart?: () => void;
+	domainProjectId: string;
 }
 
 export function RunCrawlButton({
 	promptQueryId,
-	isRunning = false,
-	onCrawlStart,
+	domainProjectId,
 }: RunCrawlButtonProps) {
 	const trpc = useTRPC();
+	const queryClient = useQueryClient();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const { confirm, dialog } = useConfirmation();
+
+	const { activeCrawls } = useActiveCrawls({
+		domainProjectId,
+	});
+
+	const isRunning = activeCrawls.some(
+		(crawl) => crawl.promptQueryId === promptQueryId,
+	);
 
 	const startCrawlMutation = useMutation(
 		trpc.promptQueryCrawl.start.mutationOptions({
 			onMutate: async () => {
 				setIsSubmitting(true);
-				onCrawlStart?.();
 			},
 			onSuccess: async () => {
 				toast.success("Crawl started", {
 					description: "Running crawl in background...",
+				});
+				queryClient.invalidateQueries({
+					queryKey: trpc.promptQueryCrawl.list.queryKey({
+						domainProjectId,
+						status: ["pending", "running"],
+					}),
 				});
 			},
 			onSettled: () => {

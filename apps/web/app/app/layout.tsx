@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { TRPCReactProvider } from "../_trpc/client";
 import { AppSidebar } from "../components/app-sidebar";
 import { trpc } from "../_trpc/server";
+import { ActiveCrawlIndicatorWrapper } from "../components/active-crawl-indicator-wrapper";
 
 export default async function ProtectedLayout({
 	children,
@@ -45,6 +46,7 @@ export default async function ProtectedLayout({
 								</main>
 							</SidebarInset>
 						</div>
+						<ActiveCrawlIndicatorWrapper domainProjectId={domainProject.id} />
 					</SidebarProvider>
 					<Toaster />
 				</ThemeProvider>
