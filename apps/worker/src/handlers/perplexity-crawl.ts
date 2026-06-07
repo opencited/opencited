@@ -26,6 +26,7 @@ import {
 	getStickyProxy,
 } from "../lib/proxy-resolver";
 import { env } from "../env";
+import { proxyConfigTable, eq } from "@opencited/db";
 
 function adaptLogger(
 	base: CrawlerLogger,
@@ -34,14 +35,22 @@ function adaptLogger(
 	return base.withContext(context);
 }
 
+function parseBatchProxyList(raw: string): string[] {
+	return raw
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0 && line.includes(":"));
+}
+
 async function resolveProxies(
 	proxyApiUrl: string,
+	domainProjectId: string,
 	redis: Redis,
 	logger: CrawlerLogger,
 	stickyProxyEnabled: boolean,
 ): Promise<{ proxies: ProxyOptions[]; usedSticky: boolean }> {
 	if (stickyProxyEnabled) {
-		const stickyProxy = await getStickyProxy(redis);
+		const stickyProxy = await getStickyProxy(redis, domainProjectId);
 		if (stickyProxy) {
 			logger.info("Using sticky proxy from last successful crawl", {
 				server: stickyProxy.server,
@@ -52,7 +61,7 @@ async function resolveProxies(
 
 	const proxyList = await fetchProxyList(proxyApiUrl);
 	const proxies = buildProxyOptions(proxyList);
-	logger.info("Proxy list fetched from ThorData", {
+	logger.info("Proxy list fetched", {
 		proxyCount: proxies.length,
 	});
 	return { proxies, usedSticky: false };
@@ -63,7 +72,8 @@ export async function handlePerplexityCrawl(
 	logger: CrawlerLogger,
 	redis: Redis,
 ): Promise<void> {
-	const { query, promptQueryId, promptQueryCrawlId } = job.data;
+	const { query, promptQueryId, promptQueryCrawlId, domainProjectId } =
+		job.data;
 
 	await withDb(async (db) => {
 		const crawlContext = await getCrawlContextAction({
@@ -81,7 +91,15 @@ export async function handlePerplexityCrawl(
 		const provider = new PerplexityProvider(crawlLogger);
 		const crawler = new Crawler({ logger: crawlLogger });
 
-		const proxyApiUrl = env.THORDATA_PROXY_API_URL;
+		// Check for custom proxy config
+		const proxyConfigs = await db
+			.select()
+			.from(proxyConfigTable)
+			.where(eq(proxyConfigTable.domainProjectId, domainProjectId));
+
+		const customProxyConfig = proxyConfigs[0];
+		const isCustomProxyEnabled = customProxyConfig?.enabled === true;
+		const isStickyProxyEnabled = customProxyConfig?.stickyProxyEnabled === true;
 
 		try {
 			const startTime = Date.now();
@@ -89,10 +107,47 @@ export async function handlePerplexityCrawl(
 			let proxies: ProxyOptions[] | undefined;
 			let singleProxy: ProxyOptions | undefined;
 			let usedSticky = false;
+			let customProxySource: string | undefined;
 
-			if (proxyApiUrl) {
+			if (isCustomProxyEnabled && customProxyConfig) {
+				if (customProxyConfig.sourceType === "api") {
+					({ proxies, usedSticky } = await resolveProxies(
+						customProxyConfig.sourceValue,
+						domainProjectId,
+						redis,
+						logger,
+						isStickyProxyEnabled,
+					));
+					customProxySource = customProxyConfig.sourceValue;
+				} else {
+					// batch
+					if (isStickyProxyEnabled) {
+						const stickyProxy = await getStickyProxy(redis, domainProjectId);
+						if (stickyProxy) {
+							logger.info("Using sticky proxy from last successful crawl", {
+								server: stickyProxy.server,
+							});
+							proxies = [stickyProxy];
+							usedSticky = true;
+						}
+					}
+
+					if (!usedSticky) {
+						const proxyList = parseBatchProxyList(
+							customProxyConfig.sourceValue,
+						);
+						if (proxyList.length > 0) {
+							proxies = buildProxyOptions(proxyList);
+							logger.info("Using custom batch proxy list", {
+								proxyCount: proxies.length,
+							});
+						}
+					}
+				}
+			} else if (env.THORDATA_PROXY_API_URL) {
 				({ proxies, usedSticky } = await resolveProxies(
-					proxyApiUrl,
+					env.THORDATA_PROXY_API_URL,
+					domainProjectId,
 					redis,
 					logger,
 					env.STICKY_PROXY_ENABLED,
@@ -120,15 +175,15 @@ export async function handlePerplexityCrawl(
 					if (
 						err instanceof AllProxiesFailedError &&
 						usedSticky &&
-						proxyApiUrl
+						customProxySource
 					) {
 						logger.warn(
-							"Sticky proxy failed — falling back to fresh ThorData list",
+							"Sticky proxy failed — falling back to fresh proxy list",
 							{ lastFailureType: err.lastFailureType },
 						);
-						await clearStickyProxy(redis);
+						await clearStickyProxy(redis, domainProjectId);
 
-						const proxyList = await fetchProxyList(proxyApiUrl);
+						const proxyList = await fetchProxyList(customProxySource);
 						const freshProxies = buildProxyOptions(proxyList);
 						logger.info("Retrying with fresh proxy list", {
 							proxyCount: freshProxies.length,
@@ -146,8 +201,8 @@ export async function handlePerplexityCrawl(
 
 			const endTime = Date.now();
 
-			if (result.usedProxy && env.STICKY_PROXY_ENABLED) {
-				await setStickyProxy(redis, result.usedProxy);
+			if (result.usedProxy && isCustomProxyEnabled) {
+				await setStickyProxy(redis, domainProjectId, result.usedProxy);
 				logger.info("Sticky proxy updated after successful crawl", {
 					server: result.usedProxy.server,
 				});
@@ -232,8 +287,8 @@ export async function handlePerplexityCrawl(
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 
-			if (env.STICKY_PROXY_ENABLED) {
-				await clearStickyProxy(redis);
+			if (isCustomProxyEnabled) {
+				await clearStickyProxy(redis, domainProjectId);
 				logger.info("Sticky proxy cleared after crawl failure");
 			}
 

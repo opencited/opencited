@@ -12,6 +12,7 @@ export const jobs = {
 			query: z.string(),
 			promptQueryId: z.string(),
 			promptQueryCrawlId: z.string(),
+			domainProjectId: z.string(),
 		}),
 		options: {
 			attempts: 0,

@@ -25,3 +25,5 @@ export * from "./schema/promptQueryCrawl";
 export * from "./schema/competitor";
 export * from "./schema/crawlSource";
 export * from "./schema/crawlBrandMention";
+export * from "./schema/proxyConfig";
+export * from "drizzle-orm";

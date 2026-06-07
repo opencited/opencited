@@ -37,15 +37,18 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 			}
 
 			// Create crawl record and get query text
-			const { crawlId, query } = await triggerCrawlTaskHandler({
-				input,
-				ctx,
-			});
+			const { crawlId, query, domainProjectId } = await triggerCrawlTaskHandler(
+				{
+					input,
+					ctx,
+				},
+			);
 
 			const { jobId } = await dispatch("perplexity-crawl", {
 				query,
 				promptQueryId: input.promptQueryId,
 				promptQueryCrawlId: crawlId,
+				domainProjectId,
 			});
 
 			await updateCrawlHandler({

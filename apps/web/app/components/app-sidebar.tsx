@@ -32,6 +32,7 @@ import {
 	LayoutDashboard,
 	MessageSquare,
 	PanelLeft,
+	Settings,
 	Target,
 } from "lucide-react";
 import Link from "next/link";
@@ -304,6 +305,27 @@ export function AppSidebar() {
 										</SidebarMenuButton>
 									</SidebarMenuItem>
 								))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup>
+					<SidebarGroupLabel className={cn(isCollapsed && "sr-only")}>
+						Settings
+					</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							<SidebarMenuItem>
+								<SidebarMenuButton
+									tooltip={isCollapsed ? "Proxy Settings" : "Proxy Settings"}
+									isActive={pathname.includes("settings/proxy")}
+									asChild
+								>
+									<Link href="/app/settings/proxy">
+										<Settings className="size-4" />
+										<span>Proxy</span>
+									</Link>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
 						</SidebarMenu>
 					</SidebarGroupContent>
 				</SidebarGroup>

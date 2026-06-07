@@ -67,6 +67,7 @@ export const triggerCrawlTaskAction = async (params: {
 	return {
 		crawlId: crawlRecord[0].id,
 		query: promptQuery[0].query,
+		domainProjectId: promptQuery[0].domainProjectId,
 	};
 };
 

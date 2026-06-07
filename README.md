@@ -216,6 +216,18 @@ curl http://localhost:3001/health
 | `LLM_PROVIDER` | LLM provider (`openai`, `groq`, `openai-compatible`) | Required |
 | `LLM_API_KEY` | LLM API key | Required |
 | `LLM_MODEL` | LLM model identifier | Required |
+| `THORDATA_PROXY_API_URL` | Proxy provider API URL (returns `host:port` list) | Optional |
+| `PROXY_SERVER` | Single proxy fallback (used only when no proxy API is set) | Optional |
+| `PROXY_USERNAME` | Proxy authentication username | Optional |
+| `PROXY_PASSWORD` | Proxy authentication password | Optional |
+| `STICKY_PROXY_ENABLED` | Reuse last successful proxy for faster crawls | `true` |
+
+**Proxy hierarchy:** Crawls use proxies in this order:
+1. Custom proxy config (set per domainProject in UI settings) — supports batch list or API URL
+2. `THORDATA_PROXY_API_URL` environment variable
+3. `PROXY_SERVER` single proxy fallback
+
+Sticky proxy is scoped per domainProject and cached in Redis with a 30-minute TTL.
 
 ### Monitoring
 
