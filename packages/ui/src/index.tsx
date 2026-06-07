@@ -144,3 +144,9 @@ export {
 } from "./select";
 
 export { Spinner } from "./spinner";
+
+export { AutoForm } from "./components/ui/autoform";
+export type { AutoFormProps, FieldTypes } from "./components/ui/autoform";
+
+export { createAutoFormSchema } from "./lib/create-autoform-schema";
+export type { AutoFormFieldConfig } from "./lib/create-autoform-schema";
