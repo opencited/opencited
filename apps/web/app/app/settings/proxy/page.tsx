@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
 import { PageShell } from "@/app/components/page-shell";
 import { useTRPC } from "@/app/_trpc/client";
 import {
@@ -11,33 +10,64 @@ import {
 	CardHeader,
 	CardTitle,
 	Button,
-	Textarea,
-	Input,
-	Label,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-	Checkbox,
 	Skeleton,
 	Spinner,
+	AutoForm,
+	createAutoFormSchema,
 } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
-import { Settings, Save, Trash2 } from "lucide-react";
 import { useConfirmation } from "@/app/hooks/use-confirmation";
 import { toast } from "sonner";
+import { Settings, Save, Trash2 } from "lucide-react";
+import { proxyConfigInsertSchema } from "@opencited/db";
+import type React from "react";
+
+const formSchema = proxyConfigInsertSchema.omit({
+	id: true,
+	createdAt: true,
+	updatedAt: true,
+	domainProjectId: true,
+});
+
+const schemaProvider = createAutoFormSchema(formSchema, {
+	enabled: {
+		label: "Enable custom proxy",
+		description: "Use your proxy settings for all browser crawling requests",
+		fieldType: "switch",
+		order: -3,
+	},
+	stickyProxyEnabled: {
+		label: "Sticky proxy",
+		description:
+			"Reuse the last successful proxy for faster crawls. Falls back to the full list on failure.",
+		fieldType: "switch",
+		order: -2,
+		showWhen: (values) => values.enabled === true,
+	},
+	sourceType: {
+		label: "Proxy source",
+		fieldType: "select",
+		order: -1,
+	},
+	sourceValue: {
+		label: "Proxy list",
+		description: "Format: host:port or host:port:username:password",
+		fieldType: (values) =>
+			values.sourceType === "api" ? "string" : "textarea",
+		inputProps: {
+			type: "url",
+			placeholder: "https://api.proxyprovider.com/v1/proxies?key=xxx",
+			className: "font-mono text-sm",
+			rows: 6,
+		},
+		order: 0,
+	},
+});
 
 export default function ProxySettingsPage() {
 	const trpc = useTRPC();
 	const queryClient = useQueryClient();
 	const { confirm, dialog } = useConfirmation();
-
-	const [sourceType, setSourceType] = useState<"batch" | "api">("batch");
-	const [sourceValue, setSourceValue] = useState("");
-	const [enabled, setEnabled] = useState(false);
-	const [stickyProxyEnabled, setStickyProxyEnabled] = useState(true);
-	const [isInitialized, setIsInitialized] = useState(false);
 
 	const proxyQuery = useQuery(trpc.proxyConfig.get.queryOptions({}));
 	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
@@ -70,10 +100,6 @@ export default function ProxySettingsPage() {
 		trpc.proxyConfig.delete.mutationOptions({
 			onSuccess: () => {
 				queryClient.invalidateQueries(trpc.proxyConfig.get.queryFilter());
-				setSourceValue("");
-				setEnabled(false);
-				setStickyProxyEnabled(true);
-				setSourceType("batch");
 				toast.success("Proxy config deleted");
 			},
 			onError: (error) => {
@@ -82,28 +108,9 @@ export default function ProxySettingsPage() {
 		}),
 	);
 
-	useEffect(() => {
-		if (proxyQuery.data && !isInitialized) {
-			setSourceType(proxyQuery.data.sourceType as "batch" | "api");
-			setSourceValue(proxyQuery.data.sourceValue);
-			setEnabled(proxyQuery.data.enabled === true);
-			setStickyProxyEnabled(proxyQuery.data.stickyProxyEnabled === true);
-			setIsInitialized(true);
-		}
-	}, [proxyQuery.data, isInitialized]);
-
-	const _isLoading = proxyQuery.isLoading;
 	const existingConfig = proxyQuery.data;
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!sourceValue.trim()) {
-			toast.error("Validation error", {
-				description: "Please provide a proxy list or API URL.",
-			});
-			return;
-		}
-
+	const handleSubmit = async (data: Record<string, unknown>) => {
 		const domainProject = domainProjectQuery.data;
 		if (!domainProject) {
 			toast.error("Validation error", {
@@ -114,10 +121,10 @@ export default function ProxySettingsPage() {
 
 		const input = {
 			domainProjectId: domainProject.id,
-			sourceType,
-			sourceValue: sourceValue.trim(),
-			enabled,
-			stickyProxyEnabled,
+			sourceType: data.sourceType as "batch" | "api",
+			sourceValue: (data.sourceValue as string).trim(),
+			enabled: data.enabled as boolean,
+			stickyProxyEnabled: data.stickyProxyEnabled as boolean,
 		};
 
 		if (existingConfig) {
@@ -141,6 +148,33 @@ export default function ProxySettingsPage() {
 	};
 
 	const isSaving = createMutation.isPending || updateMutation.isPending;
+
+	const SubmitButton: React.FC<{ children: React.ReactNode }> = ({
+		children,
+	}) => (
+		<div className="flex items-center gap-3">
+			<Button type="submit" disabled={isSaving} className="gap-2">
+				{isSaving ? (
+					<Spinner className="h-4 w-4" />
+				) : (
+					<Save className="h-4 w-4" />
+				)}
+				{children}
+			</Button>
+			{existingConfig && (
+				<Button
+					type="button"
+					variant="outline"
+					onClick={handleDelete}
+					disabled={deleteMutation.isPending}
+					className="gap-2 text-destructive hover:text-destructive"
+				>
+					<Trash2 className="h-4 w-4" />
+					Delete
+				</Button>
+			)}
+		</div>
+	);
 
 	return (
 		<PageShell
@@ -184,122 +218,26 @@ export default function ProxySettingsPage() {
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
-								<form onSubmit={handleSubmit} className="space-y-6">
-									<div className="flex items-center justify-between">
-										<div>
-											<Label>Enable custom proxy</Label>
-											<p className="text-sm text-muted-foreground">
-												Use your proxy settings for all browser crawling
-												requests
-											</p>
-										</div>
-										<Checkbox
-											checked={enabled}
-											onCheckedChange={(checked) =>
-												setEnabled(checked === true)
-											}
-										/>
-									</div>
-
-									{enabled && (
-										<div className="flex items-center justify-between">
-											<div>
-												<Label>Sticky proxy</Label>
-												<p className="text-sm text-muted-foreground">
-													Reuse the last successful proxy for faster crawls.
-													Falls back to the full list on failure.
-												</p>
-											</div>
-											<Checkbox
-												checked={stickyProxyEnabled}
-												onCheckedChange={(checked) =>
-													setStickyProxyEnabled(checked === true)
+								<AutoForm
+									schema={schemaProvider}
+									defaultValues={
+										existingConfig
+											? {
+													enabled: existingConfig.enabled,
+													stickyProxyEnabled: existingConfig.stickyProxyEnabled,
+													sourceType: existingConfig.sourceType as
+														| "batch"
+														| "api",
+													sourceValue: existingConfig.sourceValue,
 												}
-											/>
-										</div>
-									)}
-
-									<div className="space-y-3">
-										<Label>Proxy source</Label>
-										<Select
-											value={sourceType}
-											onValueChange={(v: "batch" | "api") => setSourceType(v)}
-										>
-											<SelectTrigger>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="batch">Proxy batch list</SelectItem>
-												<SelectItem value="api">Proxy API fetch URL</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
-
-									{sourceType === "batch" ? (
-										<div className="space-y-2">
-											<Label htmlFor="proxy-list">
-												Proxy list (one per line)
-											</Label>
-											<p className="text-sm text-muted-foreground">
-												Format:{" "}
-												<code className="rounded bg-muted px-1">host:port</code>{" "}
-												or{" "}
-												<code className="rounded bg-muted px-1">
-													host:port:username:password
-												</code>
-											</p>
-											<Textarea
-												id="proxy-list"
-												value={sourceValue}
-												onChange={(e) => setSourceValue(e.target.value)}
-												placeholder={
-													"proxy1.example.com:8080\nproxy2.example.com:8080:user:pass"
-												}
-												rows={6}
-												className="font-mono text-sm"
-											/>
-										</div>
-									) : (
-										<div className="space-y-2">
-											<Label htmlFor="proxy-api-url">Proxy API URL</Label>
-											<p className="text-sm text-muted-foreground">
-												URL that returns a plain-text list of proxies (one{" "}
-												<code className="rounded bg-muted px-1">host:port</code>{" "}
-												per line)
-											</p>
-											<Input
-												id="proxy-api-url"
-												value={sourceValue}
-												onChange={(e) => setSourceValue(e.target.value)}
-												placeholder="https://api.proxyprovider.com/v1/proxies?key=xxx"
-												type="url"
-											/>
-										</div>
-									)}
-
-									<div className="flex items-center gap-3">
-										<Button type="submit" disabled={isSaving} className="gap-2">
-											{isSaving ? (
-												<Spinner className="h-4 w-4" />
-											) : (
-												<Save className="h-4 w-4" />
-											)}
-											Save settings
-										</Button>
-										{existingConfig && (
-											<Button
-												type="button"
-												variant="outline"
-												onClick={handleDelete}
-												disabled={deleteMutation.isPending}
-												className="gap-2 text-destructive hover:text-destructive"
-											>
-												<Trash2 className="h-4 w-4" />
-												Delete
-											</Button>
-										)}
-									</div>
-								</form>
+											: undefined
+									}
+									onSubmit={handleSubmit}
+									withSubmit
+									uiComponents={{
+										SubmitButton,
+									}}
+								/>
 							</CardContent>
 						</Card>
 					</div>

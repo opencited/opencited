@@ -8,6 +8,7 @@ export const SwitchField: React.FC<AutoFormFieldProps> = ({
 	label,
 	id,
 	inputProps,
+	value,
 }) => (
 	<div className="flex items-center space-x-2">
 		<Switch
@@ -21,7 +22,7 @@ export const SwitchField: React.FC<AutoFormFieldProps> = ({
 				};
 				inputProps.onChange(event);
 			}}
-			checked={inputProps.value}
+			checked={inputProps.value ?? field.default ?? value}
 		/>
 		<Label htmlFor={id}>
 			{label}
