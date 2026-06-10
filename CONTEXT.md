@@ -12,6 +12,7 @@
 | **sitemap** | A registered sitemap URL for a domainProject, used to discover pages to analyze. |
 | **competitor** | A competing brand/domain tracked within a domainProject for mention comparison. |
 | **brandMention** | A detected mention of the target brand or its aliases in AI-generated content. |
+| **promptTemplate** | A system-curated, pre-built prompt available in the prompt library (Library tab within `/app/prompts`). Independent of any domainProject. Has a human-readable slug `id` (e.g. `competitor-price-comparison`). Contains `text` (the query, may include `{brandName}` placeholder), `title`, `description`, `industry` (enum: SaaS, E-commerce, Healthcare, Finance, Media & Publishing, Education, Travel & Hospitality, Real Estate, Legal Services, Marketing & Advertising), `category` (enum: competitor-analysis, brand-monitoring, visibility, content-optimization, pricing-intelligence, feature-comparison), and `tags` (predefined array). Seeded from a hardcoded TS file (`packages/db/src/prompt-templates.ts`) via `bun run sync:templates`. When a user adds a template, `{brandName}` is auto-resolved from `domainProject.name` (falling back to `domainProject.domain`), then presented in a dedicated `AddTemplateDialog` (showing metadata + editable text) before saving as a `promptQuery`. Once copied, the prompt is fully owned by the user — template updates do not propagate back. |
 
 ## Proxy Resolution Order
 

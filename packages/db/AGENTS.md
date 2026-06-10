@@ -38,6 +38,7 @@ drizzle.config.ts          # drizzle-kit config
 | `crawledPageTable` | Crawled page data + status |
 | `pageAnalysisTable` | LLM-analyzed page content |
 | `promptQueryTable` | Prompt query history |
+| `promptTemplateTable` | System-curated prompt library templates |
 
 ## Schema Pattern
 
@@ -62,6 +63,9 @@ bun run db:migrate
 
 # Push schema (dev only)
 bun run db:push
+
+# Sync prompt templates from seed file
+bun run sync:templates
 ```
 
 ## Environment

@@ -11,6 +11,10 @@ import {
 	CardHeader,
 	CardTitle,
 	Spinner,
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
 } from "@opencited/ui";
 import { Plus, Trash2, Clock, Calendar, Terminal, Pencil } from "lucide-react";
 import { Skeleton } from "@opencited/ui";
@@ -18,6 +22,7 @@ import { CreatePromptDialog } from "./_components/create-prompt-dialog";
 import { ViewPromptDialog } from "./_components/view-prompt-dialog";
 import { EditPromptDialog } from "./_components/edit-prompt-dialog";
 import { RunCrawlButton } from "./_components/run-crawl-button";
+import { LibraryTab } from "./_components/library-tab";
 import { TimeAgo } from "@/app/components/time-ago";
 import { QueryCell } from "@/app/components/query-cell";
 import { format } from "date-fns";
@@ -27,6 +32,7 @@ export default function PromptsPage() {
 	const trpc = useTRPC();
 	const { confirm, dialog } = useConfirmation();
 
+	const [activeTab, setActiveTab] = useState("my-prompts");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 	const [promptToView, setPromptToView] = useState<{
 		id: string;
@@ -85,7 +91,6 @@ export default function PromptsPage() {
 		[confirm, deleteMutation, domainProject],
 	);
 
-	// Keyboard shortcuts
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (
@@ -179,175 +184,208 @@ export default function PromptsPage() {
 		<PageShell
 			title="Prompts"
 			action={
-				<div>
-					<Button onClick={() => setIsCreateDialogOpen(true)}>
-						<Plus className="h-4 w-4 mr-2" />
-						New Prompt
-					</Button>
-					<CreatePromptDialog
-						open={isCreateDialogOpen}
-						onOpenChange={setIsCreateDialogOpen}
-						domainProjectId={domainProject.id}
-						onSuccess={() => {
-							promptsQuery.refetch();
-						}}
-					/>
-				</div>
+				activeTab === "my-prompts" ? (
+					<div>
+						<Button onClick={() => setIsCreateDialogOpen(true)}>
+							<Plus className="h-4 w-4 mr-2" />
+							New Prompt
+						</Button>
+						<CreatePromptDialog
+							open={isCreateDialogOpen}
+							onOpenChange={setIsCreateDialogOpen}
+							domainProjectId={domainProject.id}
+							onSuccess={() => {
+								promptsQuery.refetch();
+							}}
+						/>
+					</div>
+				) : null
 			}
 		>
-			<QueryCell
-				query={promptsQuery}
-				loading={
-					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-						{[1, 2, 3].map((i) => (
-							<Card key={i}>
-								<div className="flex items-center gap-3 px-5 pt-3 pb-1.5">
-									<Skeleton className="h-3 w-16" />
-									<Skeleton className="h-3 w-20" />
-								</div>
-								<CardHeader className="pb-1 pt-1">
-									<Skeleton className="h-4 w-3/4" />
-								</CardHeader>
-								<CardContent className="pt-0 pb-4 mt-auto">
-									<div className="flex items-center justify-end">
-										<Skeleton className="h-8 w-20 rounded-sm" />
-									</div>
-								</CardContent>
-							</Card>
-						))}
-					</div>
-				}
-				error={() => (
-					<Card>
-						<CardContent className="py-8 text-center">
-							<p className="text-destructive">
-								Couldn&apos;t load prompts. Try again.
-							</p>
-						</CardContent>
-					</Card>
-				)}
-				success={(prompts) => {
-					if (!prompts || prompts.length === 0) {
-						return (
-							<Card variant="dashed">
-								<CardContent className="py-16 text-center">
-									<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-										<Terminal className="h-6 w-6 text-muted-foreground" />
-									</div>
-									<h3 className="text-lg font-semibold mb-2">No prompts yet</h3>
-									<p className="text-muted-foreground mb-6 max-w-md mx-auto">
-										Prompts are queries you save to crawl AI answer engines.
-										Create your first prompt to start tracking how AI engines
-										respond to your searches.
-									</p>
-									<Button onClick={() => setIsCreateDialogOpen(true)}>
-										<Plus className="h-4 w-4 mr-2" />
-										Create your first prompt
-									</Button>
-								</CardContent>
-							</Card>
-						);
-					}
+			<Tabs
+				value={activeTab}
+				onValueChange={setActiveTab}
+				className="space-y-4"
+			>
+				<TabsList className="justify-start w-fit">
+					<TabsTrigger value="my-prompts">My Prompts</TabsTrigger>
+					<TabsTrigger value="library">Library</TabsTrigger>
+				</TabsList>
 
-					return (
-						<div className="grid gap-3 p-4 sm:p-0 md:grid-cols-2 lg:grid-cols-3">
-							{prompts.map((prompt, _index) => {
-								return (
-									<Card
-										key={prompt.id}
-										data-prompt-id={prompt.id}
-										className="group focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm flex flex-col"
-										onClick={() => {
-											setSelectedPromptId(prompt.id);
-											setPromptToView({
-												id: prompt.id,
-												query: prompt.query,
-												createdAt: prompt.createdAt,
-												lastCrawledAt: prompt.lastCrawledAt,
-											});
-										}}
-										onKeyDown={(e) => {
-											if (e.key === "Enter" || e.key === " ") {
-												e.preventDefault();
-												setSelectedPromptId(prompt.id);
-												setPromptToView({
-													id: prompt.id,
-													query: prompt.query,
-													createdAt: prompt.createdAt,
-													lastCrawledAt: prompt.lastCrawledAt,
-												});
-											}
-										}}
-										tabIndex={0}
-										role="button"
-										aria-label={`View prompt: ${prompt.query}`}
-									>
-										<div className="flex items-center justify-between px-5 pt-3 pb-1.5 text-xs text-muted-foreground">
-											<div className="flex items-center gap-2.5">
-												<div className="flex items-center gap-1">
-													<Calendar className="h-3 w-3" />
-													<span>
-														{format(new Date(prompt.createdAt), "MMM d")}
-													</span>
-												</div>
-												{prompt.lastCrawledAt ? (
-													<div className="flex items-center gap-1">
-														<Clock className="h-3 w-3" />
-														<TimeAgo date={prompt.lastCrawledAt} />
-													</div>
-												) : (
-													<span>Never crawled</span>
-												)}
-											</div>
+				<TabsContent value="my-prompts" className="mt-0">
+					<QueryCell
+						query={promptsQuery}
+						loading={
+							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+								{[1, 2, 3].map((i) => (
+									<Card key={i}>
+										<div className="flex items-center gap-3 px-5 pt-3 pb-1.5">
+											<Skeleton className="h-3 w-16" />
+											<Skeleton className="h-3 w-20" />
 										</div>
 										<CardHeader className="pb-1 pt-1">
-											<CardTitle className="text-sm font-medium leading-relaxed line-clamp-3">
-												{prompt.query}
-											</CardTitle>
+											<Skeleton className="h-4 w-3/4" />
 										</CardHeader>
 										<CardContent className="pt-0 pb-4 mt-auto">
-											<div className="flex items-center justify-between">
-												<div className="flex items-center gap-1">
-													<Button
-														variant="ghost"
-														size="icon"
-														onClick={(e) => {
-															e.stopPropagation();
-															setPromptToEdit({
-																id: prompt.id,
-																query: prompt.query,
-																domainProjectId: domainProject.id,
-															});
-														}}
-														className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8"
-													>
-														<Pencil className="h-4 w-4" />
-													</Button>
-													<Button
-														variant="ghost"
-														size="icon"
-														onClick={(e) => {
-															e.stopPropagation();
-															handleDeletePrompt(prompt.id, prompt.query);
-														}}
-														className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8 hover:text-destructive"
-													>
-														<Trash2 className="h-4 w-4" />
-													</Button>
-												</div>
-												<RunCrawlButton
-													promptQueryId={prompt.id}
-													domainProjectId={domainProject.id}
-												/>
+											<div className="flex items-center justify-end">
+												<Skeleton className="h-8 w-20 rounded-sm" />
+											</div>
+										</CardContent>
+									</Card>
+								))}
+							</div>
+						}
+						error={() => (
+							<Card>
+								<CardContent className="py-8 text-center">
+									<p className="text-destructive">
+										Couldn&apos;t load prompts. Try again.
+									</p>
+								</CardContent>
+							</Card>
+						)}
+						success={(prompts) => {
+							if (!prompts || prompts.length === 0) {
+								return (
+									<Card variant="dashed">
+										<CardContent className="py-16 text-center">
+											<div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+												<Terminal className="h-6 w-6 text-muted-foreground" />
+											</div>
+											<h3 className="text-lg font-semibold mb-2">
+												No prompts yet
+											</h3>
+											<p className="text-muted-foreground mb-6 max-w-md mx-auto">
+												Prompts are queries you save to crawl AI answer engines.
+												Create your first prompt or browse the library for
+												starter prompts.
+											</p>
+											<div className="flex items-center justify-center gap-3">
+												<Button onClick={() => setIsCreateDialogOpen(true)}>
+													<Plus className="h-4 w-4 mr-2" />
+													Create your first prompt
+												</Button>
+												<Button
+													variant="outline"
+													onClick={() => setActiveTab("library")}
+												>
+													Browse Library
+												</Button>
 											</div>
 										</CardContent>
 									</Card>
 								);
-							})}
-						</div>
-					);
-				}}
-			/>
+							}
+
+							return (
+								<div className="grid gap-3 p-4 sm:p-0 md:grid-cols-2 lg:grid-cols-3">
+									{prompts.map((prompt, _index) => {
+										return (
+											<Card
+												key={prompt.id}
+												data-prompt-id={prompt.id}
+												className="group focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm flex flex-col"
+												onClick={() => {
+													setSelectedPromptId(prompt.id);
+													setPromptToView({
+														id: prompt.id,
+														query: prompt.query,
+														createdAt: prompt.createdAt,
+														lastCrawledAt: prompt.lastCrawledAt,
+													});
+												}}
+												onKeyDown={(e) => {
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault();
+														setSelectedPromptId(prompt.id);
+														setPromptToView({
+															id: prompt.id,
+															query: prompt.query,
+															createdAt: prompt.createdAt,
+															lastCrawledAt: prompt.lastCrawledAt,
+														});
+													}
+												}}
+												tabIndex={0}
+												role="button"
+												aria-label={`View prompt: ${prompt.query}`}
+											>
+												<div className="flex items-center justify-between px-5 pt-3 pb-1.5 text-xs text-muted-foreground">
+													<div className="flex items-center gap-2.5">
+														<div className="flex items-center gap-1">
+															<Calendar className="h-3 w-3" />
+															<span>
+																{format(new Date(prompt.createdAt), "MMM d")}
+															</span>
+														</div>
+														{prompt.lastCrawledAt ? (
+															<div className="flex items-center gap-1">
+																<Clock className="h-3 w-3" />
+																<TimeAgo date={prompt.lastCrawledAt} />
+															</div>
+														) : (
+															<span>Never crawled</span>
+														)}
+													</div>
+												</div>
+												<CardHeader className="pb-1 pt-1">
+													<CardTitle className="text-sm font-medium leading-relaxed line-clamp-3">
+														{prompt.query}
+													</CardTitle>
+												</CardHeader>
+												<CardContent className="pt-0 pb-4 mt-auto">
+													<div className="flex items-center justify-between">
+														<div className="flex items-center gap-1">
+															<Button
+																variant="ghost"
+																size="icon"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	setPromptToEdit({
+																		id: prompt.id,
+																		query: prompt.query,
+																		domainProjectId: domainProject.id,
+																	});
+																}}
+																className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8"
+															>
+																<Pencil className="h-4 w-4" />
+															</Button>
+															<Button
+																variant="ghost"
+																size="icon"
+																onClick={(e) => {
+																	e.stopPropagation();
+																	handleDeletePrompt(prompt.id, prompt.query);
+																}}
+																className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8 hover:text-destructive"
+															>
+																<Trash2 className="h-4 w-4" />
+															</Button>
+														</div>
+														<RunCrawlButton
+															promptQueryId={prompt.id}
+															domainProjectId={domainProject.id}
+														/>
+													</div>
+												</CardContent>
+											</Card>
+										);
+									})}
+								</div>
+							);
+						}}
+					/>
+				</TabsContent>
+
+				<TabsContent value="library" className="mt-0">
+					<LibraryTab
+						domainProjectId={domainProject.id}
+						domainProjectName={domainProject.name ?? domainProject.domain}
+						existingPromptTexts={promptsQuery.data?.map((p) => p.query) ?? []}
+					/>
+				</TabsContent>
+			</Tabs>
 
 			<ViewPromptDialog
 				open={!!promptToView}
