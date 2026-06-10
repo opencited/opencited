@@ -31,7 +31,6 @@ export function ActiveCrawlIndicator({
 						role="status"
 						aria-live="polite"
 					>
-						<Spinner className="h-3 w-3" />
 						<span className="text-sm font-medium">
 							{activeCrawls.length} active crawl
 							{activeCrawls.length > 1 ? "s" : ""}

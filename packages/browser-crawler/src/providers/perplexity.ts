@@ -38,7 +38,7 @@ export class PerplexityProvider implements CrawlerProvider {
 	async navigate(session: BrowserSession): Promise<void> {
 		this.logger.info("Navigating to Perplexity homepage...");
 		await session.page.goto("https://www.perplexity.ai/", {
-			waitUntil: "networkidle",
+			waitUntil: "load",
 		});
 		const currentUrl = session.page.url();
 		this.logger.info(`Navigation complete. Current URL: ${currentUrl}`);
@@ -111,7 +111,7 @@ export class PerplexityProvider implements CrawlerProvider {
 	}
 
 	async waitForResponse(session: BrowserSession): Promise<void> {
-		await session.page.waitForLoadState("networkidle");
+		await session.page.waitForLoadState("domcontentloaded");
 		await this.waitForCloudflareChallenge(session);
 
 		this.logger.info("Waiting for Perplexity response to finish streaming...");
