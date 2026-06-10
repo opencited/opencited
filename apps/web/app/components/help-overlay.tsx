@@ -52,6 +52,10 @@ const promptShortcuts: Shortcut[] = [
 		description: "View selected prompt",
 	},
 	{
+		keys: ["E"],
+		description: "Edit selected prompt",
+	},
+	{
 		keys: ["R"],
 		description: "Run crawl on selected",
 	},

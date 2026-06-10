@@ -12,10 +12,11 @@ import {
 	CardTitle,
 	Spinner,
 } from "@opencited/ui";
-import { Plus, Trash2, Clock, Calendar, Terminal } from "lucide-react";
+import { Plus, Trash2, Clock, Calendar, Terminal, Pencil } from "lucide-react";
 import { Skeleton } from "@opencited/ui";
 import { CreatePromptDialog } from "./_components/create-prompt-dialog";
 import { ViewPromptDialog } from "./_components/view-prompt-dialog";
+import { EditPromptDialog } from "./_components/edit-prompt-dialog";
 import { RunCrawlButton } from "./_components/run-crawl-button";
 import { TimeAgo } from "@/app/components/time-ago";
 import { QueryCell } from "@/app/components/query-cell";
@@ -32,6 +33,11 @@ export default function PromptsPage() {
 		query: string;
 		createdAt: string;
 		lastCrawledAt: string | null;
+	} | null>(null);
+	const [promptToEdit, setPromptToEdit] = useState<{
+		id: string;
+		query: string;
+		domainProjectId: string;
 	} | null>(null);
 	const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
 
@@ -111,6 +117,19 @@ export default function PromptsPage() {
 				);
 				if (prompt) {
 					handleDeletePrompt(prompt.id, prompt.query);
+				}
+			}
+			if (event.key === "e" && selectedPromptId) {
+				event.preventDefault();
+				const prompt = promptsQuery.data?.find(
+					(p) => p.id === selectedPromptId,
+				);
+				if (prompt && domainProject) {
+					setPromptToEdit({
+						id: prompt.id,
+						query: prompt.query,
+						domainProjectId: domainProject.id,
+					});
 				}
 			}
 			if (event.key === "Enter" && selectedPromptId) {
@@ -288,17 +307,34 @@ export default function PromptsPage() {
 										</CardHeader>
 										<CardContent className="pt-0 pb-4 mt-auto">
 											<div className="flex items-center justify-between">
-												<Button
-													variant="ghost"
-													size="icon"
-													onClick={(e) => {
-														e.stopPropagation();
-														handleDeletePrompt(prompt.id, prompt.query);
-													}}
-													className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8 hover:text-destructive"
-												>
-													<Trash2 className="h-4 w-4" />
-												</Button>
+												<div className="flex items-center gap-1">
+													<Button
+														variant="ghost"
+														size="icon"
+														onClick={(e) => {
+															e.stopPropagation();
+															setPromptToEdit({
+																id: prompt.id,
+																query: prompt.query,
+																domainProjectId: domainProject.id,
+															});
+														}}
+														className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8"
+													>
+														<Pencil className="h-4 w-4" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="icon"
+														onClick={(e) => {
+															e.stopPropagation();
+															handleDeletePrompt(prompt.id, prompt.query);
+														}}
+														className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity h-8 w-8 hover:text-destructive"
+													>
+														<Trash2 className="h-4 w-4" />
+													</Button>
+												</div>
 												<RunCrawlButton
 													promptQueryId={prompt.id}
 													domainProjectId={domainProject.id}
@@ -319,6 +355,27 @@ export default function PromptsPage() {
 					if (!open) setPromptToView(null);
 				}}
 				prompt={promptToView}
+				onEdit={() => {
+					if (promptToView) {
+						setPromptToEdit({
+							id: promptToView.id,
+							query: promptToView.query,
+							domainProjectId: domainProject.id,
+						});
+						setPromptToView(null);
+					}
+				}}
+			/>
+
+			<EditPromptDialog
+				open={!!promptToEdit}
+				onOpenChange={(open) => {
+					if (!open) setPromptToEdit(null);
+				}}
+				prompt={promptToEdit}
+				onSuccess={() => {
+					promptsQuery.refetch();
+				}}
 			/>
 
 			{dialog}
