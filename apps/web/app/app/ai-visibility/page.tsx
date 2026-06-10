@@ -16,7 +16,6 @@ import {
 import { Target, Users, TrendingUp } from "lucide-react";
 import { CompetitorIntelligence } from "./_components/competitor-intelligence";
 import { EmptyState } from "./_components/empty-state";
-import { RunLogsSection } from "./_components/run-logs-section";
 import { VisibilityTable } from "./_components/visibility-table";
 import { useState } from "react";
 
@@ -108,7 +107,6 @@ export default function AIVisibilityPage() {
 							<TabsList className="justify-start w-fit">
 								<TabsTrigger value="queries">Queries</TabsTrigger>
 								<TabsTrigger value="competitors">Competitors</TabsTrigger>
-								<TabsTrigger value="run-logs">Run Logs</TabsTrigger>
 							</TabsList>
 
 							<TabsContent value="queries" className="mt-0 space-y-4">
@@ -169,10 +167,6 @@ export default function AIVisibilityPage() {
 										);
 									}}
 								/>
-							</TabsContent>
-
-							<TabsContent value="run-logs" className="mt-0">
-								<RunLogsSection domainProjectId={domainProject.id} />
 							</TabsContent>
 						</Tabs>
 					);

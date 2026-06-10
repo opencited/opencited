@@ -32,6 +32,7 @@ import {
 	LayoutDashboard,
 	MessageSquare,
 	PanelLeft,
+	ScrollText,
 	Settings,
 	Target,
 } from "lucide-react";
@@ -158,6 +159,12 @@ export function AppSidebar() {
 				icon: <Database className="size-4" />,
 				shortcut: "S",
 			},
+			{
+				name: "Crawl History",
+				link: "/app/run-logs",
+				isActive: pathname.includes("run-logs"),
+				icon: <ScrollText className="size-4" />,
+			},
 		],
 		[pathname],
 	);
@@ -281,6 +288,42 @@ export function AppSidebar() {
 									["prompts", "sitemaps"].some((slug) =>
 										navItem.link.includes(slug),
 									),
+								)
+								.map((navItem) => (
+									<SidebarMenuItem key={navItem.link}>
+										<SidebarMenuButton
+											tooltip={
+												isCollapsed
+													? `${navItem.name} (${navItem.shortcut})`
+													: navItem.name
+											}
+											isActive={navItem.isActive}
+											asChild
+										>
+											<Link href={navItem.link}>
+												{navItem.icon}
+												<span>{navItem.name}</span>
+												{!isCollapsed && navItem.shortcut && (
+													<Kbd className="ml-auto text-[9px]">
+														{navItem.shortcut}
+													</Kbd>
+												)}
+											</Link>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup>
+					<SidebarGroupLabel className={cn(isCollapsed && "sr-only")}>
+						Monitoring
+					</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							{navigationLinks
+								.filter((navItem) =>
+									["run-logs"].some((slug) => navItem.link.includes(slug)),
 								)
 								.map((navItem) => (
 									<SidebarMenuItem key={navItem.link}>

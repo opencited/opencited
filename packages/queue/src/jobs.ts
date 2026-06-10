@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { DefaultJobOptions } from "bullmq";
 
+export const crawlProviderEnum = z.enum(["perplexity"]);
+
 export interface JobDefinition<T extends z.ZodType> {
 	payload: T;
 	options: DefaultJobOptions;
@@ -13,6 +15,7 @@ export const jobs = {
 			promptQueryId: z.string(),
 			promptQueryCrawlId: z.string(),
 			domainProjectId: z.string(),
+			provider: crawlProviderEnum,
 		}),
 		options: {
 			attempts: 0,

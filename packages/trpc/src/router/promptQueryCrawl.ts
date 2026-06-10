@@ -3,7 +3,6 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, publicProcedure } from "../trpc";
 import { dispatch } from "@opencited/queue";
 import {
-	startCrawlInputSchema,
 	listCrawlsHandler,
 	listCrawlsInputSchema,
 	listCrawlsOutputSchema,
@@ -21,11 +20,12 @@ import {
 	failCrawlHandler,
 	failCrawlInputSchema,
 	failCrawlOutputSchema,
+	triggerCrawlTaskInputSchema,
 } from "@opencited/actions";
 
 export const promptQueryCrawlRouter = createTRPCRouter({
 	start: publicProcedure
-		.input(startCrawlInputSchema)
+		.input(triggerCrawlTaskInputSchema)
 		.output(triggerCrawlTaskOutputSchema)
 		.mutation(async ({ ctx, input }) => {
 			const { orgId } = await auth();
@@ -37,18 +37,18 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 			}
 
 			// Create crawl record and get query text
-			const { crawlId, query, domainProjectId } = await triggerCrawlTaskHandler(
-				{
+			const { crawlId, query, domainProjectId, provider } =
+				await triggerCrawlTaskHandler({
 					input,
 					ctx,
-				},
-			);
+				});
 
 			const { jobId } = await dispatch("perplexity-crawl", {
 				query,
 				promptQueryId: input.promptQueryId,
 				promptQueryCrawlId: crawlId,
 				domainProjectId,
+				provider,
 			});
 
 			await updateCrawlHandler({
@@ -64,6 +64,7 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 			return {
 				crawlId,
 				runId: jobId,
+				provider,
 			};
 		}),
 
