@@ -17,6 +17,9 @@ export const promptQueryCrawlStatusEnum = z.enum([
 ]);
 export type PromptQueryCrawlStatus = z.infer<typeof promptQueryCrawlStatusEnum>;
 
+export const crawlProviderEnum = z.enum(["perplexity"]);
+export type CrawlProvider = z.infer<typeof crawlProviderEnum>;
+
 export const promptQueryCrawlTable = pgTable("prompt_query_crawl", {
 	id: id,
 	promptQueryId: text("prompt_query_id")
@@ -66,7 +69,7 @@ export const promptQueryCrawlInsertSchema =
 		promptQueryId: z.string().min(1, "Prompt query is required"),
 		domainProjectId: z.string().optional(),
 		status: promptQueryCrawlStatusEnum.optional(),
-		provider: z.string().optional(),
+		provider: crawlProviderEnum.optional(),
 		triggerRunId: z.string().optional(),
 		query: z.string().min(1, "Query is required"),
 		promptSnapshot: z.string().optional(),

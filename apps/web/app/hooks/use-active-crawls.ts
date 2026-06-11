@@ -20,7 +20,7 @@ export function useActiveCrawls({
 			status: ["pending", "running"],
 		}),
 		enabled: enabled && !!domainProjectId,
-		refetchInterval: 10000,
+		refetchInterval: 5000,
 	});
 
 	return {

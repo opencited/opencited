@@ -25,6 +25,7 @@ import {
 	Skeleton,
 	ThemeToggle,
 	useSidebar,
+	Button,
 } from "@opencited/ui";
 import {
 	Database,
@@ -32,6 +33,7 @@ import {
 	LayoutDashboard,
 	MessageSquare,
 	PanelLeft,
+	ScrollText,
 	Settings,
 	Target,
 } from "lucide-react";
@@ -157,6 +159,12 @@ export function AppSidebar() {
 				isActive: pathname.includes("sitemaps"),
 				icon: <Database className="size-4" />,
 				shortcut: "S",
+			},
+			{
+				name: "Crawl History",
+				link: "/app/run-logs",
+				isActive: pathname.includes("run-logs"),
+				icon: <ScrollText className="size-4" />,
 			},
 		],
 		[pathname],
@@ -310,6 +318,42 @@ export function AppSidebar() {
 				</SidebarGroup>
 				<SidebarGroup>
 					<SidebarGroupLabel className={cn(isCollapsed && "sr-only")}>
+						Monitoring
+					</SidebarGroupLabel>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							{navigationLinks
+								.filter((navItem) =>
+									["run-logs"].some((slug) => navItem.link.includes(slug)),
+								)
+								.map((navItem) => (
+									<SidebarMenuItem key={navItem.link}>
+										<SidebarMenuButton
+											tooltip={
+												isCollapsed
+													? `${navItem.name} (${navItem.shortcut})`
+													: navItem.name
+											}
+											isActive={navItem.isActive}
+											asChild
+										>
+											<Link href={navItem.link}>
+												{navItem.icon}
+												<span>{navItem.name}</span>
+												{!isCollapsed && navItem.shortcut && (
+													<Kbd className="ml-auto text-[9px]">
+														{navItem.shortcut}
+													</Kbd>
+												)}
+											</Link>
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+								))}
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+				<SidebarGroup>
+					<SidebarGroupLabel className={cn(isCollapsed && "sr-only")}>
 						Settings
 					</SidebarGroupLabel>
 					<SidebarGroupContent>
@@ -334,15 +378,17 @@ export function AppSidebar() {
 				<SidebarFooter>
 					<SidebarMenu>
 						<SidebarMenuItem>
-							<button
+							<Button
 								type="button"
 								onClick={() => setShowShortcuts(true)}
-								className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+								variant="ghost"
+								size="sm"
+								className="w-full justify-start gap-2"
 							>
 								<Keyboard className="size-3.5" />
 								<span>Shortcuts</span>
 								<Kbd className="ml-auto">?</Kbd>
-							</button>
+							</Button>
 						</SidebarMenuItem>
 					</SidebarMenu>
 				</SidebarFooter>

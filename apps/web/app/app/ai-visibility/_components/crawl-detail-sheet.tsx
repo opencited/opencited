@@ -6,23 +6,18 @@ import {
 	Card,
 	CardContent,
 	DataList,
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
 	Sheet,
 	SheetContent,
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
+	Spinner,
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
 } from "@opencited/ui";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -37,49 +32,36 @@ import { RelativePositionBadge } from "./relative-position-badge";
 
 interface CrawlDetailSheetProps {
 	crawlId: string;
-	queryId: string;
-	domainProjectId: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 }
 
 export function CrawlDetailSheet({
 	crawlId,
-	queryId,
-	domainProjectId,
 	open,
 	onOpenChange,
 }: CrawlDetailSheetProps) {
 	const trpc = useTRPC();
 	const [activeTab, setActiveTab] = useState("answer");
 	const [copied, setCopied] = useState(false);
-	const [selectedCrawlId, setSelectedCrawlId] = useState(crawlId);
 
 	const crawlQuery = useQuery({
-		...trpc.promptQueryCrawl.get.queryOptions({ id: selectedCrawlId }),
+		...trpc.promptQueryCrawl.get.queryOptions({ id: crawlId }),
 		enabled: open,
 	});
 
 	const crawl = crawlQuery.data;
 
-	const crawlHistoryQuery = useQuery({
-		...trpc.aiVisibility.getCrawlHistory.queryOptions({
-			promptQueryId: queryId,
-			domainProjectId,
-		}),
-		enabled: open,
-	});
-
 	const sourcesQuery = useQuery({
 		...trpc.aiVisibility.listCrawlSources.queryOptions({
-			crawlId: selectedCrawlId,
+			crawlId,
 		}),
 		enabled: open && activeTab === "sources",
 	});
 
 	const mentionsQuery = useQuery({
 		...trpc.aiVisibility.listBrandMentions.queryOptions({
-			crawlId: selectedCrawlId,
+			crawlId,
 		}),
 		enabled: open && activeTab === "mentions",
 	});
@@ -91,14 +73,6 @@ export function CrawlDetailSheet({
 			setTimeout(() => setCopied(false), 2000);
 		}
 	};
-
-	const duration =
-		crawl?.startedAt && crawl.completedAt
-			? Math.abs(
-					new Date(crawl.completedAt).getTime() -
-						new Date(crawl.startedAt).getTime(),
-				)
-			: null;
 
 	const formatDuration = (ms: number) => {
 		const seconds = Math.floor(ms / 1000);
@@ -131,77 +105,56 @@ export function CrawlDetailSheet({
 					onValueChange={setActiveTab}
 					className="flex-1 overflow-hidden flex flex-col mt-4"
 				>
-					<div className="flex items-center justify-between">
-						<TabsList className="justify-start w-fit">
-							<TabsTrigger value="answer">Answer</TabsTrigger>
-							<TabsTrigger value="sources">
-								Sources {crawl?.sourceCount ? `(${crawl.sourceCount})` : ""}
-							</TabsTrigger>
-							<TabsTrigger value="mentions">
-								Mentions{" "}
-								{crawl?.brandMentionCount ? `(${crawl.brandMentionCount})` : ""}
-							</TabsTrigger>
-							<TabsTrigger value="details">Details</TabsTrigger>
-						</TabsList>
-
-						<Select
-							value={selectedCrawlId}
-							onValueChange={(val) => {
-								setSelectedCrawlId(val);
-								setActiveTab("answer");
-							}}
-						>
-							<SelectTrigger className="w-min shrink-0">
-								<SelectValue placeholder="Select a run" />
-							</SelectTrigger>
-							<SelectContent className="max-h-[400px] overflow-y-auto">
-								{crawlHistoryQuery.data?.map((run) => (
-									<SelectItem key={run.id} value={run.id}>
-										<div className="flex items-center gap-2">
-											<span className="text-xs">
-												{format(new Date(run.createdAt), "MMM d, h:mm a")}
-											</span>
-											<PromptQueryCrawlStatusBadge
-												status={run.status}
-												size="sm"
-											/>
-										</div>
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
+					<TabsList className="justify-start w-fit">
+						<TabsTrigger value="answer">Answer</TabsTrigger>
+						<TabsTrigger value="sources">
+							Sources {crawl?.sourceCount ? `(${crawl.sourceCount})` : ""}
+						</TabsTrigger>
+						<TabsTrigger value="mentions">
+							Mentions{" "}
+							{crawl?.brandMentionCount ? `(${crawl.brandMentionCount})` : ""}
+						</TabsTrigger>
+						<TabsTrigger value="details">Details</TabsTrigger>
+					</TabsList>
 
 					<div className="flex-1 overflow-y-auto mt-4">
 						<TabsContent value="answer" className="mt-0">
 							<p className="text-xs text-muted-foreground mb-3">
 								The full AI-generated response for this query
 							</p>
-							{crawl?.content ? (
-								<div className="relative">
-									<Button
-										variant="ghost"
-										size="sm"
-										className="absolute top-2 right-2 h-8 w-8 p-0"
-										onClick={handleCopy}
-									>
-										{copied ? (
-											<Check className="h-4 w-4" />
-										) : (
-											<Copy className="h-4 w-4" />
-										)}
-									</Button>
-									<div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-a:text-primary prose-strong:text-foreground prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:rounded prose-pre:bg-muted prose-pre:p-3 prose-li:text-foreground">
-										<ReactMarkdown remarkPlugins={[remarkGfm]}>
-											{crawl.content}
-										</ReactMarkdown>
-									</div>
-								</div>
-							) : (
-								<div className="flex items-center justify-center py-12 text-muted-foreground">
-									<p>No answer content available</p>
-								</div>
-							)}
+							<QueryCell
+								query={crawlQuery}
+								success={(data) => {
+									if (data?.content) {
+										return (
+											<div className="relative">
+												<Button
+													variant="ghost"
+													size="sm"
+													className="absolute top-2 right-2 h-8 w-8 p-0"
+													onClick={handleCopy}
+												>
+													{copied ? (
+														<Check className="h-4 w-4" />
+													) : (
+														<Copy className="h-4 w-4" />
+													)}
+												</Button>
+												<div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-a:text-primary prose-strong:text-foreground prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:rounded prose-pre:bg-muted prose-pre:p-3 prose-li:text-foreground">
+													<ReactMarkdown remarkPlugins={[remarkGfm]}>
+														{data.content}
+													</ReactMarkdown>
+												</div>
+											</div>
+										);
+									}
+									return (
+										<div className="flex items-center justify-center py-12 text-muted-foreground">
+											<p>No answer content available</p>
+										</div>
+									);
+								}}
+							/>
 						</TabsContent>
 
 						<TabsContent value="sources" className="mt-0">
@@ -211,8 +164,9 @@ export function CrawlDetailSheet({
 							<QueryCell
 								query={sourcesQuery}
 								loading={
-									<div className="py-8 text-center text-muted-foreground">
-										Loading sources...
+									<div className="py-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+										<Spinner className="size-4" />
+										<span>Loading sources...</span>
 									</div>
 								}
 								success={(data) => {
@@ -275,8 +229,9 @@ export function CrawlDetailSheet({
 							<QueryCell
 								query={mentionsQuery}
 								loading={
-									<div className="py-8 text-center text-muted-foreground">
-										Loading mentions...
+									<div className="py-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+										<Spinner className="size-4" />
+										<span>Loading mentions...</span>
 									</div>
 								}
 								success={(data) => {
@@ -329,137 +284,157 @@ export function CrawlDetailSheet({
 							<p className="text-xs text-muted-foreground mb-3">
 								Technical metadata about this crawl execution
 							</p>
-							{crawl && (
-								<div className="space-y-4">
-									<div className="grid grid-cols-2 gap-3">
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Provider
-												</p>
-												<p className="text-sm font-medium">
-													{crawl.provider ?? "N/A"}
-												</p>
-											</CardContent>
-										</Card>
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Load Time
-												</p>
-												<p className="text-sm font-medium">
-													{formatLoadTime(crawl.loadTimeMs)}
-												</p>
-											</CardContent>
-										</Card>
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Duration
-												</p>
-												<p className="text-sm font-medium">
-													{duration ? formatDuration(duration) : "N/A"}
-												</p>
-											</CardContent>
-										</Card>
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Answer Format
-												</p>
-												<div className="mt-1">
-													<AnswerFormatBadge format={crawl.answerFormat} />
-												</div>
-											</CardContent>
-										</Card>
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Word Count
-												</p>
-												<p className="text-sm font-medium">
-													{crawl.wordCount?.toLocaleString() ?? 0}
-												</p>
-											</CardContent>
-										</Card>
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Source Count
-												</p>
-												<p className="text-sm font-medium">
-													{crawl.sourceCount ?? 0}
-												</p>
-											</CardContent>
-										</Card>
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Brand Mentions
-												</p>
-												<p className="text-sm font-medium">
-													{crawl.brandMentionCount ?? 0}
-												</p>
-											</CardContent>
-										</Card>
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Status
-												</p>
-												<div className="mt-1">
-													<PromptQueryCrawlStatusBadge status={crawl.status} />
-												</div>
-											</CardContent>
-										</Card>
-									</div>
+							<QueryCell
+								query={crawlQuery}
+								success={(data) => {
+									if (!data) return null;
 
-									{crawl.url && (
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-2">
-													Source URL
-												</p>
-												<a
-													href={crawl.url}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-sm text-primary hover:underline flex items-center gap-1"
-												>
-													<span className="truncate">{crawl.url}</span>
-													<ExternalLink className="h-3 w-3 flex-shrink-0" />
-												</a>
-											</CardContent>
-										</Card>
-									)}
+									const duration =
+										data.startedAt && data.completedAt
+											? Math.abs(
+													new Date(data.completedAt).getTime() -
+														new Date(data.startedAt).getTime(),
+												)
+											: null;
 
-									{crawl.triggerRunId && (
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-1">
-													Job ID
-												</p>
-												<Badge variant="outline" className="font-mono text-xs">
-													{crawl.triggerRunId}
-												</Badge>
-											</CardContent>
-										</Card>
-									)}
+									return (
+										<div className="space-y-4">
+											<div className="grid grid-cols-2 gap-3">
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Provider
+														</p>
+														<p className="text-sm font-medium">
+															{data.provider ?? "N/A"}
+														</p>
+													</CardContent>
+												</Card>
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Load Time
+														</p>
+														<p className="text-sm font-medium">
+															{formatLoadTime(data.loadTimeMs)}
+														</p>
+													</CardContent>
+												</Card>
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Duration
+														</p>
+														<p className="text-sm font-medium">
+															{duration ? formatDuration(duration) : "N/A"}
+														</p>
+													</CardContent>
+												</Card>
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Answer Format
+														</p>
+														<div className="mt-1">
+															<AnswerFormatBadge format={data.answerFormat} />
+														</div>
+													</CardContent>
+												</Card>
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Word Count
+														</p>
+														<p className="text-sm font-medium">
+															{data.wordCount?.toLocaleString() ?? 0}
+														</p>
+													</CardContent>
+												</Card>
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Source Count
+														</p>
+														<p className="text-sm font-medium">
+															{data.sourceCount ?? 0}
+														</p>
+													</CardContent>
+												</Card>
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Brand Mentions
+														</p>
+														<p className="text-sm font-medium">
+															{data.brandMentionCount ?? 0}
+														</p>
+													</CardContent>
+												</Card>
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Status
+														</p>
+														<div className="mt-1">
+															<PromptQueryCrawlStatusBadge
+																status={data.status}
+															/>
+														</div>
+													</CardContent>
+												</Card>
+											</div>
 
-									{crawl.promptSnapshot && (
-										<Card>
-											<CardContent className="p-3">
-												<p className="text-xs text-muted-foreground mb-2">
-													Prompt Snapshot
-												</p>
-												<pre className="text-sm whitespace-pre-wrap bg-muted p-3 rounded-md max-h-[200px] overflow-y-auto">
-													{crawl.promptSnapshot}
-												</pre>
-											</CardContent>
-										</Card>
-									)}
-								</div>
-							)}
+											{data.url && (
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-2">
+															Source URL
+														</p>
+														<a
+															href={data.url}
+															target="_blank"
+															rel="noopener noreferrer"
+															className="text-sm text-primary hover:underline flex items-center gap-1"
+														>
+															<span className="truncate">{data.url}</span>
+															<ExternalLink className="h-3 w-3 flex-shrink-0" />
+														</a>
+													</CardContent>
+												</Card>
+											)}
+
+											{data.triggerRunId && (
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-1">
+															Job ID
+														</p>
+														<Badge
+															variant="outline"
+															className="font-mono text-xs"
+														>
+															{data.triggerRunId}
+														</Badge>
+													</CardContent>
+												</Card>
+											)}
+
+											{data.promptSnapshot && (
+												<Card>
+													<CardContent className="p-3">
+														<p className="text-xs text-muted-foreground mb-2">
+															Prompt Snapshot
+														</p>
+														<pre className="text-sm whitespace-pre-wrap bg-muted p-3 rounded-md max-h-[200px] overflow-y-auto">
+															{data.promptSnapshot}
+														</pre>
+													</CardContent>
+												</Card>
+											)}
+										</div>
+									);
+								}}
+							/>
 						</TabsContent>
 					</div>
 				</Tabs>

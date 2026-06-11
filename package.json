@@ -20,7 +20,8 @@
 		"setup:worker": "bun install && bun run build --filter=@opencited/worker... && bun run setup:browser-crawler && docker compose up redis -d",
 		"dev:worker": "dotenv -e .env.local -- turbo run dev --filter=@opencited/worker",
 		"start:worker": "dotenv -e .env.local -- turbo run start --filter=@opencited/worker",
-		"deploy:worker": "./scripts/deploy-worker.sh deploy"
+		"deploy:worker": "./scripts/deploy-worker.sh deploy",
+		"sync:templates": "dotenv -e .env.local -- turbo run sync:templates --filter=@opencited/db"
 	},
 	"engines": {
 		"node": "24.14.1",

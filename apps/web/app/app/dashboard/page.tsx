@@ -10,13 +10,9 @@ import {
 	EntityCardContent,
 	EntityCardFooter,
 	EntityCardSkeleton,
-	DataList,
-	Badge,
-	Button,
 } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
 import {
-	ArrowRight,
 	Target,
 	MessageSquare,
 	FileText,
@@ -24,16 +20,7 @@ import {
 	Type,
 	AlertCircle,
 } from "lucide-react";
-import type { inferRouterOutputs } from "@trpc/server";
-import type { AppRouter } from "@opencited/trpc";
-import Link from "next/link";
 import { PageShell } from "@/app/components/page-shell";
-import { TimeAgo } from "@/app/components/time-ago";
-import { useState } from "react";
-import { CrawlDetailSheet } from "@/app/app/ai-visibility/_components/crawl-detail-sheet";
-
-type RouterOutput = inferRouterOutputs<AppRouter>;
-type RunLogs = RouterOutput["aiVisibility"]["listRunLogs"];
 
 function StatCard({
 	icon: Icon,
@@ -66,10 +53,6 @@ function StatCard({
 
 export default function DashboardPage() {
 	const trpc = useTRPC();
-	const [selectedCrawl, setSelectedCrawl] = useState<{
-		crawlId: string;
-		queryId: string;
-	} | null>(null);
 
 	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
 	const domainProject = domainProjectQuery.data;
@@ -77,14 +60,6 @@ export default function DashboardPage() {
 	const visibilityMetricsQuery = useQuery({
 		...trpc.dashboard.getVisibilityMetrics.queryOptions({
 			domainProjectId: domainProject?.id ?? "",
-		}),
-		enabled: !!domainProject?.id,
-	});
-
-	const runLogsQuery = useQuery({
-		...trpc.aiVisibility.listRunLogs.queryOptions({
-			domainProjectId: domainProject?.id ?? "",
-			limit: 5,
 		}),
 		enabled: !!domainProject?.id,
 	});
@@ -187,77 +162,6 @@ export default function DashboardPage() {
 										description="Pages that failed to crawl"
 									/>
 								</div>
-							);
-						}}
-					/>
-				</div>
-
-				<div>
-					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-lg font-medium">Recent Activity</h2>
-						<Button variant="ghost" size="sm" asChild>
-							<Link href="/app/ai-visibility">
-								View All
-								<ArrowRight className="ml-1 h-4 w-4" />
-							</Link>
-						</Button>
-					</div>
-
-					<QueryCell<RunLogs>
-						query={runLogsQuery}
-						success={(data) => {
-							if (!data) return null;
-							return (
-								<>
-									<DataList
-										items={data.runs.slice(0, 5)}
-										keyExtractor={(run) => run.id}
-										renderItem={(run) => (
-											<button
-												type="button"
-												className="flex items-center justify-between gap-4 w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-												onClick={() => {
-													setSelectedCrawl({
-														crawlId: run.id,
-														queryId: run.promptQueryId,
-													});
-												}}
-											>
-												<div className="flex items-center gap-3 min-w-0">
-													<Target className="h-5 w-5 text-muted-foreground shrink-0" />
-													<span className="text-sm truncate text-foreground">
-														{run.query}
-													</span>
-													{run.cited ? (
-														<Badge variant="success">Cited</Badge>
-													) : (
-														<Badge variant="outline">Not cited</Badge>
-													)}
-												</div>
-												<span className="text-xs text-muted-foreground shrink-0">
-													<TimeAgo date={run.createdAt} />
-												</span>
-											</button>
-										)}
-										emptyState={{
-											title: "No activity yet",
-											description:
-												"Run your first prompt to see activity here.",
-										}}
-									/>
-
-									{selectedCrawl && (
-										<CrawlDetailSheet
-											crawlId={selectedCrawl.crawlId}
-											queryId={selectedCrawl.queryId}
-											domainProjectId={domainProject?.id ?? ""}
-											open={!!selectedCrawl}
-											onOpenChange={(open) => {
-												if (!open) setSelectedCrawl(null);
-											}}
-										/>
-									)}
-								</>
 							);
 						}}
 					/>

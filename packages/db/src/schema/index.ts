@@ -10,3 +10,4 @@ export * from "./competitor";
 export * from "./crawlSource";
 export * from "./crawlBrandMention";
 export * from "./proxyConfig";
+export * from "./promptTemplate";

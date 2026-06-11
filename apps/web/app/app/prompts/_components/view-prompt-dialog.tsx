@@ -9,7 +9,7 @@ import {
 	Button,
 	Badge,
 } from "@opencited/ui";
-import { Clock, Calendar, Hash, Type } from "lucide-react";
+import { Clock, Calendar, Hash, Type, Pencil } from "lucide-react";
 import { format } from "date-fns";
 
 interface ViewPromptDialogProps {
@@ -21,12 +21,14 @@ interface ViewPromptDialogProps {
 		createdAt: string | Date;
 		lastCrawledAt?: string | Date | null;
 	} | null;
+	onEdit?: () => void;
 }
 
 export function ViewPromptDialog({
 	open,
 	onOpenChange,
 	prompt,
+	onEdit,
 }: ViewPromptDialogProps) {
 	if (!prompt) return null;
 
@@ -92,6 +94,12 @@ export function ViewPromptDialog({
 				</div>
 
 				<DialogFooter>
+					{onEdit && (
+						<Button variant="outline" onClick={() => onEdit()}>
+							<Pencil className="h-4 w-4 mr-2" />
+							Edit
+						</Button>
+					)}
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Close
 					</Button>

@@ -6,23 +6,36 @@ import {
 	Button,
 	Card,
 	CardContent,
-	DataList,
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
 	Skeleton,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
 } from "@opencited/ui";
 import { useQuery } from "@tanstack/react-query";
 import type { inferRouterOutputs } from "@trpc/server";
 import { format } from "date-fns";
-import { AlertCircle, Calendar, RefreshCw } from "lucide-react";
+import {
+	AlertCircle,
+	AtSign,
+	Calendar,
+	Check,
+	Clock,
+	FileText,
+	RefreshCw,
+} from "lucide-react";
 import { useState } from "react";
 import { useTRPC } from "@/app/_trpc/client";
 import { PromptQueryCrawlStatusBadge } from "@/app/components/prompt-query-crawl-status-badge";
 import { QueryCell } from "@/app/components/query-cell";
-import { TimeAgo } from "@/app/components/time-ago";
+import { formatDuration } from "@/lib/utils";
 import { CrawlDetailSheet } from "./crawl-detail-sheet";
 
 type RunLog =
@@ -36,7 +49,6 @@ export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 	const trpc = useTRPC();
 	const [selectedRun, setSelectedRun] = useState<RunLog | null>(null);
 	const [statusFilter, setStatusFilter] = useState<string>("all");
-	const [providerFilter, setProviderFilter] = useState<string>("all");
 
 	const runLogsQuery = useQuery({
 		...trpc.aiVisibility.listRunLogs.queryOptions({
@@ -45,19 +57,10 @@ export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 				statusFilter !== "all"
 					? (statusFilter as "pending" | "running" | "completed" | "failed")
 					: undefined,
-			provider: providerFilter !== "all" ? providerFilter : undefined,
 			limit: 100,
 		}),
 		enabled: !!domainProjectId,
 	});
-
-	const providers = [
-		...new Set(
-			(runLogsQuery.data?.runs ?? [])
-				.map((r) => r.provider)
-				.filter(Boolean) as string[],
-		),
-	];
 
 	return (
 		<div className="space-y-4">
@@ -75,22 +78,6 @@ export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 					</SelectContent>
 				</Select>
 
-				{providers.length > 0 && (
-					<Select value={providerFilter} onValueChange={setProviderFilter}>
-						<SelectTrigger className="w-[180px]">
-							<SelectValue placeholder="Filter by provider" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="all">All Providers</SelectItem>
-							{providers.map((p) => (
-								<SelectItem key={p} value={p}>
-									{p}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-				)}
-
 				<Button
 					variant="ghost"
 					size="sm"
@@ -107,10 +94,57 @@ export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 			<QueryCell
 				query={runLogsQuery}
 				loading={
-					<div className="space-y-3">
-						{[1, 2, 3].map((i) => (
-							<Skeleton key={i} className="h-20 w-full rounded-lg" />
-						))}
+					<div className="border border-border/40 rounded-lg overflow-hidden">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead className="w-[120px] whitespace-nowrap">
+										Created
+									</TableHead>
+									<TableHead className="w-[100px]">Status</TableHead>
+									<TableHead className="w-[70px]">Cited</TableHead>
+									<TableHead>Query</TableHead>
+									<TableHead className="w-[100px]">Provider</TableHead>
+									<TableHead className="w-[90px] text-right">Sources</TableHead>
+									<TableHead className="w-[100px] text-right">
+										Mentions
+									</TableHead>
+									<TableHead className="w-[90px] text-right">
+										Duration
+									</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{[1, 2, 3].map((i) => (
+									<TableRow key={i}>
+										<TableCell>
+											<Skeleton className="h-4 w-24" />
+										</TableCell>
+										<TableCell>
+											<Skeleton className="h-6 w-20 rounded-full" />
+										</TableCell>
+										<TableCell>
+											<Skeleton className="h-4 w-4" />
+										</TableCell>
+										<TableCell>
+											<Skeleton className="h-4 w-full max-w-[300px]" />
+										</TableCell>
+										<TableCell>
+											<Skeleton className="h-6 w-16 rounded-full" />
+										</TableCell>
+										<TableCell className="text-right">
+											<Skeleton className="h-4 w-8 ml-auto" />
+										</TableCell>
+										<TableCell className="text-right">
+											<Skeleton className="h-4 w-8 ml-auto" />
+										</TableCell>
+										<TableCell className="text-right">
+											<Skeleton className="h-4 w-12 ml-auto" />
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
 					</div>
 				}
 				error={() => (
@@ -132,7 +166,7 @@ export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 									</div>
 									<h3 className="text-lg font-semibold mb-2">No run logs</h3>
 									<p className="text-muted-foreground max-w-md mx-auto">
-										{statusFilter !== "all" || providerFilter !== "all"
+										{statusFilter !== "all"
 											? "No runs match your current filters. Try adjusting them."
 											: "Run a prompt crawl to start seeing run logs here."}
 									</p>
@@ -143,67 +177,96 @@ export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 
 					return (
 						<>
-							<DataList<RunLog>
-								items={data.runs}
-								keyExtractor={(run) => run.id}
-								emptyState={{
-									title: "No runs match your filters",
-									description: "Try adjusting the status or provider filter.",
-								}}
-								renderItem={(run) => (
-									<button
-										type="button"
-										className="flex-1 min-w-0 cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-left"
-										onClick={() => setSelectedRun(run)}
-									>
-										<div className="flex items-start justify-between gap-4">
-											<div className="flex-1 min-w-0 space-y-1.5">
-												<div className="flex items-center gap-2 flex-wrap">
+							<div className="border border-border/40 rounded-lg overflow-hidden">
+								<Table>
+									<TableHeader>
+										<TableRow>
+											<TableHead className="w-[120px] whitespace-nowrap">
+												Created
+											</TableHead>
+											<TableHead className="w-[100px]">Status</TableHead>
+											<TableHead className="w-[70px]">Cited</TableHead>
+											<TableHead>Query</TableHead>
+											<TableHead className="w-[100px]">Provider</TableHead>
+											<TableHead className="w-[90px] text-right">
+												Sources
+											</TableHead>
+											<TableHead className="w-[100px] text-right">
+												Mentions
+											</TableHead>
+											<TableHead className="w-[90px] text-right">
+												Duration
+											</TableHead>
+										</TableRow>
+									</TableHeader>
+									<TableBody>
+										{data.runs.map((run) => (
+											<TableRow
+												key={run.id}
+												className="cursor-pointer"
+												onClick={() => setSelectedRun(run)}
+											>
+												<TableCell className="whitespace-nowrap">
+													<div className="flex items-center gap-1.5 text-muted-foreground">
+														<Calendar className="h-3.5 w-3.5 shrink-0" />
+														<span className="text-sm">
+															{format(new Date(run.createdAt), "MMM d, h:mm a")}
+														</span>
+													</div>
+												</TableCell>
+												<TableCell>
 													<PromptQueryCrawlStatusBadge status={run.status} />
-													<span className="text-sm font-medium truncate">
+												</TableCell>
+												<TableCell>
+													{run.cited && (
+														<Check className="h-4 w-4 text-emerald-500" />
+													)}
+												</TableCell>
+												<TableCell className="font-medium max-w-[300px]">
+													<span className="truncate block" title={run.query}>
 														{run.query}
 													</span>
+												</TableCell>
+												<TableCell>
 													{run.provider && (
 														<Badge variant="outline" className="text-xs">
 															{run.provider}
 														</Badge>
 													)}
-												</div>
-												<div className="flex items-center gap-4 text-xs text-muted-foreground">
-													<div className="flex items-center gap-1">
-														<Calendar className="h-3 w-3" />
-														<span>
-															{format(new Date(run.createdAt), "MMM d, h:mm a")}
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex items-center justify-end gap-1.5 text-muted-foreground">
+														<FileText className="h-3.5 w-3.5" />
+														<span className="tabular-nums text-sm">
+															{run.sourceCount ?? 0}
 														</span>
 													</div>
-													{run.completedAt && (
-														<>
-															<span className="text-muted-foreground">·</span>
-															<span>
-																Completed <TimeAgo date={run.completedAt} />
-															</span>
-														</>
-													)}
-													{run.status === "failed" && run.error && (
-														<>
-															<span className="text-muted-foreground">·</span>
-															<span className="text-destructive truncate max-w-[200px]">
-																{run.error}
-															</span>
-														</>
-													)}
-												</div>
-											</div>
-										</div>
-									</button>
-								)}
-							/>
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex items-center justify-end gap-1.5 text-muted-foreground">
+														<AtSign className="h-3.5 w-3.5" />
+														<span className="tabular-nums text-sm">
+															{run.brandMentionCount ?? 0}
+														</span>
+													</div>
+												</TableCell>
+												<TableCell className="text-right">
+													<div className="flex items-center justify-end gap-1.5 text-muted-foreground">
+														<Clock className="h-3.5 w-3.5" />
+														<span className="tabular-nums text-sm">
+															{formatDuration(run.startedAt, run.completedAt)}
+														</span>
+													</div>
+												</TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</div>
 
 							{selectedRun && (
 								<CrawlDetailSheet
 									crawlId={selectedRun.id}
-									queryId={selectedRun.promptQueryId}
-									domainProjectId={domainProjectId}
 									open={!!selectedRun}
 									onOpenChange={(open) => {
 										if (!open) setSelectedRun(null);

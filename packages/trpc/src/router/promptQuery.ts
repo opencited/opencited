@@ -10,10 +10,13 @@ import {
 	deletePromptQueryOutputSchema,
 	countPromptQueryHandler,
 	countPromptQueryOutputSchema,
+	updatePromptQueryHandler,
+	updatePromptQueryOutputSchema,
 	createPromptQueryInputSchema,
 	listPromptQueryInputSchema,
 	deletePromptQueryInputSchema,
 	countPromptQueryInputSchema,
+	updatePromptQueryInputSchema,
 } from "@opencited/actions";
 
 export const promptQueryRouter = createTRPCRouter({
@@ -68,5 +71,19 @@ export const promptQueryRouter = createTRPCRouter({
 				return { count: 0 };
 			}
 			return countPromptQueryHandler({ ctx, input });
+		}),
+
+	update: publicProcedure
+		.input(updatePromptQueryInputSchema)
+		.output(updatePromptQueryOutputSchema)
+		.mutation(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "No organization found",
+				});
+			}
+			return updatePromptQueryHandler({ ctx, input });
 		}),
 });

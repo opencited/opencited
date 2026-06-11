@@ -8,6 +8,7 @@ import {
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
+	Spinner,
 } from "@opencited/ui";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from "lucide-react";
@@ -58,8 +59,9 @@ export function CompetitorDetailSheet({
 					<QueryCell
 						query={query}
 						loading={
-							<div className="py-8 text-center text-muted-foreground">
-								Loading mentions...
+							<div className="py-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+								<Spinner className="size-4" />
+								<span>Loading mentions...</span>
 							</div>
 						}
 						success={(data) => {

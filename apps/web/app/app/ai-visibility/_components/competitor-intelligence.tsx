@@ -4,6 +4,7 @@ import {
 	Badge,
 	Card,
 	CardContent,
+	Skeleton,
 	Table,
 	TableBody,
 	TableCell,
@@ -12,6 +13,7 @@ import {
 	TableRow,
 } from "@opencited/ui";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 import { useTRPC } from "@/app/_trpc/client";
 import { QueryCell } from "@/app/components/query-cell";
@@ -45,7 +47,7 @@ export function CompetitorIntelligence({
 				loading={
 					<div className="space-y-3">
 						{[1, 2, 3].map((i) => (
-							<div key={i} className="h-12 bg-muted rounded-lg" />
+							<Skeleton key={i} className="h-12 rounded-lg" />
 						))}
 					</div>
 				}
@@ -56,12 +58,12 @@ export function CompetitorIntelligence({
 								<CardContent className="py-8 text-center">
 									<p className="text-muted-foreground">
 										No competitors tracked yet. Add competitors on the{" "}
-										<a
+										<Link
 											href="/app/prompts"
 											className="text-primary hover:underline"
 										>
 											Prompts page
-										</a>
+										</Link>
 										.
 									</p>
 								</CardContent>

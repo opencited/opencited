@@ -31,6 +31,7 @@ src/
 | `sitemap` | Sitemap operations |
 | `crawl` | Crawl-related actions |
 | `promptQuery` | Prompt query operations |
+| `promptTemplate` | Prompt library template listing |
 | `browser` | Browser crawl actions |
 
 ## Context Schema

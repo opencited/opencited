@@ -70,7 +70,7 @@ export function RunCrawlButton({
 		});
 
 		if (!confirmed) return;
-		startCrawlMutation.mutate({ promptQueryId });
+		startCrawlMutation.mutate({ promptQueryId, provider: "perplexity" });
 	};
 
 	return (

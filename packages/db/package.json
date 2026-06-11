@@ -12,6 +12,7 @@
 		"push": "drizzle-kit push",
 		"dev": "bunx drizzle-kit studio",
 		"dev:turbo": "bunx drizzle-kit studio",
+		"sync:templates": "tsx scripts/sync-templates.ts",
 		"tsc": "tsc --noEmit"
 	},
 	"dependencies": {

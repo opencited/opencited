@@ -9,6 +9,7 @@ import {
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
+	Button,
 } from "@opencited/ui";
 import { Kbd, KbdGroup } from "@opencited/ui";
 
@@ -50,6 +51,10 @@ const promptShortcuts: Shortcut[] = [
 	{
 		keys: ["Enter"],
 		description: "View selected prompt",
+	},
+	{
+		keys: ["E"],
+		description: "Edit selected prompt",
 	},
 	{
 		keys: ["R"],
@@ -158,15 +163,17 @@ function HelpOverlay({ showIndicator = false }: HelpOverlayProps) {
 
 	return (
 		<>
-			<button
+			<Button
 				type="button"
 				onClick={() => setOpen(true)}
-				className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+				variant="ghost"
+				size="sm"
+				className="gap-1.5"
 			>
 				<Keyboard className="h-3 w-3" />
 				<span>Shortcuts</span>
 				<Kbd>?</Kbd>
-			</button>
+			</Button>
 			<Sheet open={open} onOpenChange={setOpen}>
 				{SheetContentComponent}
 			</Sheet>

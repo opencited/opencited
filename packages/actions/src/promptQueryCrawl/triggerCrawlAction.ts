@@ -5,15 +5,18 @@ import {
 	promptQueryCrawlSelectSchema,
 	promptQueryCrawlTable,
 	promptQueryTable,
+	crawlProviderEnum,
 } from "@opencited/db";
 
 export const triggerCrawlTaskInputSchema = z.object({
 	promptQueryId: z.string().min(1, "Prompt query is required"),
+	provider: crawlProviderEnum,
 });
 
 export const triggerCrawlTaskOutputSchema = z.object({
 	crawlId: z.string(),
 	runId: z.string(),
+	provider: crawlProviderEnum,
 });
 
 export const triggerCrawlTaskContextSchema = baseActionContextSchema;
@@ -55,6 +58,8 @@ export const triggerCrawlTaskAction = async (params: {
 		.insert(promptQueryCrawlTable)
 		.values({
 			promptQueryId: input.promptQueryId,
+			domainProjectId: promptQuery[0].domainProjectId,
+			provider: input.provider,
 			query: promptQuery[0].query,
 			status: "pending",
 		})
@@ -68,6 +73,7 @@ export const triggerCrawlTaskAction = async (params: {
 		crawlId: crawlRecord[0].id,
 		query: promptQuery[0].query,
 		domainProjectId: promptQuery[0].domainProjectId,
+		provider: input.provider,
 	};
 };
 

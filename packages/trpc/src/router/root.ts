@@ -9,6 +9,7 @@ import { competitorRouter } from "./competitor";
 import { aiVisibilityRouter } from "./aiVisibility";
 import { dashboardRouter } from "./dashboard";
 import { proxyConfigRouter } from "./proxyConfig";
+import { promptTemplateRouter } from "./promptTemplate";
 
 export const appRouter = createTRPCRouter({
 	user: userRouter,
@@ -21,6 +22,7 @@ export const appRouter = createTRPCRouter({
 	aiVisibility: aiVisibilityRouter,
 	dashboard: dashboardRouter,
 	proxyConfig: proxyConfigRouter,
+	promptTemplate: promptTemplateRouter,
 });
 
 export type AppRouter = typeof appRouter;
