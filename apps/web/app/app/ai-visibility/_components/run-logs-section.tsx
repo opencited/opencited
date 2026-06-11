@@ -267,8 +267,6 @@ export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 							{selectedRun && (
 								<CrawlDetailSheet
 									crawlId={selectedRun.id}
-									queryId={selectedRun.promptQueryId}
-									domainProjectId={domainProjectId}
 									open={!!selectedRun}
 									onOpenChange={(open) => {
 										if (!open) setSelectedRun(null);

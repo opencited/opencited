@@ -122,10 +122,7 @@ export default function AIVisibilityPage() {
 										value={citedCount}
 									/>
 								</div>
-								<VisibilityTable
-									data={data}
-									domainProjectId={domainProject.id}
-								/>
+								<VisibilityTable data={data} />
 							</TabsContent>
 
 							<TabsContent value="competitors" className="mt-0 space-y-4">

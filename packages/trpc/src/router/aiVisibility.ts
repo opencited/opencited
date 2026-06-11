@@ -17,9 +17,6 @@ import {
 	getCompetitorIntelligenceHandler,
 	getCompetitorIntelligenceInputSchema,
 	getCompetitorIntelligenceOutputSchema,
-	getCrawlHistoryHandler,
-	getCrawlHistoryInputSchema,
-	getCrawlHistoryOutputSchema,
 	getCompetitorDetailHandler,
 	getCompetitorDetailInputSchema,
 	getCompetitorDetailOutputSchema,
@@ -85,17 +82,6 @@ export const aiVisibilityRouter = createTRPCRouter({
 				return [];
 			}
 			return getCompetitorIntelligenceHandler({ ctx, input });
-		}),
-
-	getCrawlHistory: publicProcedure
-		.input(getCrawlHistoryInputSchema)
-		.output(getCrawlHistoryOutputSchema)
-		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return [];
-			}
-			return getCrawlHistoryHandler({ ctx, input });
 		}),
 
 	getCompetitorDetail: publicProcedure

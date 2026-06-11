@@ -2,6 +2,7 @@
 
 import {
 	Badge,
+	Button,
 	Table,
 	TableBody,
 	TableCell,
@@ -42,13 +43,9 @@ interface VisibilityOverviewRow {
 
 interface VisibilityTableProps {
 	data: VisibilityOverviewRow[];
-	domainProjectId: string;
 }
 
-export function VisibilityTable({
-	data,
-	domainProjectId,
-}: VisibilityTableProps) {
+export function VisibilityTable({ data }: VisibilityTableProps) {
 	const [selectedCrawl, setSelectedCrawl] = useState<{
 		crawlId: string;
 		queryId: string;
@@ -171,8 +168,6 @@ export function VisibilityTable({
 			{selectedCrawl && (
 				<CrawlDetailSheet
 					crawlId={selectedCrawl.crawlId}
-					queryId={selectedCrawl.queryId}
-					domainProjectId={domainProjectId}
 					open={!!selectedCrawl}
 					onOpenChange={(open) => {
 						if (!open) setSelectedCrawl(null);
@@ -229,13 +224,15 @@ function ColumnHeaderWithTooltip({
 			<span>{label}</span>
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<button
+					<Button
 						type="button"
-						className="text-muted-foreground hover:text-foreground transition-colors"
+						variant="ghost"
+						size="icon"
+						className="h-auto p-0 text-muted-foreground hover:text-foreground transition-colors"
 						aria-label={`Info about ${label}`}
 					>
 						<HelpCircleIcon className="h-3.5 w-3.5" />
-					</button>
+					</Button>
 				</TooltipTrigger>
 				<TooltipContent side="top" align="start" className="max-w-xs">
 					{typeof tooltip === "string" ? (
