@@ -10,7 +10,6 @@ import {
 	CardContent,
 	CardHeader,
 	CardTitle,
-	Spinner,
 	Tabs,
 	TabsContent,
 	TabsList,
@@ -22,6 +21,7 @@ import { CreatePromptDialog } from "./_components/create-prompt-dialog";
 import { ViewPromptDialog } from "./_components/view-prompt-dialog";
 import { EditPromptDialog } from "./_components/edit-prompt-dialog";
 import { RunCrawlButton } from "./_components/run-crawl-button";
+import { BatchRunDialog } from "./_components/batch-run-dialog";
 import { LibraryTab } from "./_components/library-tab";
 import { TimeAgo } from "@/app/components/time-ago";
 import { QueryCell } from "@/app/components/query-cell";
@@ -34,6 +34,7 @@ export default function PromptsPage() {
 
 	const [activeTab, setActiveTab] = useState("my-prompts");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+	const [isBatchRunDialogOpen, setIsBatchRunDialogOpen] = useState(false);
 	const [promptToView, setPromptToView] = useState<{
 		id: string;
 		query: string;
@@ -160,9 +161,23 @@ export default function PromptsPage() {
 	if (domainProjectQuery.isLoading) {
 		return (
 			<PageShell title="Prompts">
-				<div className="flex items-center justify-center py-12">
-					<Spinner className="h-5 w-5" />
-					<span className="ml-2 text-muted-foreground">Loading prompts...</span>
+				<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+					{[1, 2, 3].map((i) => (
+						<Card key={i}>
+							<div className="flex items-center gap-3 px-5 pt-3 pb-1.5">
+								<Skeleton className="h-3 w-16" />
+								<Skeleton className="h-3 w-20" />
+							</div>
+							<CardHeader className="pb-1 pt-1">
+								<Skeleton className="h-4 w-3/4" />
+							</CardHeader>
+							<CardContent className="pt-0 pb-4 mt-auto">
+								<div className="flex items-center justify-end">
+									<Skeleton className="h-8 w-20 rounded-sm" />
+								</div>
+							</CardContent>
+						</Card>
+					))}
 				</div>
 			</PageShell>
 		);
@@ -185,15 +200,31 @@ export default function PromptsPage() {
 			title="Prompts"
 			action={
 				activeTab === "my-prompts" ? (
-					<div>
+					<div className="flex items-center gap-2">
 						<Button onClick={() => setIsCreateDialogOpen(true)}>
 							<Plus className="h-4 w-4 mr-2" />
 							New Prompt
+						</Button>
+						<Button
+							variant="outline"
+							onClick={() => setIsBatchRunDialogOpen(true)}
+							disabled={!promptsQuery.data || promptsQuery.data.length === 0}
+						>
+							Batch Run
 						</Button>
 						<CreatePromptDialog
 							open={isCreateDialogOpen}
 							onOpenChange={setIsCreateDialogOpen}
 							domainProjectId={domainProject.id}
+							onSuccess={() => {
+								promptsQuery.refetch();
+							}}
+						/>
+						<BatchRunDialog
+							open={isBatchRunDialogOpen}
+							onOpenChange={setIsBatchRunDialogOpen}
+							domainProjectId={domainProject.id}
+							prompts={promptsQuery.data ?? []}
 							onSuccess={() => {
 								promptsQuery.refetch();
 							}}

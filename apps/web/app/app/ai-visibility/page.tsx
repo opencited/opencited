@@ -12,6 +12,13 @@ import {
 	EntityCardValue,
 	EntityCardContent,
 	EntityCardSkeleton,
+	Skeleton,
+	Table,
+	TableHeader,
+	TableBody,
+	TableRow,
+	TableHead,
+	TableCell,
 } from "@opencited/ui";
 import { Target, Users, TrendingUp } from "lucide-react";
 import { CompetitorIntelligence } from "./_components/competitor-intelligence";
@@ -84,10 +91,55 @@ export default function AIVisibilityPage() {
 			<QueryCell
 				query={overviewQuery}
 				loading={
-					<div className="space-y-3">
-						{[1, 2, 3].map((i) => (
-							<div key={i} className="h-12 bg-muted rounded-lg" />
-						))}
+					<div className="space-y-4">
+						<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+							<EntityCardSkeleton />
+							<EntityCardSkeleton />
+						</div>
+						<div className="border border-border/40 rounded-lg overflow-hidden">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>
+											<Skeleton className="h-4 w-16" />
+										</TableHead>
+										<TableHead>
+											<Skeleton className="h-4 w-20" />
+										</TableHead>
+										<TableHead>
+											<Skeleton className="h-4 w-12" />
+										</TableHead>
+										<TableHead>
+											<Skeleton className="h-4 w-24" />
+										</TableHead>
+										<TableHead>
+											<Skeleton className="h-4 w-12" />
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{[1, 2, 3].map((i) => (
+										<TableRow key={i}>
+											<TableCell>
+												<Skeleton className="h-4 w-full max-w-[200px]" />
+											</TableCell>
+											<TableCell>
+												<Skeleton className="h-4 w-16" />
+											</TableCell>
+											<TableCell>
+												<Skeleton className="h-6 w-16 rounded-full" />
+											</TableCell>
+											<TableCell>
+												<Skeleton className="h-4 w-8" />
+											</TableCell>
+											<TableCell>
+												<Skeleton className="h-4 w-12" />
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
 					</div>
 				}
 				success={(data) => {

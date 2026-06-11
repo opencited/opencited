@@ -2,18 +2,9 @@
 
 import { useState } from "react";
 import { joinWaitlist } from "@/app/actions/waitlist";
+import { Input, Button, Spinner } from "@opencited/ui";
 
 type Status = "idle" | "loading" | "success" | "error";
-
-const inputStyles = `
-	transition-all duration-200 ease-out-quart
-	focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2
-`;
-
-const buttonBaseStyles = `
-	transition-all duration-150 ease-out-quart
-	hover:scale-[1.02] active:scale-[0.97]
-`;
 
 export function WaitlistForm() {
 	const [email, setEmail] = useState("");
@@ -82,7 +73,7 @@ export function WaitlistForm() {
 				<p className="text-xs text-destructive animate-fade-up">{error}</p>
 			)}
 			<form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
-				<input
+				<Input
 					type="email"
 					id="email"
 					value={email}
@@ -91,33 +82,22 @@ export function WaitlistForm() {
 					autoComplete="email"
 					required
 					disabled={status === "loading"}
-					className={`flex-1 h-9 rounded border border-input bg-background px-3 text-sm shadow-sm ${inputStyles} disabled:cursor-not-allowed disabled:opacity-50`}
-					style={{
-						transition:
-							"border-color 200ms, box-shadow 200ms, background-color 200ms",
-					}}
+					className="flex-1"
 				/>
-				<button
+				<Button
 					type="submit"
 					disabled={status === "loading"}
-					className={`h-9 px-4 py-2 rounded text-sm font-medium bg-primary text-primary-foreground shadow-sm ${buttonBaseStyles} disabled:pointer-events-none disabled:opacity-50 shrink-0`}
-					style={{
-						transition:
-							"background-color 150ms, transform 150ms, box-shadow 150ms",
-					}}
+					className="shrink-0"
 				>
-					<span
-						style={{
-							display: "inline-block",
-							animation:
-								status === "loading"
-									? "pulse-subtle 1.2s ease-in-out infinite"
-									: "none",
-						}}
-					>
-						{status === "loading" ? "Joining..." : "Join Waitlist"}
-					</span>
-				</button>
+					{status === "loading" ? (
+						<>
+							<Spinner className="h-4 w-4" />
+							Joining...
+						</>
+					) : (
+						"Join Waitlist"
+					)}
+				</Button>
 			</form>
 		</div>
 	);

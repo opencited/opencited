@@ -16,6 +16,7 @@ import {
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
+	Spinner,
 } from "@opencited/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -113,7 +114,7 @@ export function PageDetailsSheet({
 								variant="ghost"
 								size="sm"
 								onClick={handleOpenLink}
-								className="h-8 px-2.5 text-muted-foreground hover:text-foreground gap-1.5"
+								className="h-8 px-2.5 gap-1.5"
 							>
 								<ExternalLink className="h-3.5 w-3.5" />
 								Open
@@ -123,7 +124,7 @@ export function PageDetailsSheet({
 								size="sm"
 								onClick={handleReCrawl}
 								disabled={isReCrawling || crawlMutation.isPending}
-								className="h-8 px-2.5 text-muted-foreground hover:text-foreground gap-1.5"
+								className="h-8 px-2.5 gap-1.5"
 							>
 								{isReCrawling || crawlMutation.isPending ? (
 									<Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -140,8 +141,11 @@ export function PageDetailsSheet({
 					<QueryCell
 						query={pageQuery}
 						loading={
-							<div className="px-6 py-12 flex items-center justify-center">
-								<div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
+							<div className="px-6 py-12 flex items-center justify-center gap-2">
+								<Spinner className="size-5" />
+								<span className="text-muted-foreground">
+									Loading page details...
+								</span>
 							</div>
 						}
 						success={(data) => {
@@ -417,18 +421,17 @@ export function PageDetailsSheet({
 function HttpStatusBadge({ status }: { status: number }) {
 	const getColor = (code: number) => {
 		if (code >= 200 && code < 300)
-			return "border-emerald-500/50 text-emerald-600 dark:text-emerald-400";
-		if (code >= 300 && code < 400)
-			return "border-amber-500/50 text-amber-600 dark:text-amber-400";
+			return "text-emerald-600 dark:text-emerald-400";
+		if (code >= 300 && code < 400) return "text-amber-600 dark:text-amber-400";
 		if (code >= 400 && code < 500)
-			return "border-orange-500/50 text-orange-600 dark:text-orange-400";
-		if (code >= 500) return "border-red-500/50 text-red-600 dark:text-red-400";
-		return "border-border text-muted-foreground";
+			return "text-orange-600 dark:text-orange-400";
+		if (code >= 500) return "text-red-600 dark:text-red-400";
+		return "text-muted-foreground";
 	};
 
 	return (
-		<Badge variant="outline" className={`font-mono ${getColor(status)}`}>
-			{status}
+		<Badge variant="outline" className="font-mono">
+			<span className={getColor(status)}>{status}</span>
 		</Badge>
 	);
 }

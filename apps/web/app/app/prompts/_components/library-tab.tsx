@@ -169,15 +169,17 @@ export function LibraryTab({
 					{selectedTags.map((tag) => (
 						<Badge key={tag} variant="secondary" className="gap-1">
 							{tag}
-							<button
+							<Button
 								type="button"
+								variant="ghost"
+								size="icon"
+								className="h-4 w-4 ml-1 hover:text-foreground"
 								onClick={() =>
 									setSelectedTags((prev) => prev.filter((t) => t !== tag))
 								}
-								className="ml-1 hover:text-foreground"
 							>
-								×
-							</button>
+								<span className="text-xs">×</span>
+							</Button>
 						</Badge>
 					))}
 				</div>

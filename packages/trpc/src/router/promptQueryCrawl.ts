@@ -21,6 +21,9 @@ import {
 	failCrawlInputSchema,
 	failCrawlOutputSchema,
 	triggerCrawlTaskInputSchema,
+	batchTriggerCrawlTaskHandler,
+	batchTriggerCrawlTaskInputSchema,
+	batchTriggerCrawlTaskOutputSchema,
 } from "@opencited/actions";
 
 export const promptQueryCrawlRouter = createTRPCRouter({
@@ -133,5 +136,58 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 				});
 			}
 			return updateCrawlHandler({ ctx, input });
+		}),
+
+	batchStart: publicProcedure
+		.input(batchTriggerCrawlTaskInputSchema)
+		.output(batchTriggerCrawlTaskOutputSchema)
+		.mutation(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "No organization found",
+				});
+			}
+
+			const { crawlIds, promptQueries } = await batchTriggerCrawlTaskHandler({
+				input,
+				ctx,
+			});
+
+			// Dispatch all jobs
+			const jobResults = await Promise.all(
+				crawlIds.map(async (crawlId: string, index: number) => {
+					const promptQuery = promptQueries[index];
+					if (!promptQuery) {
+						throw new Error("Prompt query not found");
+					}
+
+					const { jobId } = await dispatch("perplexity-crawl", {
+						query: promptQuery.query,
+						promptQueryId: promptQuery.id,
+						promptQueryCrawlId: crawlId,
+						domainProjectId: promptQuery.domainProjectId,
+						provider: input.provider,
+					});
+
+					await updateCrawlHandler({
+						input: {
+							id: crawlId,
+							triggerRunId: jobId,
+							status: "running",
+							startedAt: new Date(),
+						},
+						ctx,
+					});
+
+					return { crawlId, jobId };
+				}),
+			);
+
+			return {
+				crawlIds: jobResults.map((r) => r.crawlId),
+				count: jobResults.length,
+			};
 		}),
 });

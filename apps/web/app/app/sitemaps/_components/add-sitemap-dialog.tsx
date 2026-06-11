@@ -558,16 +558,17 @@ export function AddSitemapDialog({
 												...allChildUrls,
 											];
 											return (
-												<button
+												<Button
 													type="button"
 													onClick={toggleSelectAll}
-													className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+													variant="ghost"
+													size="sm"
 												>
 													{selectedUrls.size === allUrls.length &&
 													allUrls.length > 0
 														? "Select none"
 														: "Select all"}
-												</button>
+												</Button>
 											);
 										})()}
 									</div>
