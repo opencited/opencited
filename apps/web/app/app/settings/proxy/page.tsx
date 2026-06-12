@@ -19,7 +19,7 @@ import { QueryCell } from "@/app/components/query-cell";
 import { useConfirmation } from "@/app/hooks/use-confirmation";
 import { toast } from "sonner";
 import { Settings, Save, Trash2 } from "lucide-react";
-import { proxyConfigInsertSchema } from "@opencited/db";
+import { proxyConfigInsertSchema } from "@opencited/db/client";
 import type React from "react";
 
 const formSchema = proxyConfigInsertSchema.omit({

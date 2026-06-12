@@ -41,6 +41,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@clerk/nextjs": "catalog:",
+        "@opencited/db": "workspace:*",
         "@opencited/trpc": "workspace:*",
         "@opencited/ui": "*",
         "@t3-oss/env-nextjs": "catalog:",

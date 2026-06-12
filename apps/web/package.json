@@ -13,6 +13,7 @@
 	},
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
+		"@opencited/db": "workspace:*",
 		"@opencited/trpc": "workspace:*",
 		"@opencited/ui": "*",
 		"@tanstack/react-query": "catalog:",

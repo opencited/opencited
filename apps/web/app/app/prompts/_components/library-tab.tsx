@@ -21,7 +21,7 @@ import {
 import { Plus, Search, Filter } from "lucide-react";
 import { Skeleton } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
-import { industries, categories, allTags } from "@opencited/db";
+import { industries, categories, allTags } from "@opencited/db/client";
 
 interface TemplateData {
 	id: string;
