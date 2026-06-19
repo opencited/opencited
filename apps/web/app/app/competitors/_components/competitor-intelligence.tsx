@@ -40,15 +40,49 @@ export function CompetitorIntelligence({
 
 	return (
 		<div className="space-y-4">
-			<h2 className="text-lg font-semibold">Competitor Intelligence</h2>
-
 			<QueryCell
 				query={query}
 				loading={
-					<div className="space-y-3">
-						{[1, 2, 3].map((i) => (
-							<Skeleton key={i} className="h-12 rounded-lg" />
-						))}
+					<div className="border border-border/40 rounded-lg overflow-hidden">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>
+										<Skeleton className="h-4 w-24" />
+									</TableHead>
+									<TableHead>
+										<Skeleton className="h-4 w-20" />
+									</TableHead>
+									<TableHead>
+										<Skeleton className="h-4 w-20" />
+									</TableHead>
+									<TableHead>
+										<Skeleton className="h-4 w-16" />
+									</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{[1, 2, 3, 4, 5].map((i) => (
+									<TableRow key={i}>
+										<TableCell>
+											<div className="space-y-1">
+												<Skeleton className="h-4 w-32" />
+												<Skeleton className="h-3 w-24 font-mono" />
+											</div>
+										</TableCell>
+										<TableCell>
+											<Skeleton className="h-4 w-16" />
+										</TableCell>
+										<TableCell>
+											<Skeleton className="h-6 w-10 rounded-full" />
+										</TableCell>
+										<TableCell>
+											<Skeleton className="h-6 w-10 rounded-full" />
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
 					</div>
 				}
 				success={(data) => {

@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Settings, Save, Trash2 } from "lucide-react";
 import { proxyConfigInsertSchema } from "@opencited/db/client";
 import type React from "react";
+import { useDomainProject } from "@/app/components/domain-project-provider";
 
 const formSchema = proxyConfigInsertSchema.omit({
 	id: true,
@@ -68,9 +69,9 @@ export default function ProxySettingsPage() {
 	const trpc = useTRPC();
 	const queryClient = useQueryClient();
 	const { confirm, dialog } = useConfirmation();
+	const domainProject = useDomainProject();
 
 	const proxyQuery = useQuery(trpc.proxyConfig.get.queryOptions({}));
-	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
 
 	const createMutation = useMutation(
 		trpc.proxyConfig.create.mutationOptions({
@@ -111,14 +112,6 @@ export default function ProxySettingsPage() {
 	const existingConfig = proxyQuery.data;
 
 	const handleSubmit = async (data: Record<string, unknown>) => {
-		const domainProject = domainProjectQuery.data;
-		if (!domainProject) {
-			toast.error("Validation error", {
-				description: "No domain project found.",
-			});
-			return;
-		}
-
 		const input = {
 			domainProjectId: domainProject.id,
 			sourceType: data.sourceType as "batch" | "api",

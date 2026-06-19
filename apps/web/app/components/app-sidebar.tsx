@@ -35,6 +35,7 @@ import {
 	PanelLeft,
 	ScrollText,
 	Settings,
+	Shield,
 	Target,
 } from "lucide-react";
 import Link from "next/link";
@@ -146,6 +147,12 @@ export function AppSidebar() {
 				shortcut: "V",
 			},
 			{
+				name: "Competitors",
+				link: "/app/competitors",
+				isActive: pathname.includes("/competitors"),
+				icon: <Shield className="size-4" />,
+			},
+			{
 				name: "Prompts",
 				link: "/app/prompts",
 				isActive: pathname.includes("prompts"),
@@ -248,7 +255,7 @@ export function AppSidebar() {
 						<SidebarMenu>
 							{navigationLinks
 								.filter((navItem) =>
-									["dashboard", "ai-visibility"].some((slug) =>
+									["dashboard", "ai-visibility", "competitors"].some((slug) =>
 										navItem.link.includes(slug),
 									),
 								)

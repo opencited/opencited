@@ -27,10 +27,12 @@ import { TimeAgo } from "@/app/components/time-ago";
 import { QueryCell } from "@/app/components/query-cell";
 import { format } from "date-fns";
 import { useConfirmation } from "@/app/hooks/use-confirmation";
+import { useDomainProject } from "@/app/components/domain-project-provider";
 
 export default function PromptsPage() {
 	const trpc = useTRPC();
 	const { confirm, dialog } = useConfirmation();
+	const domainProject = useDomainProject();
 
 	const [activeTab, setActiveTab] = useState("my-prompts");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -48,12 +50,9 @@ export default function PromptsPage() {
 	} | null>(null);
 	const [selectedPromptId, setSelectedPromptId] = useState<string | null>(null);
 
-	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
-	const domainProject = domainProjectQuery.data;
-
 	const promptsQuery = useQuery(
 		trpc.promptQuery.list.queryOptions({
-			domainProjectId: domainProject?.id ?? "",
+			domainProjectId: domainProject.id,
 		}),
 	);
 
@@ -82,7 +81,7 @@ export default function PromptsPage() {
 				variant: "destructive",
 			});
 
-			if (!confirmed || !domainProject) return;
+			if (!confirmed) return;
 
 			deleteMutation.mutate({
 				id,
@@ -130,7 +129,7 @@ export default function PromptsPage() {
 				const prompt = promptsQuery.data?.find(
 					(p) => p.id === selectedPromptId,
 				);
-				if (prompt && domainProject) {
+				if (prompt) {
 					setPromptToEdit({
 						id: prompt.id,
 						query: prompt.query,
@@ -157,43 +156,6 @@ export default function PromptsPage() {
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [selectedPromptId, promptsQuery.data]);
-
-	if (domainProjectQuery.isLoading) {
-		return (
-			<PageShell title="Prompts">
-				<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-					{[1, 2, 3].map((i) => (
-						<Card key={i}>
-							<div className="flex items-center gap-3 px-5 pt-3 pb-1.5">
-								<Skeleton className="h-3 w-16" />
-								<Skeleton className="h-3 w-20" />
-							</div>
-							<CardHeader className="pb-1 pt-1">
-								<Skeleton className="h-4 w-3/4" />
-							</CardHeader>
-							<CardContent className="pt-0 pb-4 mt-auto">
-								<div className="flex items-center justify-end">
-									<Skeleton className="h-8 w-20 rounded-sm" />
-								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			</PageShell>
-		);
-	}
-
-	if (!domainProject) {
-		return (
-			<PageShell title="Prompts">
-				<div className="flex items-center justify-center py-12">
-					<p className="text-muted-foreground">
-						Please create a domain project first
-					</p>
-				</div>
-			</PageShell>
-		);
-	}
 
 	return (
 		<PageShell

@@ -15,8 +15,8 @@ import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from "lucide-react";
 import { useTRPC } from "@/app/_trpc/client";
 import { QueryCell } from "@/app/components/query-cell";
 import { TimeAgo } from "@/app/components/time-ago";
-import { MentionTypeBadge } from "./mention-type-badge";
-import { RelativePositionBadge } from "./relative-position-badge";
+import { MentionTypeBadge } from "../../ai-visibility/_components/mention-type-badge";
+import { RelativePositionBadge } from "../../ai-visibility/_components/relative-position-badge";
 
 interface CompetitorDetailSheetProps {
 	competitorId: string;

@@ -21,6 +21,7 @@ import {
 	AlertCircle,
 } from "lucide-react";
 import { PageShell } from "@/app/components/page-shell";
+import { useDomainProject } from "@/app/components/domain-project-provider";
 
 function StatCard({
 	icon: Icon,
@@ -53,22 +54,18 @@ function StatCard({
 
 export default function DashboardPage() {
 	const trpc = useTRPC();
-
-	const domainProjectQuery = useQuery(trpc.domainProject.get.queryOptions());
-	const domainProject = domainProjectQuery.data;
+	const domainProject = useDomainProject();
 
 	const visibilityMetricsQuery = useQuery({
 		...trpc.dashboard.getVisibilityMetrics.queryOptions({
-			domainProjectId: domainProject?.id ?? "",
+			domainProjectId: domainProject.id,
 		}),
-		enabled: !!domainProject?.id,
 	});
 
 	const contentHealthQuery = useQuery({
 		...trpc.dashboard.getContentHealth.queryOptions({
-			domainProjectId: domainProject?.id ?? "",
+			domainProjectId: domainProject.id,
 		}),
-		enabled: !!domainProject?.id,
 	});
 
 	return (

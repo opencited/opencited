@@ -11,6 +11,7 @@ import { TRPCReactProvider } from "../_trpc/client";
 import { AppSidebar } from "../components/app-sidebar";
 import { trpc } from "../_trpc/server";
 import { ActiveCrawlIndicatorWrapper } from "../components/active-crawl-indicator-wrapper";
+import { DomainProjectProvider } from "../components/domain-project-provider";
 
 export default async function ProtectedLayout({
 	children,
@@ -33,6 +34,12 @@ export default async function ProtectedLayout({
 		redirect("/onboarding");
 	}
 
+	const serializedDomainProject = {
+		...domainProject,
+		createdAt: domainProject.createdAt.toISOString(),
+		updatedAt: domainProject.updatedAt.toISOString(),
+	};
+
 	return (
 		<ClerkProvider>
 			<TRPCReactProvider>
@@ -42,7 +49,11 @@ export default async function ProtectedLayout({
 							<AppSidebar />
 							<SidebarInset>
 								<main className="h-full grow overflow-auto px-3 lg:px-5 lg:py-5">
-									{children}
+									<DomainProjectProvider
+										domainProject={serializedDomainProject}
+									>
+										{children}
+									</DomainProjectProvider>
 								</main>
 							</SidebarInset>
 						</div>
