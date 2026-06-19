@@ -14,13 +14,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@opencited/ui";
-import {
-	ArrowDownIcon,
-	ArrowUpIcon,
-	HelpCircleIcon,
-	MinusIcon,
-	SparklesIcon,
-} from "lucide-react";
+import { HelpCircleIcon } from "lucide-react";
 import { useState } from "react";
 import { TimeAgo } from "@/app/components/time-ago";
 import { CrawlDetailSheet } from "./crawl-detail-sheet";
@@ -33,12 +27,7 @@ interface VisibilityOverviewRow {
 	latestCrawlId: string | null;
 	latestCrawlStatus: string | null;
 	cited: boolean;
-	citationPosition: number | null;
-	brandMentioned: boolean;
-	mentionPosition: string | null;
 	competitorCount: number;
-	trend: "up" | "down" | "same" | "new";
-	previousCitationPosition: number | null;
 }
 
 interface VisibilityTableProps {
@@ -72,44 +61,13 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 							<TableHead>
 								<ColumnHeaderWithTooltip
 									label="Cited"
-									tooltip="Whether your brand appears as a cited source in the AI response. Shows the position number in the source list, or just 'Cited' if position is unavailable."
+									tooltip="Whether your brand appears as a cited source in the AI response."
 								/>
 							</TableHead>
 							<TableHead>
 								<ColumnHeaderWithTooltip
 									label="Competitors"
 									tooltip="Number of unique competitor brands detected in the AI response. Shows '—' when no competitors are found."
-								/>
-							</TableHead>
-							<TableHead>
-								<ColumnHeaderWithTooltip
-									label="Trend"
-									tooltip={
-										<div className="space-y-1">
-											<p>
-												How your citation ranking changed compared to the
-												previous crawl.
-											</p>
-											<ul className="list-none space-y-0.5">
-												<li className="flex items-center gap-1.5">
-													<ArrowUpIcon className="h-3 w-3 text-emerald-600" />
-													<span>Improved = moved to a better position</span>
-												</li>
-												<li className="flex items-center gap-1.5">
-													<ArrowDownIcon className="h-3 w-3 text-destructive" />
-													<span>Declined = moved to a worse position</span>
-												</li>
-												<li className="flex items-center gap-1.5">
-													<MinusIcon className="h-3 w-3 text-muted-foreground" />
-													<span>No change = same position</span>
-												</li>
-												<li className="flex items-center gap-1.5">
-													<SparklesIcon className="h-3 w-3 text-muted-foreground" />
-													<span>New = first time being tracked</span>
-												</li>
-											</ul>
-										</div>
-									}
 								/>
 							</TableHead>
 						</TableRow>
@@ -140,11 +98,7 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 								</TableCell>
 								<TableCell>
 									{row.cited ? (
-										<Badge variant="success">
-											{row.citationPosition !== null
-												? `Position ${row.citationPosition}`
-												: "Cited"}
-										</Badge>
+										<Badge variant="success">Cited</Badge>
 									) : (
 										<Badge variant="outline">Not cited</Badge>
 									)}
@@ -155,9 +109,6 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 									) : (
 										<span className="text-muted-foreground">—</span>
 									)}
-								</TableCell>
-								<TableCell>
-									<TrendIndicator trend={row.trend} />
 								</TableCell>
 							</TableRow>
 						))}
@@ -175,40 +126,6 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 				/>
 			)}
 		</>
-	);
-}
-
-function TrendIndicator({ trend }: { trend: "up" | "down" | "same" | "new" }) {
-	const config = {
-		up: {
-			icon: <ArrowUpIcon className="h-3.5 w-3.5" />,
-			label: "Improved",
-			className: "text-emerald-600",
-		},
-		down: {
-			icon: <ArrowDownIcon className="h-3.5 w-3.5" />,
-			label: "Declined",
-			className: "text-destructive",
-		},
-		same: {
-			icon: <MinusIcon className="h-3.5 w-3.5" />,
-			label: "No change",
-			className: "text-muted-foreground",
-		},
-		new: {
-			icon: <SparklesIcon className="h-3.5 w-3.5" />,
-			label: "New",
-			className: "text-muted-foreground",
-		},
-	};
-
-	const { icon, label, className } = config[trend];
-
-	return (
-		<div className={`flex items-center gap-1.5 text-sm ${className}`}>
-			{icon}
-			<span>{label}</span>
-		</div>
 	);
 }
 

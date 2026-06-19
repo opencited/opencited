@@ -23,7 +23,6 @@ export const citationSourceSchema = z.object({
 export const brandMentionSchema = z.object({
 	brandName: z.string().min(1),
 	context: z.string().min(1),
-	position: z.number().int(),
 	brandUrl: z.string().optional(),
 });
 
@@ -125,7 +124,6 @@ export const saveStructuredCrawlDataAction = async (params: {
 		crawlId,
 		brandName: mention.brandName,
 		context: mention.context,
-		position: mention.position,
 		brandUrl: mention.brandUrl,
 		mentionType: "other" as const,
 		metadata: {},

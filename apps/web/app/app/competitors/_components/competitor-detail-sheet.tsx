@@ -1,7 +1,6 @@
 "use client";
 
 import {
-	Badge,
 	DataList,
 	Sheet,
 	SheetContent,
@@ -11,12 +10,10 @@ import {
 	Spinner,
 } from "@opencited/ui";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from "lucide-react";
 import { useTRPC } from "@/app/_trpc/client";
 import { QueryCell } from "@/app/components/query-cell";
 import { TimeAgo } from "@/app/components/time-ago";
 import { MentionTypeBadge } from "../../ai-visibility/_components/mention-type-badge";
-import { RelativePositionBadge } from "../../ai-visibility/_components/relative-position-badge";
 
 interface CompetitorDetailSheetProps {
 	competitorId: string;
@@ -84,14 +81,6 @@ export function CompetitorDetailSheet({
 													{mention.query}
 												</p>
 												<MentionTypeBadge type={mention.mentionType} />
-												{mention.relativePosition && (
-													<RelativePositionBadge
-														position={mention.relativePosition}
-													/>
-												)}
-												{mention.isRecommendation && (
-													<Badge variant="success">Recommended</Badge>
-												)}
 											</div>
 
 											<div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -99,25 +88,6 @@ export function CompetitorDetailSheet({
 											</div>
 
 											<p className="text-sm">{mention.context}</p>
-
-											{mention.objection && (
-												<div className="bg-muted p-3 rounded-md">
-													<p className="text-xs text-muted-foreground mb-1">
-														Objection
-													</p>
-													<p className="text-sm">{mention.objection}</p>
-												</div>
-											)}
-
-											{mention.ownPosition !== null &&
-												mention.competitorPosition !== null && (
-													<div className="flex items-center gap-2 text-xs">
-														<HeadToHeadIndicator
-															ownPosition={mention.ownPosition}
-															competitorPosition={mention.competitorPosition}
-														/>
-													</div>
-												)}
 										</div>
 									)}
 								/>
@@ -127,38 +97,5 @@ export function CompetitorDetailSheet({
 				</div>
 			</SheetContent>
 		</Sheet>
-	);
-}
-
-function HeadToHeadIndicator({
-	ownPosition,
-	competitorPosition,
-}: {
-	ownPosition: number;
-	competitorPosition: number;
-}) {
-	if (ownPosition < competitorPosition) {
-		return (
-			<div className="flex items-center gap-1 text-emerald-600">
-				<ArrowUpIcon className="h-3.5 w-3.5" />
-				<span>You rank higher</span>
-			</div>
-		);
-	}
-
-	if (ownPosition > competitorPosition) {
-		return (
-			<div className="flex items-center gap-1 text-destructive">
-				<ArrowDownIcon className="h-3.5 w-3.5" />
-				<span>Competitor ranks higher</span>
-			</div>
-		);
-	}
-
-	return (
-		<div className="flex items-center gap-1 text-muted-foreground">
-			<MinusIcon className="h-3.5 w-3.5" />
-			<span>Same position</span>
-		</div>
 	);
 }

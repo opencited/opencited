@@ -268,7 +268,6 @@ export async function handlePerplexityCrawl(
 						crawlId: promptQueryCrawlId,
 						domainProjectId: crawlContext.domainProjectId,
 						intelligence,
-						content: result.content,
 					},
 					ctx: { db, userId: null, isAuthenticated: false },
 				});

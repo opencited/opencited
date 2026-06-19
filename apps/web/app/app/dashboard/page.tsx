@@ -12,14 +12,7 @@ import {
 	EntityCardSkeleton,
 } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
-import {
-	Target,
-	MessageSquare,
-	FileText,
-	CheckCircle,
-	Type,
-	AlertCircle,
-} from "lucide-react";
+import { Target, FileText, CheckCircle, Type, AlertCircle } from "lucide-react";
 import { PageShell } from "@/app/components/page-shell";
 import { useDomainProject } from "@/app/components/domain-project-provider";
 
@@ -98,12 +91,6 @@ export default function DashboardPage() {
 											</span>
 										}
 										description="Queries where your brand appears"
-									/>
-									<StatCard
-										icon={MessageSquare}
-										label="Brand mentions"
-										value={metrics.brandMentionCount}
-										description="Total target mentions"
 									/>
 								</div>
 							);

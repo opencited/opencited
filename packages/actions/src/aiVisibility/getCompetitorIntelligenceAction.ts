@@ -13,8 +13,6 @@ export const getCompetitorIntelligenceOutputSchema = z.array(
 		competitorName: z.string(),
 		competitorDomain: z.string(),
 		mentionedInCount: z.number(),
-		appearsBeforeYouCount: z.number(),
-		appearsAfterYouCount: z.number(),
 	}),
 );
 
@@ -24,7 +22,6 @@ type Mention = typeof crawlBrandMentionTable.$inferSelect;
 type MentionSelect = {
 	id: string;
 	crawlId: string;
-	position: number | null;
 	competitorId: string | null;
 	mentionType: string;
 };
@@ -57,7 +54,6 @@ export const getCompetitorIntelligenceAction = async (params: {
 		.select({
 			id: crawlBrandMentionTable.id,
 			crawlId: crawlBrandMentionTable.crawlId,
-			position: crawlBrandMentionTable.position,
 			competitorId: crawlBrandMentionTable.competitorId,
 			mentionType: crawlBrandMentionTable.mentionType,
 		})
@@ -78,8 +74,6 @@ export const getCompetitorIntelligenceAction = async (params: {
 				competitorName: competitor.name,
 				competitorDomain: competitor.domain,
 				mentionedInCount: 0,
-				appearsBeforeYouCount: 0,
-				appearsAfterYouCount: 0,
 			}),
 		);
 	}
@@ -116,52 +110,11 @@ export const getCompetitorIntelligenceAction = async (params: {
 		const mentions = mentionsByCompetitorId.get(competitor.id) ?? [];
 		const mentionedInCount = mentions.length;
 
-		if (mentionedInCount === 0) {
-			results.push({
-				competitorId: competitor.id,
-				competitorName: competitor.name,
-				competitorDomain: competitor.domain,
-				mentionedInCount: 0,
-				appearsBeforeYouCount: 0,
-				appearsAfterYouCount: 0,
-			});
-			continue;
-		}
-
-		let appearsBeforeYouCount = 0;
-		let appearsAfterYouCount = 0;
-
-		for (const mention of mentions) {
-			const crawlMentions = crawlMentionsByCrawlId.get(mention.crawlId) ?? [];
-			const targetMention = crawlMentions.find(
-				(m: Mention) => m.mentionType === "target",
-			);
-
-			if (!targetMention) continue;
-
-			const ownPosition =
-				targetMention.position !== null && targetMention.position >= 0
-					? targetMention.position
-					: Infinity;
-			const compPosition =
-				mention.position !== null && mention.position >= 0
-					? mention.position
-					: Infinity;
-
-			if (compPosition < ownPosition) {
-				appearsBeforeYouCount++;
-			} else if (compPosition > ownPosition) {
-				appearsAfterYouCount++;
-			}
-		}
-
 		results.push({
 			competitorId: competitor.id,
 			competitorName: competitor.name,
 			competitorDomain: competitor.domain,
 			mentionedInCount,
-			appearsBeforeYouCount,
-			appearsAfterYouCount,
 		});
 	}
 

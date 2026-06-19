@@ -77,7 +77,6 @@ export const listRunLogsAction = async (params: {
 	}
 
 	type CrawlRow = typeof promptQueryCrawlTable.$inferSelect;
-	type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
 
 	const crawlIds = runs.map((r: CrawlRow) => r.id);
 

@@ -16,7 +16,6 @@ export const getDashboardVisibilityMetricsOutputSchema = z.object({
 		cited: z.number(),
 		total: z.number(),
 	}),
-	brandMentionCount: z.number(),
 });
 
 export const getDashboardVisibilityMetricsContextSchema =
@@ -36,7 +35,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 	if (promptQueries.length === 0) {
 		return {
 			citedInRatio: { cited: 0, total: 0 },
-			brandMentionCount: 0,
 		};
 	}
 
@@ -54,7 +52,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 	if (allCrawls.length === 0) {
 		return {
 			citedInRatio: { cited: 0, total: 0 },
-			brandMentionCount: 0,
 		};
 	}
 
@@ -74,14 +71,13 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 		.select({
 			crawlId: crawlBrandMentionTable.crawlId,
 			mentionType: crawlBrandMentionTable.mentionType,
-			position: crawlBrandMentionTable.position,
 		})
 		.from(crawlBrandMentionTable)
 		.where(inArray(crawlBrandMentionTable.crawlId, latestCrawlIds));
 
 	const mentionsByCrawlId = new Map<
 		string,
-		Array<{ crawlId: string; mentionType: string; position: number | null }>
+		Array<{ crawlId: string; mentionType: string }>
 	>();
 	for (const mention of allBrandMentions) {
 		const existing = mentionsByCrawlId.get(mention.crawlId) ?? [];
@@ -91,7 +87,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 
 	let citedCount = 0;
 	let totalCount = 0;
-	let totalBrandMentions = 0;
 
 	for (const crawl of latestCrawlByQuery.values()) {
 		totalCount++;
@@ -104,8 +99,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 		if (targetMentions.length > 0) {
 			citedCount++;
 		}
-
-		totalBrandMentions += targetMentions.length;
 	}
 
 	return {
@@ -113,7 +106,6 @@ export const getDashboardVisibilityMetricsAction = async (params: {
 			cited: citedCount,
 			total: totalCount,
 		},
-		brandMentionCount: totalBrandMentions,
 	};
 };
 

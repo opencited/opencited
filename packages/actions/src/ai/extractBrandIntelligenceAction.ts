@@ -21,8 +21,6 @@ export const aiBrandMentionSchema = z.object({
 	brandUrl: z.string().nullable().optional(),
 	context: z.string().min(1),
 	mentionType: z.enum(["target", "competitor", "other"]),
-	isRecommendation: z.boolean(),
-	objection: z.string().nullable().optional(),
 });
 
 export const discoveredCompetitorSchema = z.object({
@@ -56,8 +54,6 @@ Rules:
 - "target" = the brand the user is tracking (their own brand). If a brand name, domain, or alias matches the target, classify it as "target".
 - "competitor" = any brand that competes with the target in the context of this query
 - "other" = brands mentioned that are not competitors (e.g., platforms, tools, infrastructure)
-- isRecommendation = true if the response recommends or endorses the brand
-- objection = any negative sentiment, criticism, or caveat about the brand (null if none)
 - For brandUrl, extract from context if available, or infer the most likely domain (e.g., "Clerk" → "clerk.com")
 - Do NOT include generic terms like "OAuth", "MFA", "API", "Next.js" as brands
 - Do NOT include the query itself or section headings as brands
@@ -109,9 +105,7 @@ Return a JSON object with this exact structure:
       "brandName": "string",
       "brandUrl": "string or null",
       "context": "the surrounding sentence or paragraph where the brand is mentioned",
-      "mentionType": "target" | "competitor" | "other",
-      "isRecommendation": boolean,
-      "objection": "string or null"
+      "mentionType": "target" | "competitor" | "other"
     }
   ],
   "discoveredCompetitors": [

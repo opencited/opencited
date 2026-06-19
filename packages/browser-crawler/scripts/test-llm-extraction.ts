@@ -20,8 +20,6 @@ Rules:
 - "target" = the brand the user is tracking (their own brand)
 - "competitor" = any brand that competes with the target in the context of this query
 - "other" = brands mentioned that are not competitors (e.g., platforms, tools, infrastructure)
-- isRecommendation = true if the response recommends or endorses the brand
-- objection = any negative sentiment, criticism, or caveat about the brand (null if none)
 - For brandUrl, extract from context if available, or infer the most likely domain (e.g., "Clerk" → "clerk.com")
 - Do NOT include generic terms like "OAuth", "MFA", "API", "Next.js" as brands
 - Do NOT include the query itself or section headings as brands
@@ -61,9 +59,7 @@ Return a JSON object with this exact structure:
       "brandName": "string",
       "brandUrl": "string or null",
       "context": "the surrounding sentence or paragraph where the brand is mentioned",
-      "mentionType": "target" | "competitor" | "other",
-      "isRecommendation": boolean,
-      "objection": "string or null"
+      "mentionType": "target" | "competitor" | "other"
     }
   ],
   "discoveredCompetitors": [
@@ -196,10 +192,8 @@ async function main() {
           : mention.mentionType === "competitor"
             ? "⚔️"
             : "📌";
-      const recBadge = mention.isRecommendation ? " ✅ Recommended" : "";
-      const objBadge = mention.objection ? ` ⚠️ "${mention.objection}"` : "";
 
-      logger.info(`   ${typeEmoji} ${mention.brandName} (${mention.mentionType})${recBadge}${objBadge}`);
+      logger.info(`   ${typeEmoji} ${mention.brandName} (${mention.mentionType})`);
       logger.info(`      URL: ${mention.brandUrl ?? "(none)"}`);
       logger.info(`      Context: ${mention.context.substring(0, 120)}...`);
       logger.info("");

@@ -23,7 +23,7 @@ Recent commit messages (style reference):
 1. Identify the primary change type from the diff
 2. Match the commit message style from recent history
 3. Follow conventional commits format: `type(scope): description`
-4. Subject line must be <= 72 characters
+4. Subject line must be <= 64 characters
 5. Use imperative mood ("add" not "added")
 6. No period at end of subject line
 7. Body explains WHAT and WHY, not HOW
@@ -31,4 +31,25 @@ Recent commit messages (style reference):
 
 ## Output
 
-Propose 1-3 commit message options (short to detailed). Do NOT run `git commit` or any mutating git command. Only read-only commands are allowed.
+Generate a single commit message formatted for direct copy-paste into czg's interactive prompts.
+
+Output exactly in this format:
+
+---
+**Subject:**
+<type>: <description>
+
+**Description:**
+<line 1> | <line 2> | <line 3>
+
+**Footer:**
+<ISSUES or references, e.g.: ✅ Closes: #123>
+---
+
+Rules:
+- Subject must be <= 64 characters, imperative mood, no period at end
+- Description uses ` | ` (space-pipe-space) to separate lines — this is czg's line break format
+- Include description only when change is non-obvious
+- Include footer only when there are related issues
+- Each section on its own line(s) for easy copy-paste
+- Do NOT run `git commit` or any mutating git command. Only read-only commands are allowed.

@@ -20,12 +20,7 @@ export const getVisibilityOverviewOutputSchema = z.array(
 		latestCrawlId: z.string().nullable(),
 		latestCrawlStatus: z.string().nullable(),
 		cited: z.boolean(),
-		citationPosition: z.number().nullable(),
-		brandMentioned: z.boolean(),
-		mentionPosition: z.string().nullable(),
 		competitorCount: z.number(),
-		trend: z.enum(["up", "down", "same", "new"]),
-		previousCitationPosition: z.number().nullable(),
 	}),
 );
 
@@ -100,18 +95,12 @@ export const getVisibilityOverviewAction = async (params: {
 				latestCrawlId: null,
 				latestCrawlStatus: null,
 				cited: false,
-				citationPosition: null,
-				brandMentioned: false,
-				mentionPosition: null,
 				competitorCount: 0,
-				trend: "new" as const,
-				previousCitationPosition: null,
 			});
 			continue;
 		}
 
 		const latestCrawl = crawls[0]!;
-		const previousCrawl = crawls.length > 1 ? crawls[1] : null;
 
 		const brandMentions = mentionsByCrawlId.get(latestCrawl.id) ?? [];
 
@@ -119,12 +108,6 @@ export const getVisibilityOverviewAction = async (params: {
 			(m: MentionRow) => m.mentionType === "target",
 		);
 		const cited = !!targetMention;
-		const citationPosition =
-			targetMention &&
-			targetMention.position !== null &&
-			targetMention.position >= 0
-				? targetMention.position
-				: null;
 
 		const competitorMentions = brandMentions.filter(
 			(m: MentionRow) => m.mentionType === "competitor",
@@ -132,49 +115,6 @@ export const getVisibilityOverviewAction = async (params: {
 		const competitorCount = new Set(
 			competitorMentions.map((m: MentionRow) => m.competitorId).filter(Boolean),
 		).size;
-
-		const brandMentioned = !!targetMention;
-		const mentionPosition = targetMention?.relativePosition ?? null;
-
-		let trend: "up" | "down" | "same" | "new" = "new";
-		let previousCitationPosition: number | null = null;
-
-		if (previousCrawl) {
-			const previousBrandMentions =
-				mentionsByCrawlId.get(previousCrawl.id) ?? [];
-
-			const previousTargetMention = previousBrandMentions.find(
-				(m: MentionRow) => m.mentionType === "target",
-			);
-			previousCitationPosition =
-				previousTargetMention &&
-				previousTargetMention.position !== null &&
-				previousTargetMention.position >= 0
-					? previousTargetMention.position
-					: null;
-
-			if (citationPosition !== null && previousCitationPosition !== null) {
-				if (citationPosition < previousCitationPosition) {
-					trend = "up";
-				} else if (citationPosition > previousCitationPosition) {
-					trend = "down";
-				} else {
-					trend = "same";
-				}
-			} else if (
-				citationPosition !== null &&
-				previousCitationPosition === null
-			) {
-				trend = "up";
-			} else if (
-				citationPosition === null &&
-				previousCitationPosition !== null
-			) {
-				trend = "down";
-			} else {
-				trend = "same";
-			}
-		}
 
 		results.push({
 			queryId: query.id,
@@ -187,12 +127,7 @@ export const getVisibilityOverviewAction = async (params: {
 			latestCrawlId: latestCrawl.id,
 			latestCrawlStatus: latestCrawl.status,
 			cited,
-			citationPosition,
-			brandMentioned,
-			mentionPosition,
 			competitorCount,
-			trend,
-			previousCitationPosition,
 		});
 	}
 

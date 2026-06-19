@@ -36,7 +36,6 @@ export interface CitationSource {
 export interface BrandMention {
 	brandName: string;
 	context: string;
-	position: number;
 	brandUrl?: string;
 }
 

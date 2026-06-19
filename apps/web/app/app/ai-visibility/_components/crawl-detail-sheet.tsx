@@ -28,7 +28,6 @@ import { QueryCell } from "@/app/components/query-cell";
 import { TimeAgo } from "@/app/components/time-ago";
 import { AnswerFormatBadge } from "./answer-format-badge";
 import { MentionTypeBadge } from "./mention-type-badge";
-import { RelativePositionBadge } from "./relative-position-badge";
 
 interface CrawlDetailSheetProps {
 	crawlId: string;
@@ -254,24 +253,8 @@ export function CrawlDetailSheet({
 															{mention.brandName}
 														</span>
 														<MentionTypeBadge type={mention.mentionType} />
-														{mention.relativePosition && (
-															<RelativePositionBadge
-																position={mention.relativePosition}
-															/>
-														)}
-														{mention.isRecommendation === "true" && (
-															<Badge variant="success">Recommended</Badge>
-														)}
 													</div>
 													<p className="text-sm">{mention.context}</p>
-													{mention.objection && (
-														<div className="bg-muted p-3 rounded-md">
-															<p className="text-xs text-muted-foreground mb-1">
-																Objection
-															</p>
-															<p className="text-sm">{mention.objection}</p>
-														</div>
-													)}
 												</div>
 											)}
 										/>

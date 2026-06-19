@@ -1,4 +1,4 @@
-import { pgTable, text, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, jsonb } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import {
 	createSelectSchema,
@@ -22,13 +22,8 @@ export const crawlBrandMentionTable = pgTable("crawl_brand_mention", {
 	brandUrl: text("brand_url"),
 
 	context: text("context").notNull(),
-	position: integer("position"),
 
 	mentionType: text("mention_type").notNull(),
-	relativePosition: text("relative_position"),
-
-	isRecommendation: text("is_recommendation").default("false"),
-	objection: text("objection"),
 
 	metadata: jsonb("metadata"),
 
@@ -49,11 +44,7 @@ export const crawlBrandMentionInsertSchema =
 		brandName: z.string().min(1),
 		brandUrl: z.string().optional(),
 		context: z.string().min(1),
-		position: z.number().int().optional(),
 		mentionType: z.enum(["target", "competitor", "other"]),
-		relativePosition: z.enum(["first", "early", "middle", "late"]).optional(),
-		isRecommendation: z.string().optional(),
-		objection: z.string().optional(),
 		metadata: z.record(z.string(), z.unknown()).optional(),
 	});
 export const crawlBrandMentionUpdateSchema = createUpdateSchema(
