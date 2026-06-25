@@ -8,6 +8,7 @@ import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { HonoAdapter } from "@bull-board/hono";
 import { createLogger, flush } from "@opencited/logger";
 import { handlePerplexityCrawl } from "./handlers/perplexity-crawl";
+import { handleSentimentRetry } from "./handlers/sentiment-retry";
 import { env } from "./env";
 
 const logger = createLogger();
@@ -19,7 +20,15 @@ const perplexityCrawlQueue = new Queue("perplexity-crawl", {
 	connection: createRedisConnection(),
 });
 
+const sentimentRetryQueue = new Queue("sentiment-retry", {
+	connection: createRedisConnection(),
+});
+
 const queueEvents = new QueueEvents("perplexity-crawl", {
+	connection: createRedisConnection(),
+});
+
+const sentimentRetryQueueEvents = new QueueEvents("sentiment-retry", {
 	connection: createRedisConnection(),
 });
 
@@ -33,6 +42,10 @@ queueEvents.on("completed", ({ jobId }) => {
 
 queueEvents.on("failed", ({ jobId, failedReason }) => {
 	logger.error("Job failed", { jobId, failedReason });
+});
+
+sentimentRetryQueueEvents.on("failed", ({ jobId, failedReason }) => {
+	logger.error("Sentiment retry job failed", { jobId, failedReason });
 });
 
 function createRedisConnection(): IORedis {
@@ -53,6 +66,21 @@ const worker = new Worker(
 	},
 );
 
+const sentimentRetryWorker = new Worker(
+	"sentiment-retry",
+	async (job) => {
+		logger.info("Processing sentiment retry", {
+			jobId: job.id,
+			data: job.data,
+		});
+		await handleSentimentRetry(job, logger, sharedRedis);
+	},
+	{
+		connection: createRedisConnection(),
+		concurrency: 2,
+	},
+);
+
 worker.on("completed", async (job) => {
 	logger.info("Worker: job completed", { jobId: job.id });
 	await flush();
@@ -67,11 +95,31 @@ worker.on("error", (err) => {
 	logger.error("Worker error", { error: err.message });
 });
 
+sentimentRetryWorker.on("completed", async (job) => {
+	logger.info("Sentiment retry: job completed", { jobId: job.id });
+	await flush();
+});
+
+sentimentRetryWorker.on("failed", async (job, err) => {
+	logger.error("Sentiment retry: job failed", {
+		jobId: job?.id,
+		error: err.message,
+	});
+	await flush();
+});
+
+sentimentRetryWorker.on("error", (err) => {
+	logger.error("Sentiment retry worker error", { error: err.message });
+});
+
 const app = new Hono();
 
 const serverAdapter = new HonoAdapter(serveStatic);
 createBullBoard({
-	queues: [new BullMQAdapter(perplexityCrawlQueue)],
+	queues: [
+		new BullMQAdapter(perplexityCrawlQueue),
+		new BullMQAdapter(sentimentRetryQueue),
+	],
 	serverAdapter,
 });
 app.route(
@@ -104,11 +152,16 @@ async function shutdown(signal: string) {
 	forceKillTimer.unref();
 
 	try {
-		await worker.close();
-		await queueEvents.close();
-		await perplexityCrawlQueue.close();
-		await sharedRedis.quit();
-		await flush();
+		await Promise.all([
+			worker.close(),
+			sentimentRetryWorker.close(),
+			queueEvents.close(),
+			sentimentRetryQueueEvents.close(),
+			perplexityCrawlQueue.close(),
+			sentimentRetryQueue.close(),
+			sharedRedis.quit(),
+			flush(),
+		]);
 		logger.info("Worker closed cleanly");
 	} catch (err) {
 		logger.error("Error during shutdown", {

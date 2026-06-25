@@ -97,6 +97,7 @@
         "@clerk/nextjs": "catalog:",
         "@opencited/crawler": "workspace:*",
         "@opencited/db": "workspace:*",
+        "@opencited/score-actions": "workspace:*",
         "@t3-oss/env-core": "catalog:",
         "@trpc/server": "catalog:",
         "ai": "catalog:",

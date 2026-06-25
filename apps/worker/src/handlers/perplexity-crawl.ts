@@ -15,8 +15,9 @@ import {
 	extractBrandIntelligenceAction,
 	saveBrandIntelligenceAction,
 	getCrawlContextAction,
+	computeVisibilityScoreAction,
 } from "@opencited/actions";
-import type { JobPayload } from "@opencited/queue";
+import { dispatch, type JobPayload } from "@opencited/queue";
 import { withDb } from "../db";
 import {
 	fetchProxyList,
@@ -278,31 +279,50 @@ export async function handlePerplexityCrawl(
 					competitorsMatched: saveResult.competitorsMatched,
 				});
 
-				// TODO(issue-22): compute and persist the AI Visibility Score.
-				// Spec: docs/agents/visibility-score.md (v1.0.0).
+				// Compute and persist the AI Visibility Score. A failure here
+				// never fails the crawl — the score is best-effort and the
+				// `sentimentIsFallback` flag handles a flaked sentiment LLM
+				// (we still write a row, with sentimentScore=50 and a single
+				// retry enqueued). Spec: docs/agents/visibility-score.md v1.0.0.
 				// ADR: docs/adr/0002-visibility-score.md.
-				//
-				// This is the integration point for the new score pipeline. It
-				// runs AFTER brand intelligence is saved so we have all inputs:
-				//   - crawl content + provider (from promptQueryCrawlTable)
-				//   - detected mentions with position (from crawl_brand_mention)
-				//   - citations (from crawl_source)
-				//   - target brand context (from crawlContext)
-				//
-				// Pseudocode (do not implement yet — schema migration first):
-				//   1. Build the per-crawl sub-scores:
-				//        mentionScore, positionScore, citationScore, coMentionScore
-				//        are pure functions of the data already saved above.
-				//   2. Call the sentiment LLM (temp=0, cached by content hash).
-				//        On failure → sentimentScore = 50, sentimentIsFallback = true,
-				//        enqueue a single retry via BullMQ.
-				//   3. Compute visibilityScore = 0.35*mention + 0.25*position
-				//        + 0.20*citation + 0.10*sentiment + 0.10*coMention.
-				//   4. Upsert into crawl_visibility_score with formulaVersion = "v1.0.0".
-				//
-				// Action to add: packages/actions/src/aiVisibility/computeVisibilityScoreAction.ts
-				// tRPC mutation for manual retry: retrySentimentAnalysis
-				//   (see docs/adr/0002-visibility-score.md §"Computation timing").
+				try {
+					const scoreResult = await computeVisibilityScoreAction({
+						input: { crawlId: promptQueryCrawlId },
+						ctx: { db, userId: null, isAuthenticated: false },
+					});
+
+					logger.info("AI Visibility Score computed", {
+						crawlId: promptQueryCrawlId,
+						visibilityScore: scoreResult.row.visibilityScore,
+						mentionScore: scoreResult.row.mentionScore,
+						positionScore: scoreResult.row.positionScore,
+						citationScore: scoreResult.row.citationScore,
+						sentimentScore: scoreResult.row.sentimentScore,
+						coMentionScore: scoreResult.row.coMentionScore,
+						formulaVersion: scoreResult.row.formulaVersion,
+						sentimentRetryNeeded: scoreResult.sentimentRetryNeeded,
+					});
+
+					if (scoreResult.sentimentRetryNeeded) {
+						await dispatch("sentiment-retry", {
+							crawlId: promptQueryCrawlId,
+							promptQueryCrawlId,
+							domainProjectId: crawlContext.domainProjectId,
+						});
+						logger.info("Sentiment retry enqueued", {
+							crawlId: promptQueryCrawlId,
+						});
+					}
+				} catch (scoreError) {
+					const scoreErrorMessage =
+						scoreError instanceof Error
+							? scoreError.message
+							: String(scoreError);
+					logger.error("AI Visibility Score computation failed", {
+						crawlId: promptQueryCrawlId,
+						error: scoreErrorMessage,
+					});
+				}
 			} catch (llmError) {
 				const llmErrorMessage =
 					llmError instanceof Error ? llmError.message : String(llmError);

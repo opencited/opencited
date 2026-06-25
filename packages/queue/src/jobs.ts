@@ -25,6 +25,24 @@ export const jobs = {
 			},
 		},
 	},
+	"sentiment-retry": {
+		// Single-attempt re-score of the sentiment sub-score for a crawl where
+		// the original LLM call fell back to neutral. The handler re-runs only
+		// the sentiment step (not the whole composite) and updates the row in
+		// place. See docs/adr/0002-visibility-score.md §"Computation timing".
+		payload: z.object({
+			crawlId: z.string(),
+			promptQueryCrawlId: z.string(),
+			domainProjectId: z.string(),
+		}),
+		options: {
+			attempts: 1,
+			backoff: {
+				type: "exponential",
+				delay: 2000,
+			},
+		},
+	},
 } satisfies Record<string, JobDefinition<z.ZodType>>;
 
 export type JobName = keyof typeof jobs;
