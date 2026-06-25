@@ -189,6 +189,22 @@
         "typescript": "catalog:",
       },
     },
+    "packages/score-actions": {
+      "name": "@opencited/score-actions",
+      "version": "0.0.0",
+      "dependencies": {
+        "@ai-sdk/groq": "catalog:",
+        "@ai-sdk/openai": "catalog:",
+        "ai": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@opencited/typescript-config": "workspace:*",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
     "packages/tailwind-config": {
       "name": "@opencited/tailwind-config",
       "version": "0.0.0",
@@ -824,6 +840,8 @@
     "@opencited/logger": ["@opencited/logger@workspace:packages/logger"],
 
     "@opencited/queue": ["@opencited/queue@workspace:packages/queue"],
+
+    "@opencited/score-actions": ["@opencited/score-actions@workspace:packages/score-actions"],
 
     "@opencited/tailwind-config": ["@opencited/tailwind-config@workspace:packages/tailwind-config"],
 

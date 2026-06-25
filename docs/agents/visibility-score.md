@@ -51,11 +51,11 @@ positionScore(a) = round(100 / log2(1 + rank(b, a)))   if b ∈ M
 | 1    | 100           |
 | 2    | 63            |
 | 3    | 50            |
-| 4    | 39            |
-| 5    | 32            |
-| 6    | 27            |
-| 7    | 24            |
-| 8    | 21            |
+| 4    | 43            |
+| 5    | 39            |
+| 6    | 36            |
+| 7    | 33            |
+| 8    | 32            |
 | ∞ (not mentioned) | 0 |
 
 The decay curve matches the research finding that the first brand mentioned in an AI answer captures 60–70% of clicks.
@@ -258,11 +258,15 @@ A user tracks 2 competitors (`Acme`, `Beta`) for their brand `MyBrand`. They run
 
 | Crawl | mentionScore | positionScore | citationScore | sentimentScore | coMentionScore | composite |
 |-------|--------------|---------------|---------------|----------------|----------------|-----------|
-| 1     | 100          | 100 (rank 1)  | 0             | 100 (positive) | 25 (1 of 4)    | 68        |
-| 2     | 100          | 50 (rank 3)   | 100 (cited)   | 50 (neutral)   | 25 (1 of 4)    | 60        |
+| 1     | 100          | 100 (rank 1)  | 0             | 100 (positive) | 25 (1 of 4)    | 73        |
+| 2     | 100          | 50 (rank 3)   | 100 (cited)   | 50 (neutral)   | 25 (1 of 4)    | 75        |
 | 3     | 100          | 100 (rank 1)  | 0             | 50 (neutral)   | 50 (2 of 4)    | 70        |
 
-**Per-prompt score**: `mean(68, 60, 70) = 66`
+Crawl 1 calculation: `0.35×100 + 0.25×100 + 0.20×0 + 0.10×100 + 0.10×25 = 35 + 25 + 0 + 10 + 2.5 = 72.5 → 73`
+Crawl 2 calculation: `0.35×100 + 0.25×50 + 0.20×100 + 0.10×50 + 0.10×25 = 35 + 12.5 + 20 + 5 + 2.5 = 75 → 75`
+Crawl 3 calculation: `0.35×100 + 0.25×100 + 0.20×0 + 0.10×50 + 0.10×50 = 35 + 25 + 0 + 5 + 5 = 70 → 70`
+
+**Per-prompt score**: `mean(73, 75, 70) = 72.67 → 73`
 
 **Per-brand-per-engine score (suppose after min-max against {MyBrand, Acme, Beta})**:
 - `mentionScore` for MyBrand: 100 (always mentioned). Peer set: Acme 67, Beta 100. Min=67, Max=100. Norm = 100.
