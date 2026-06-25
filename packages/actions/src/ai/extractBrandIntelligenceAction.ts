@@ -21,6 +21,7 @@ export const aiBrandMentionSchema = z.object({
 	brandUrl: z.string().nullable().optional(),
 	context: z.string().min(1),
 	mentionType: z.enum(["target", "competitor", "other"]),
+	position: z.number().int().positive(),
 });
 
 export const discoveredCompetitorSchema = z.object({
@@ -59,11 +60,13 @@ Rules:
 - Do NOT include the query itself or section headings as brands
 - Only include brands that are actually mentioned in the content
 
+CRITICAL: For every brandMention you return, you MUST include a "position" field. position is the 1-indexed ordinal rank of that brand in the order it first appears in the CONTENT, among ALL brand mentions in the answer. The 1st brand mentioned gets position=1, the 2nd gets position=2, and so on. Positions MUST be unique across the brandMentions array (no two mentions share a position). Brands mentioned multiple times keep the position of their FIRST appearance. If a brand is mentioned in the same sentence as another brand, the one that appears first in the text gets the lower position number.
+
 CRITICAL: discoveredCompetitors must include EVERY brand you classified as "competitor" that is NOT in the known competitors list provided below. This is how new competitors are discovered. Do NOT omit them.
 
 CRITICAL: For domain fields, NEVER return null. If no URL is mentioned, infer the most likely domain (e.g., "Auth0" → "auth0.com", "Supabase Auth" → "supabase.com", "Firebase Authentication" → "firebase.google.com"). Always return a string.`;
 
-function buildUserPrompt(
+export function buildExtractionPrompt(
 	input: z.infer<typeof extractBrandIntelligenceInputSchema>,
 ): string {
 	const knownCompetitorsList =
@@ -105,7 +108,8 @@ Return a JSON object with this exact structure:
       "brandName": "string",
       "brandUrl": "string or null",
       "context": "the surrounding sentence or paragraph where the brand is mentioned",
-      "mentionType": "target" | "competitor" | "other"
+      "mentionType": "target" | "competitor" | "other",
+      "position": <positive integer — 1-indexed ordinal rank by first appearance>
     }
   ],
   "discoveredCompetitors": [
@@ -119,13 +123,15 @@ Return a JSON object with this exact structure:
 
 IMPORTANT: For discoveredCompetitors, look at every brandMention with mentionType="competitor". If that brand is NOT in the known competitors list above, add it to discoveredCompetitors. This is critical for competitor discovery.
 
-IMPORTANT: NEVER return null for domain fields. If no URL is mentioned in the content, infer the most likely domain (e.g., "Auth0" → "auth0.com", "Supabase Auth" → "supabase.com"). Always return a valid domain string.`;
+IMPORTANT: NEVER return null for domain fields. If no URL is mentioned in the content, infer the most likely domain (e.g., "Auth0" → "auth0.com", "Supabase Auth" → "supabase.com"). Always return a valid domain string.
+
+IMPORTANT: Every brandMention MUST include a positive integer "position" (1, 2, 3, ...) reflecting the ordinal rank by first appearance. Positions are unique across the array. The downstream visibility score uses 100/log2(1+position), so getting this wrong skews the score.`;
 }
 
 export const extractBrandIntelligenceAction = async (
 	input: z.infer<typeof extractBrandIntelligenceInputSchema>,
 ): Promise<z.infer<typeof extractBrandIntelligenceOutputSchema>> => {
-	const prompt = buildUserPrompt(input);
+	const prompt = buildExtractionPrompt(input);
 	const { model, providerOptions } = createProvider();
 
 	const result = await generateText({

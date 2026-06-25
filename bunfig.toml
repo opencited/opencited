@@ -1,0 +1,6 @@
+[test]
+# Run from the repo root with `bun test packages/` — this preload sets the
+# env vars that the actions and db packages require at module-load time, so
+# the import chain doesn't fail before any test runs. Per-package `bunfig.toml`
+# files still work when you `bun test` from within a single package.
+preload = ["./test.root-setup.ts"]

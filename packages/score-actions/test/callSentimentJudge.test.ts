@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { callSentimentJudge, PROMPT_VERSION } from "../src";
 import type { LLMCaller } from "../src";
 

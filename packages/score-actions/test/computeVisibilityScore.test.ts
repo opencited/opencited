@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import {
 	FORMULA_VERSION,
 	PROMPT_VERSION,
@@ -173,8 +173,17 @@ describe("computeVisibilityScore — edge cases", () => {
 	});
 
 	it("position decay matches the spec table (rank 1..8)", () => {
-		const expected = [100, 63, 50, 43, 39, 36, 33, 32];
-		for (let rank = 1; rank <= 8; rank += 1) {
+		const expected = [
+			[1, 100],
+			[2, 63],
+			[3, 50],
+			[4, 43],
+			[5, 39],
+			[6, 36],
+			[7, 33],
+			[8, 32],
+		] as const;
+		for (const [rank, expectedScore] of expected) {
 			const result = computeVisibilityScore({
 				crawlContent: "x",
 				crawlProvider: "perplexity",
@@ -189,7 +198,7 @@ describe("computeVisibilityScore — edge cases", () => {
 				targetBrand,
 				sentimentInput: positiveSentiment,
 			});
-			expect(result.positionScore).toBe(expected[rank - 1]);
+			expect(result.positionScore).toBe(expectedScore);
 		}
 	});
 

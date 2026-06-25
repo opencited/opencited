@@ -108,6 +108,7 @@ export const saveBrandIntelligenceAction = async (params: {
 			brandUrl: mention.brandUrl,
 			context: mention.context,
 			mentionType: mention.mentionType,
+			position: mention.position,
 			metadata: {},
 		};
 	});

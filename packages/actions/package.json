@@ -10,7 +10,8 @@
 		"./env": "./src/env.ts"
 	},
 	"scripts": {
-		"tsc": "tsc --noEmit"
+		"tsc": "tsc --noEmit",
+		"test": "bun test"
 	},
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
@@ -27,6 +28,8 @@
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
-		"typescript": "catalog:"
+		"@types/node": "catalog:",
+		"typescript": "catalog:",
+		"bun-types": "catalog:"
 	}
 }

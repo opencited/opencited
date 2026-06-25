@@ -10,7 +10,7 @@
 	},
 	"scripts": {
 		"tsc": "tsc --noEmit",
-		"test": "vitest run"
+		"test": "bun test"
 	},
 	"dependencies": {
 		"ai": "catalog:",
@@ -21,7 +21,7 @@
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
 		"@types/node": "catalog:",
-		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"bun-types": "catalog:",
+		"typescript": "catalog:"
 	}
 }
