@@ -38,7 +38,7 @@ export const getCompetitorIntelligenceAction = async (params: {
 		.where(
 			and(
 				eq(competitorTable.domainProjectId, input.domainProjectId),
-				eq(competitorTable.active, "true"),
+				eq(competitorTable.active, true),
 			),
 		);
 

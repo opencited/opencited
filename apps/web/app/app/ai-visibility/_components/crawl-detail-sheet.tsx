@@ -190,10 +190,10 @@ export function CrawlDetailSheet({
 														<span className="text-sm font-medium truncate">
 															{source.title ?? source.domain}
 														</span>
-														{source.isOwnDomain === "true" && (
+														{source.isOwnDomain && (
 															<Badge variant="success">Own</Badge>
 														)}
-														{source.isCompetitorDomain === "true" && (
+														{source.isCompetitorDomain && (
 															<Badge variant="warning">Competitor</Badge>
 														)}
 													</div>

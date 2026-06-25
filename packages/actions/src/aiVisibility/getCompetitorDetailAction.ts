@@ -146,7 +146,7 @@ export const getCompetitorDetailAction = async (params: {
 		const crawlSources = sourcesByCrawlId.get(mention.crawlId) ?? [];
 
 		const ownDomainSource = crawlSources.find(
-			(s: SourceRow) => s.isOwnDomain === "true",
+			(s: SourceRow) => s.isOwnDomain === true,
 		);
 		const competitorSource = crawlSources.find(
 			(s: SourceRow) => s.domain === competitor[0].domain,
