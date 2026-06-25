@@ -277,6 +277,32 @@ export async function handlePerplexityCrawl(
 					competitorsCreated: saveResult.competitorsCreated,
 					competitorsMatched: saveResult.competitorsMatched,
 				});
+
+				// TODO(issue-22): compute and persist the AI Visibility Score.
+				// Spec: docs/agents/visibility-score.md (v1.0.0).
+				// ADR: docs/adr/0002-visibility-score.md.
+				//
+				// This is the integration point for the new score pipeline. It
+				// runs AFTER brand intelligence is saved so we have all inputs:
+				//   - crawl content + provider (from promptQueryCrawlTable)
+				//   - detected mentions with position (from crawl_brand_mention)
+				//   - citations (from crawl_source)
+				//   - target brand context (from crawlContext)
+				//
+				// Pseudocode (do not implement yet — schema migration first):
+				//   1. Build the per-crawl sub-scores:
+				//        mentionScore, positionScore, citationScore, coMentionScore
+				//        are pure functions of the data already saved above.
+				//   2. Call the sentiment LLM (temp=0, cached by content hash).
+				//        On failure → sentimentScore = 50, sentimentIsFallback = true,
+				//        enqueue a single retry via BullMQ.
+				//   3. Compute visibilityScore = 0.35*mention + 0.25*position
+				//        + 0.20*citation + 0.10*sentiment + 0.10*coMention.
+				//   4. Upsert into crawl_visibility_score with formulaVersion = "v1.0.0".
+				//
+				// Action to add: packages/actions/src/aiVisibility/computeVisibilityScoreAction.ts
+				// tRPC mutation for manual retry: retrySentimentAnalysis
+				//   (see docs/adr/0002-visibility-score.md §"Computation timing").
 			} catch (llmError) {
 				const llmErrorMessage =
 					llmError instanceof Error ? llmError.message : String(llmError);
