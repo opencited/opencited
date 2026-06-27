@@ -1,5 +1,6 @@
 import type { BrowserSession } from "../types";
 import type { CrawlResult, AuthCredentials } from "./types";
+import type { FailureType } from "../errors";
 
 export type { AuthCredentials };
 
@@ -16,4 +17,5 @@ export interface CrawlerProvider {
 	waitForResponse(session: BrowserSession): Promise<void>;
 	extractResult(session: BrowserSession): Promise<CrawlResult>;
 	cleanup?(session: BrowserSession): Promise<void>;
+	classifyError(error: Error): FailureType;
 }
