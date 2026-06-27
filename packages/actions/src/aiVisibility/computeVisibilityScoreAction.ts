@@ -332,6 +332,17 @@ export const retrySentimentInternal = async (
 		throw new Error(`No score row to retry sentiment for: ${input.crawlId}`);
 	}
 
+	const nowDate = now();
+	if (existing.sentimentLastAttemptAt) {
+		const elapsed =
+			nowDate.getTime() - existing.sentimentLastAttemptAt.getTime();
+		if (elapsed < 60_000) {
+			throw new Error(
+				`Rate limited: retry attempted ${Math.round(elapsed / 1000)}s after last attempt (minimum 60s)`,
+			);
+		}
+	}
+
 	const crawls: CrawlRow[] = await ctx.db
 		.select()
 		.from(promptQueryCrawlTable)

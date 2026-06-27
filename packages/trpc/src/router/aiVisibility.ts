@@ -20,6 +20,12 @@ import {
 	getCompetitorDetailHandler,
 	getCompetitorDetailInputSchema,
 	getCompetitorDetailOutputSchema,
+	getCrawlScoreHandler,
+	getCrawlScoreInputSchema,
+	getCrawlScoreOutputSchema,
+	retrySentimentHandler,
+	retrySentimentInputSchema,
+	retrySentimentOutputSchema,
 } from "@opencited/actions";
 
 export const aiVisibilityRouter = createTRPCRouter({
@@ -96,5 +102,33 @@ export const aiVisibilityRouter = createTRPCRouter({
 				});
 			}
 			return getCompetitorDetailHandler({ ctx, input });
+		}),
+
+	getCrawlScore: publicProcedure
+		.input(getCrawlScoreInputSchema)
+		.output(getCrawlScoreOutputSchema)
+		.query(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "No organization found",
+				});
+			}
+			return getCrawlScoreHandler({ ctx, input });
+		}),
+
+	retrySentiment: publicProcedure
+		.input(retrySentimentInputSchema)
+		.output(retrySentimentOutputSchema)
+		.mutation(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "No organization found",
+				});
+			}
+			return retrySentimentHandler({ ctx, input });
 		}),
 });

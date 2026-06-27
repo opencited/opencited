@@ -28,6 +28,7 @@ import { QueryCell } from "@/app/components/query-cell";
 import { TimeAgo } from "@/app/components/time-ago";
 import { AnswerFormatBadge } from "./answer-format-badge";
 import { MentionTypeBadge } from "./mention-type-badge";
+import { ScoreTab } from "./score-tab";
 
 interface CrawlDetailSheetProps {
 	crawlId: string;
@@ -109,6 +110,7 @@ export function CrawlDetailSheet({
 						<TabsTrigger value="sources">
 							Sources {crawl?.sourceCount ? `(${crawl.sourceCount})` : ""}
 						</TabsTrigger>
+						<TabsTrigger value="score">Score</TabsTrigger>
 						<TabsTrigger value="mentions">
 							Mentions{" "}
 							{crawl?.brandMentionCount ? `(${crawl.brandMentionCount})` : ""}
@@ -219,6 +221,10 @@ export function CrawlDetailSheet({
 									);
 								}}
 							/>
+						</TabsContent>
+
+						<TabsContent value="score" className="mt-0">
+							<ScoreTab crawlId={crawlId} />
 						</TabsContent>
 
 						<TabsContent value="mentions" className="mt-0">

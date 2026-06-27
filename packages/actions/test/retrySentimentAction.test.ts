@@ -362,3 +362,65 @@ describe("retrySentimentInternal — error paths", () => {
 		).rejects.toThrow(/Crawl not found/);
 	});
 });
+
+describe("retrySentimentInternal — rate limiting", () => {
+	it("throws when less than 60 seconds have elapsed since the last attempt", async () => {
+		const mockDb = makeMockDb({
+			crawl: SEED_CRAWL,
+			project: SEED_PROJECT,
+			existingScore: {
+				...FALLBACK_SCORE,
+				sentimentLastAttemptAt: new Date("2026-06-25T11:59:30.000Z"),
+			},
+		});
+
+		await expect(
+			retrySentimentInternal({
+				input: { crawlId: "crawl-1" },
+				ctx: { ...baseCtx, db: mockDb.db },
+				model: MODEL_POSITIVE,
+				now: () => new Date("2026-06-25T12:00:00.000Z"),
+			}),
+		).rejects.toThrow(/Rate limited/);
+	});
+
+	it("allows retry when 60 or more seconds have elapsed since the last attempt", async () => {
+		const mockDb = makeMockDb({
+			crawl: SEED_CRAWL,
+			project: SEED_PROJECT,
+			existingScore: {
+				...FALLBACK_SCORE,
+				sentimentLastAttemptAt: new Date("2026-06-25T11:59:00.000Z"),
+			},
+		});
+
+		const result = await retrySentimentInternal({
+			input: { crawlId: "crawl-1" },
+			ctx: { ...baseCtx, db: mockDb.db },
+			model: MODEL_POSITIVE,
+			now: () => new Date("2026-06-25T12:00:00.000Z"),
+		});
+
+		expect(result.recovered).toBe(true);
+	});
+
+	it("allows retry when sentimentLastAttemptAt is null (never attempted)", async () => {
+		const mockDb = makeMockDb({
+			crawl: SEED_CRAWL,
+			project: SEED_PROJECT,
+			existingScore: {
+				...FALLBACK_SCORE,
+				sentimentLastAttemptAt: null,
+			},
+		});
+
+		const result = await retrySentimentInternal({
+			input: { crawlId: "crawl-1" },
+			ctx: { ...baseCtx, db: mockDb.db },
+			model: MODEL_POSITIVE,
+			now: () => FIXED_NOW,
+		});
+
+		expect(result.recovered).toBe(true);
+	});
+});
