@@ -12,4 +12,4 @@ Run typechecking regularly, single test files regularly, and the full test suite
 
 Once done, use /review to review the work.
 
-Commit your work to the current branch.
+Do NOT commit the changes. Leave the working directory with uncommitted changes for the user to review and commit manually.

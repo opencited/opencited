@@ -124,6 +124,12 @@ export {
 } from "./dialog";
 
 export {
+	HoverCard,
+	HoverCardTrigger,
+	HoverCardContent,
+} from "./hover-card";
+
+export {
 	Tabs,
 	TabsList,
 	TabsTrigger,
