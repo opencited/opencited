@@ -22,6 +22,7 @@ import { useState } from "react";
 import { ScoreExplainerTooltip } from "@/app/components/score-explainer-tooltip";
 import { TimeAgo } from "@/app/components/time-ago";
 import { CrawlDetailSheet } from "./crawl-detail-sheet";
+import { getScoreTier, TIER_DOT_CLASSES } from "@/app/lib/score-display";
 
 interface VisibilityOverviewRow {
 	queryId: string;
@@ -309,19 +310,6 @@ function ScoreCell({ row }: { row: VisibilityOverviewRow }) {
 		</div>
 	);
 }
-
-function getScoreTier(value: number): "high" | "mid" | "low" {
-	if (value >= 70) return "high";
-	if (value >= 40) return "mid";
-	return "low";
-}
-
-const TIER_DOT_CLASSES = {
-	high: "bg-emerald-500",
-	mid: "bg-amber-500",
-	low: "bg-muted-foreground/40",
-} as const;
-
 function SubScoreRow({ label, value }: { label: string; value: number }) {
 	const tier = getScoreTier(value);
 

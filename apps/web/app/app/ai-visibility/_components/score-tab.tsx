@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useTRPC } from "@/app/_trpc/client";
 import { QueryCell } from "@/app/components/query-cell";
 import { ScoreExplainerTooltip } from "@/app/components/score-explainer-tooltip";
+import { getScoreTier } from "@/app/lib/score-display";
 
 interface ScoreTabProps {
 	crawlId: string;
@@ -34,12 +35,6 @@ const TIER_CLASSES = {
 	mid: "bg-amber-500/10 dark:bg-amber-500/20",
 	low: "bg-muted",
 } as const;
-
-function getScoreTier(value: number): "high" | "mid" | "low" {
-	if (value >= 70) return "high";
-	if (value >= 40) return "mid";
-	return "low";
-}
 
 function InfoButton({ label }: { label: string }) {
 	return (
