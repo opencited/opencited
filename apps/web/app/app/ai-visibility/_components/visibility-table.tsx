@@ -17,8 +17,9 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@opencited/ui";
-import { AlertCircleIcon, ArrowUpDownIcon, HelpCircleIcon } from "lucide-react";
+import { AlertCircleIcon, HelpCircleIcon } from "lucide-react";
 import { useState } from "react";
+import { ScoreExplainerTooltip } from "@/app/components/score-explainer-tooltip";
 import { TimeAgo } from "@/app/components/time-ago";
 import { CrawlDetailSheet } from "./crawl-detail-sheet";
 
@@ -87,30 +88,7 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 							<TableHead>
 								<div className="flex items-center gap-1.5">
 									<span>Score</span>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<Button
-												type="button"
-												variant="ghost"
-												size="icon"
-												className="h-auto p-0 text-muted-foreground hover:text-foreground transition-colors"
-												aria-label="Sort by score"
-											>
-												<ArrowUpDownIcon className="h-3.5 w-3.5" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent
-											side="top"
-											align="start"
-											className="max-w-xs"
-										>
-											<p className="text-xs">
-												AI Visibility Score (0–100) based on mention, position,
-												citation, sentiment, and co-mention. Requires at least 3
-												successful crawls.
-											</p>
-										</TooltipContent>
-									</Tooltip>
+									<ScoreExplainerTooltip iconSize="sm" />
 								</div>
 							</TableHead>
 						</TableRow>
@@ -288,6 +266,22 @@ function ScoreCell({ row }: { row: VisibilityOverviewRow }) {
 					</div>
 				</HoverCardContent>
 			</HoverCard>
+			{row.scoreBreakdown && (
+				<ScoreExplainerTooltip
+					iconSize="sm"
+					composite={row.score ?? undefined}
+					subScores={{
+						mention: row.scoreBreakdown.mentionScore,
+						position: row.scoreBreakdown.positionScore,
+						citation: row.scoreBreakdown.citationScore,
+						sentiment: row.scoreBreakdown.sentimentScore,
+						coMention: row.scoreBreakdown.coMentionScore,
+					}}
+					sampleSize={row.sampleSize}
+					formulaVersion={row.formulaVersion ?? undefined}
+					label="Prompt score"
+				/>
+			)}
 			{row.sentimentIsFallback && (
 				<Tooltip>
 					<TooltipTrigger asChild>

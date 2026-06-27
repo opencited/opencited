@@ -212,10 +212,10 @@
       "name": "@opencited/score-validation",
       "version": "0.0.0",
       "dependencies": {
-        "@opencited/score-actions": "workspace:*",
         "zod": "catalog:",
       },
       "devDependencies": {
+        "@opencited/score-actions": "workspace:*",
         "@opencited/typescript-config": "workspace:*",
         "@types/node": "catalog:",
         "bun-types": "catalog:",
@@ -284,7 +284,9 @@
         "react-day-picker": "^10.0.1",
         "react-dom": "catalog:",
         "react-hook-form": "^7.77.0",
+        "react-markdown": "catalog:",
         "recharts": "2.15.4",
+        "remark-gfm": "catalog:",
         "sonner": "catalog:",
         "zod": "catalog:",
       },

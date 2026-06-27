@@ -229,7 +229,19 @@ export function ScoreTab({ crawlId }: ScoreTabProps) {
 									</span>
 								</div>
 							</div>
-							<ScoreExplainerTooltip side="left" iconSize="md" />
+							<ScoreExplainerTooltip
+								iconSize="md"
+								composite={data.visibilityScore ?? undefined}
+								subScores={{
+									mention: data.mentionScore,
+									position: data.positionScore,
+									citation: data.citationScore,
+									sentiment: data.sentimentScore,
+									coMention: data.coMentionScore,
+								}}
+								formulaVersion={data.formulaVersion}
+								label="Crawl score"
+							/>
 						</div>
 
 						<div className="mt-5">

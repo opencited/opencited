@@ -151,6 +151,8 @@ export {
 
 export { Spinner } from "./spinner";
 
+export { Markdown } from "./markdown";
+
 export {
 	ChartContainer,
 	ChartTooltip,

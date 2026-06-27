@@ -22,6 +22,19 @@ import { ScoreExplainerTooltip } from "@/app/components/score-explainer-tooltip"
 
 const COLD_START_MIN_CRAWLS = 3;
 
+function averageSubScores(
+	scores: PerBrandPerEngineScore[],
+	key:
+		| "mentionScoreNorm"
+		| "positionScoreNorm"
+		| "citationScoreNorm"
+		| "sentimentScoreNorm"
+		| "coMentionScoreNorm",
+) {
+	if (scores.length === 0) return 0;
+	return Math.round(scores.reduce((s, e) => s + e[key], 0) / scores.length);
+}
+
 interface PerBrandPerEngineScore {
 	engine: string;
 	mentionScoreNorm: number;
@@ -197,7 +210,7 @@ export function VisibilityScoreCard({
 			<EntityCard size="md">
 				<EntityCardContent size="md">
 					<EntityCardHeader
-						icon={<ScoreExplainerTooltip side="right" iconSize="sm" />}
+						icon={<ScoreExplainerTooltip iconSize="sm" />}
 						iconPosition="right"
 					>
 						<EntityCardTitle>AI Visibility Score</EntityCardTitle>
@@ -226,7 +239,7 @@ export function VisibilityScoreCard({
 			<EntityCard size="md">
 				<EntityCardContent size="md">
 					<EntityCardHeader
-						icon={<ScoreExplainerTooltip side="right" iconSize="sm" />}
+						icon={<ScoreExplainerTooltip iconSize="sm" />}
 						iconPosition="right"
 					>
 						<EntityCardTitle>AI Visibility Score</EntityCardTitle>
@@ -252,7 +265,39 @@ export function VisibilityScoreCard({
 		<EntityCard size="md">
 			<EntityCardContent size="md">
 				<EntityCardHeader
-					icon={<ScoreExplainerTooltip side="right" iconSize="sm" />}
+					icon={
+						<ScoreExplainerTooltip
+							iconSize="sm"
+							composite={crossEngineScore}
+							subScores={
+								perBrandPerEngineScores.length > 0
+									? {
+											mention: averageSubScores(
+												perBrandPerEngineScores,
+												"mentionScoreNorm",
+											),
+											position: averageSubScores(
+												perBrandPerEngineScores,
+												"positionScoreNorm",
+											),
+											citation: averageSubScores(
+												perBrandPerEngineScores,
+												"citationScoreNorm",
+											),
+											sentiment: averageSubScores(
+												perBrandPerEngineScores,
+												"sentimentScoreNorm",
+											),
+											coMention: averageSubScores(
+												perBrandPerEngineScores,
+												"coMentionScoreNorm",
+											),
+										}
+									: undefined
+							}
+							label="Cross-engine score"
+						/>
+					}
 					iconPosition="right"
 				>
 					<EntityCardTitle>AI Visibility Score</EntityCardTitle>

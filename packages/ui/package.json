@@ -57,6 +57,8 @@
 		"react-day-picker": "^10.0.1",
 		"react-dom": "catalog:",
 		"react-hook-form": "^7.77.0",
+		"react-markdown": "catalog:",
+		"remark-gfm": "catalog:",
 		"recharts": "2.15.4",
 		"sonner": "catalog:",
 		"zod": "catalog:"
