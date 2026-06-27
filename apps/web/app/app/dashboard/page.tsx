@@ -54,6 +54,7 @@ export default function DashboardPage() {
 		...trpc.dashboard.getVisibilityAggregate.queryOptions({
 			domainProjectId: domainProject.id,
 		}),
+		refetchInterval: 30000,
 	});
 
 	const visibilityMetricsQuery = useQuery({
@@ -87,6 +88,9 @@ export default function DashboardPage() {
 									crossEngineScore={aggregate.crossEngineScore}
 									perBrandPerEngineScores={aggregate.perBrandPerEngineScores}
 									trend={aggregate.trend}
+									totalCompletedCrawls={aggregate.totalCompletedCrawls}
+									activeCompetitorCount={aggregate.activeCompetitorCount}
+									maxCrawlsPerEngine={aggregate.maxCrawlsPerEngine}
 								/>
 								<StatCard
 									icon={Target}

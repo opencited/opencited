@@ -36,6 +36,9 @@ export const getVisibilityAggregateOutputSchema = z.object({
 			score: z.number().nullable(),
 		}),
 	),
+	totalCompletedCrawls: z.number(),
+	activeCompetitorCount: z.number(),
+	maxCrawlsPerEngine: z.number(),
 });
 
 export const getVisibilityAggregateContextSchema = baseActionContextSchema;
@@ -130,6 +133,9 @@ export const getVisibilityAggregateAction = async (params: {
 			perBrandPerEngineScores: [],
 			crossEngineScore: null,
 			trend: [],
+			totalCompletedCrawls: 0,
+			activeCompetitorCount: 0,
+			maxCrawlsPerEngine: 0,
 		};
 	}
 
@@ -218,10 +224,21 @@ export const getVisibilityAggregateAction = async (params: {
 
 	const result = aggregateVisibilityScores(scoredCrawls, "target");
 
+	const crawlsPerEngine = new Map<string, number>();
+	for (const crawl of allCrawls) {
+		const engine = crawl.provider ?? "unknown";
+		crawlsPerEngine.set(engine, (crawlsPerEngine.get(engine) ?? 0) + 1);
+	}
+	const maxCrawlsPerEngine =
+		crawlsPerEngine.size > 0 ? Math.max(...crawlsPerEngine.values()) : 0;
+
 	return {
 		perBrandPerEngineScores: result.perBrandPerEngineScores,
 		crossEngineScore: result.crossEngineScore,
 		trend: result.trend,
+		totalCompletedCrawls: allCrawls.length,
+		activeCompetitorCount: competitors.length,
+		maxCrawlsPerEngine,
 	};
 };
 

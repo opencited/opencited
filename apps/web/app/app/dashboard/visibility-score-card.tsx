@@ -6,10 +6,8 @@ import {
 	EntityCardHeader,
 	EntityCardTitle,
 	EntityCardValue,
-	Tooltip as UITooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
+	Button,
+	Progress,
 } from "@opencited/ui";
 import {
 	Area,
@@ -19,7 +17,10 @@ import {
 	Tooltip,
 	ResponsiveContainer,
 } from "recharts";
-import { Info } from "lucide-react";
+import Link from "next/link";
+import { ScoreExplainerTooltip } from "@/app/components/score-explainer-tooltip";
+
+const COLD_START_MIN_CRAWLS = 3;
 
 interface PerBrandPerEngineScore {
 	engine: string;
@@ -40,6 +41,9 @@ interface VisibilityScoreCardProps {
 	crossEngineScore: number | null;
 	perBrandPerEngineScores: PerBrandPerEngineScore[];
 	trend: TrendPoint[];
+	totalCompletedCrawls: number;
+	activeCompetitorCount: number;
+	maxCrawlsPerEngine: number;
 }
 
 function CustomTooltip({
@@ -161,8 +165,11 @@ export function VisibilityScoreCard({
 	crossEngineScore,
 	perBrandPerEngineScores,
 	trend,
+	totalCompletedCrawls,
+	activeCompetitorCount,
+	maxCrawlsPerEngine,
 }: VisibilityScoreCardProps) {
-	if (crossEngineScore === null) {
+	if (totalCompletedCrawls === 0) {
 		return (
 			<EntityCard size="md">
 				<EntityCardContent size="md">
@@ -171,12 +178,70 @@ export function VisibilityScoreCard({
 					</EntityCardHeader>
 					<div className="flex flex-col items-center justify-center py-12 text-center">
 						<p className="text-sm text-foreground mb-1.5">
-							Not enough data yet
+							Run your first prompt to see your AI Visibility Score
 						</p>
-						<p className="text-xs text-muted-foreground">
-							Complete at least 3 crawls with competitors tracked to see your
+						<p className="text-xs text-muted-foreground mb-4">
+							Track where your brand appears in AI-generated answers
+						</p>
+						<Button asChild size="sm">
+							<Link href="/app/prompts">Create a Prompt</Link>
+						</Button>
+					</div>
+				</EntityCardContent>
+			</EntityCard>
+		);
+	}
+
+	if (activeCompetitorCount === 0) {
+		return (
+			<EntityCard size="md">
+				<EntityCardContent size="md">
+					<EntityCardHeader
+						icon={<ScoreExplainerTooltip side="right" iconSize="sm" />}
+						iconPosition="right"
+					>
+						<EntityCardTitle>AI Visibility Score</EntityCardTitle>
+					</EntityCardHeader>
+					<div className="flex flex-col items-center justify-center py-12 text-center">
+						<p className="text-sm text-foreground mb-1.5">
+							Add a competitor to enable scoring
+						</p>
+						<p className="text-xs text-muted-foreground mb-4">
+							Your score is calculated relative to your tracked competitors
+						</p>
+						<Button asChild size="sm">
+							<Link href="/app/competitors">Add Competitor</Link>
+						</Button>
+					</div>
+				</EntityCardContent>
+			</EntityCard>
+		);
+	}
+
+	if (crossEngineScore === null) {
+		const progress = Math.min(maxCrawlsPerEngine, COLD_START_MIN_CRAWLS);
+		const progressPercent = (progress / COLD_START_MIN_CRAWLS) * 100;
+
+		return (
+			<EntityCard size="md">
+				<EntityCardContent size="md">
+					<EntityCardHeader
+						icon={<ScoreExplainerTooltip side="right" iconSize="sm" />}
+						iconPosition="right"
+					>
+						<EntityCardTitle>AI Visibility Score</EntityCardTitle>
+					</EntityCardHeader>
+					<div className="flex flex-col items-center justify-center py-12 text-center">
+						<p className="text-sm text-foreground mb-1.5">
+							{progress} of {COLD_START_MIN_CRAWLS} checks needed for your first
 							score
 						</p>
+						<p className="text-xs text-muted-foreground mb-4">
+							Keep running prompts to build your score
+						</p>
+						<div className="w-full max-w-[200px]">
+							<Progress value={progressPercent} className="h-1.5" />
+						</div>
 					</div>
 				</EntityCardContent>
 			</EntityCard>
@@ -187,23 +252,7 @@ export function VisibilityScoreCard({
 		<EntityCard size="md">
 			<EntityCardContent size="md">
 				<EntityCardHeader
-					icon={
-						<TooltipProvider>
-							<UITooltip>
-								<TooltipTrigger asChild>
-									<Info className="h-3.5 w-3.5 cursor-help text-muted-foreground hover:text-foreground transition-colors" />
-								</TooltipTrigger>
-								<TooltipContent side="right" className="max-w-xs">
-									<p className="text-xs leading-relaxed">
-										Your AI Visibility Score measures how well your brand
-										appears in AI-generated answers. Calculated from mention
-										frequency, position, citations, sentiment, and share of
-										voice, normalised against your competitors.
-									</p>
-								</TooltipContent>
-							</UITooltip>
-						</TooltipProvider>
-					}
+					icon={<ScoreExplainerTooltip side="right" iconSize="sm" />}
 					iconPosition="right"
 				>
 					<EntityCardTitle>AI Visibility Score</EntityCardTitle>

@@ -211,6 +211,17 @@ function ColumnHeaderWithTooltip({
 
 function ScoreCell({ row }: { row: VisibilityOverviewRow }) {
 	if (row.score === null) {
+		let tooltipText =
+			"Needs at least 3 successful checks to calculate a score.";
+		if (row.totalCrawls === 0) {
+			tooltipText = "Run your first check to start building your score.";
+		} else if (row.competitorCount === 0) {
+			tooltipText =
+				"Your score is peer-relative — add at least one tracked competitor to enable scoring.";
+		} else if (row.totalCrawls < 3) {
+			tooltipText = `${row.totalCrawls} of 3 checks complete. Keep running prompts to calculate your score.`;
+		}
+
 		return (
 			<Tooltip>
 				<TooltipTrigger asChild>
@@ -220,9 +231,7 @@ function ScoreCell({ row }: { row: VisibilityOverviewRow }) {
 					</div>
 				</TooltipTrigger>
 				<TooltipContent side="top" align="start" className="max-w-xs">
-					<p className="text-xs">
-						Needs at least 3 successful checks to calculate a score.
-					</p>
+					<p className="text-xs">{tooltipText}</p>
 				</TooltipContent>
 			</Tooltip>
 		);

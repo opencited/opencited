@@ -15,6 +15,7 @@ import { Info, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useTRPC } from "@/app/_trpc/client";
 import { QueryCell } from "@/app/components/query-cell";
+import { ScoreExplainerTooltip } from "@/app/components/score-explainer-tooltip";
 
 interface ScoreTabProps {
 	crawlId: string;
@@ -45,13 +46,15 @@ function InfoButton({ label }: { label: string }) {
 		<TooltipProvider delayDuration={0}>
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<button
+					<Button
 						type="button"
+						variant="ghost"
+						size="icon"
 						aria-label={`More info about ${label}`}
-						className="p-1.5 text-muted-foreground hover:text-foreground active:opacity-60 transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+						className="h-auto w-auto p-1 text-muted-foreground hover:text-foreground"
 					>
 						<Info className="h-3 w-3" />
-					</button>
+					</Button>
 				</TooltipTrigger>
 				<TooltipContent side="right" className="max-w-[200px]">
 					<p>{label}</p>
@@ -226,32 +229,7 @@ export function ScoreTab({ crawlId }: ScoreTabProps) {
 									</span>
 								</div>
 							</div>
-							<TooltipProvider delayDuration={0}>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<button
-											type="button"
-											aria-label="More info about composite score formula"
-											className="p-1.5 text-muted-foreground hover:text-foreground active:opacity-60 transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-										>
-											<Info className="h-4 w-4" />
-										</button>
-									</TooltipTrigger>
-									<TooltipContent side="left" className="max-w-[240px]">
-										<p className="mb-1.5">Weighted average of 5 sub-scores:</p>
-										<ul className="space-y-0.5 text-xs">
-											<li>Mention (35%)</li>
-											<li>Position (25%)</li>
-											<li>Citation (20%)</li>
-											<li>Sentiment (10%)</li>
-											<li>Co-mention (10%)</li>
-										</ul>
-										<p className="text-xs text-muted-foreground mt-2">
-											Range: 0-100
-										</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
+							<ScoreExplainerTooltip side="left" iconSize="md" />
 						</div>
 
 						<div className="mt-5">
