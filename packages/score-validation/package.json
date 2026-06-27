@@ -1,0 +1,25 @@
+{
+	"name": "@opencited/score-validation",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"tsc": "tsc --noEmit",
+		"test": "bun test"
+	},
+	"dependencies": {
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@opencited/score-actions": "workspace:*",
+		"@opencited/typescript-config": "workspace:*",
+		"@types/node": "catalog:",
+		"bun-types": "catalog:",
+		"typescript": "catalog:"
+	}
+}

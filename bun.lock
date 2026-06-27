@@ -208,6 +208,20 @@
         "typescript": "catalog:",
       },
     },
+    "packages/score-validation": {
+      "name": "@opencited/score-validation",
+      "version": "0.0.0",
+      "dependencies": {
+        "@opencited/score-actions": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@opencited/typescript-config": "workspace:*",
+        "@types/node": "catalog:",
+        "bun-types": "catalog:",
+        "typescript": "catalog:",
+      },
+    },
     "packages/tailwind-config": {
       "name": "@opencited/tailwind-config",
       "version": "0.0.0",
@@ -849,6 +863,8 @@
     "@opencited/queue": ["@opencited/queue@workspace:packages/queue"],
 
     "@opencited/score-actions": ["@opencited/score-actions@workspace:packages/score-actions"],
+
+    "@opencited/score-validation": ["@opencited/score-validation@workspace:packages/score-validation"],
 
     "@opencited/tailwind-config": ["@opencited/tailwind-config@workspace:packages/tailwind-config"],
 

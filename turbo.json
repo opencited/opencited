@@ -47,6 +47,11 @@
 				"^tsc"
 			]
 		},
+		"test": {
+			"dependsOn": [
+				"^test"
+			]
+		},
 		"migrate": {
 			"dependsOn": [
 				"^migrate"
