@@ -18,6 +18,7 @@
 		"@clerk/nextjs": "catalog:",
 		"@opencited/crawler": "workspace:*",
 		"@opencited/db": "workspace:*",
+		"@opencited/logger": "workspace:*",
 		"@opencited/score-actions": "workspace:*",
 		"@trpc/server": "catalog:",
 		"workflow": "catalog:",

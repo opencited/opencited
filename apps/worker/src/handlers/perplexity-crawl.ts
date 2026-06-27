@@ -9,13 +9,9 @@ import {
 	type LoggerContext,
 } from "@opencited/browser-crawler";
 import {
-	saveCrawlResultAction,
+	intakeCrawlResultAction,
 	failCrawlAction,
-	saveStructuredCrawlDataAction,
-	extractBrandIntelligenceAction,
-	saveBrandIntelligenceAction,
 	getCrawlContextAction,
-	computeVisibilityScoreAction,
 } from "@opencited/actions";
 import { dispatch, type JobPayload } from "@opencited/queue";
 import { withDb } from "../db";
@@ -217,116 +213,41 @@ export async function handlePerplexityCrawl(
 				citationsCount: result.structured?.citations.length ?? 0,
 			});
 
-			await saveCrawlResultAction({
+			const intakeResult = await intakeCrawlResultAction({
 				input: {
 					crawlId: promptQueryCrawlId,
-					provider: result.provider,
-					content: result.content,
-					url: result.metadata.url,
-					title: result.metadata.title,
-					loadTimeMs: endTime - startTime,
-					timestamp: result.metadata.timestamp.toISOString(),
 					promptQueryId,
+					domainProjectId: crawlContext.domainProjectId ?? domainProjectId,
+					query,
+					result,
+					loadTimeMs: endTime - startTime,
+					crawlContext: {
+						targetBrand: crawlContext.targetBrand,
+						targetDomain: crawlContext.targetDomain,
+						targetAliases: crawlContext.targetAliases,
+						knownCompetitors: crawlContext.knownCompetitors,
+					},
+					logger,
 				},
 				ctx: { db, userId: null, isAuthenticated: false },
 			});
 
-			if (result.structured) {
-				await saveStructuredCrawlDataAction({
-					input: {
-						crawlId: promptQueryCrawlId,
-						promptQueryId,
-						domainProjectId: crawlContext.domainProjectId,
-						structured: {
-							citations: result.structured.citations,
-							brandMentions: [],
-							answerFormat: result.structured.answerFormat,
-							wordCount: result.content.split(/\s+/).length,
-						},
-					},
-					ctx: { db, userId: null, isAuthenticated: false },
+			if (!intakeResult.success) {
+				logger.warn("Crawl intake completed with partial failures", {
+					crawlId: promptQueryCrawlId,
+					failedSteps: intakeResult.failedSteps,
 				});
 			}
 
-			try {
-				const intelligence = await extractBrandIntelligenceAction({
-					content: result.content,
-					query,
-					targetBrand: crawlContext.targetBrand,
-					targetDomain: crawlContext.targetDomain,
-					targetAliases: crawlContext.targetAliases,
-					knownCompetitors: crawlContext.knownCompetitors,
+			if (intakeResult.sentimentRetryNeeded) {
+				await dispatch("sentiment-retry", {
+					crawlId: promptQueryCrawlId,
+					promptQueryCrawlId,
+					domainProjectId: crawlContext.domainProjectId ?? domainProjectId,
 				});
-
-				logger.info("LLM extraction completed", {
-					brandMentionsCount: intelligence.brandMentions.length,
-					discoveredCompetitorsCount: intelligence.discoveredCompetitors.length,
-					answerFormat: intelligence.answerFormat,
+				logger.info("Sentiment retry enqueued", {
+					crawlId: promptQueryCrawlId,
 				});
-
-				const saveResult = await saveBrandIntelligenceAction({
-					input: {
-						crawlId: promptQueryCrawlId,
-						domainProjectId: crawlContext.domainProjectId,
-						intelligence,
-					},
-					ctx: { db, userId: null, isAuthenticated: false },
-				});
-
-				logger.info("Brand intelligence saved", {
-					mentionsSaved: saveResult.mentionsSaved,
-					competitorsCreated: saveResult.competitorsCreated,
-					competitorsMatched: saveResult.competitorsMatched,
-				});
-
-				// Compute and persist the AI Visibility Score. A failure here
-				// never fails the crawl — the score is best-effort and the
-				// `sentimentIsFallback` flag handles a flaked sentiment LLM
-				// (we still write a row, with sentimentScore=50 and a single
-				// retry enqueued). Spec: docs/agents/visibility-score.md v1.0.0.
-				// ADR: docs/adr/0002-visibility-score.md.
-				try {
-					const scoreResult = await computeVisibilityScoreAction({
-						input: { crawlId: promptQueryCrawlId },
-						ctx: { db, userId: null, isAuthenticated: false },
-					});
-
-					logger.info("AI Visibility Score computed", {
-						crawlId: promptQueryCrawlId,
-						visibilityScore: scoreResult.row.visibilityScore,
-						mentionScore: scoreResult.row.mentionScore,
-						positionScore: scoreResult.row.positionScore,
-						citationScore: scoreResult.row.citationScore,
-						sentimentScore: scoreResult.row.sentimentScore,
-						coMentionScore: scoreResult.row.coMentionScore,
-						formulaVersion: scoreResult.row.formulaVersion,
-						sentimentRetryNeeded: scoreResult.sentimentRetryNeeded,
-					});
-
-					if (scoreResult.sentimentRetryNeeded) {
-						await dispatch("sentiment-retry", {
-							crawlId: promptQueryCrawlId,
-							promptQueryCrawlId,
-							domainProjectId: crawlContext.domainProjectId,
-						});
-						logger.info("Sentiment retry enqueued", {
-							crawlId: promptQueryCrawlId,
-						});
-					}
-				} catch (scoreError) {
-					const scoreErrorMessage =
-						scoreError instanceof Error
-							? scoreError.message
-							: String(scoreError);
-					logger.error("AI Visibility Score computation failed", {
-						crawlId: promptQueryCrawlId,
-						error: scoreErrorMessage,
-					});
-				}
-			} catch (llmError) {
-				const llmErrorMessage =
-					llmError instanceof Error ? llmError.message : String(llmError);
-				logger.error("LLM extraction failed", { error: llmErrorMessage });
 			}
 		} catch (error) {
 			const errorMessage =
