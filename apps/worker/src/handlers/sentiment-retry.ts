@@ -21,6 +21,7 @@ export async function handleSentimentRetry(
 
 	await withDb(async (db) => {
 		try {
+			console.log("[sentiment-retry] starting retry for crawl:", crawlId);
 			const result = await retrySentimentAction({
 				input: { crawlId },
 				ctx: { db, userId: null, isAuthenticated: false },
@@ -30,8 +31,14 @@ export async function handleSentimentRetry(
 				logger.info("Sentiment retry recovered", {
 					crawlId,
 					sentimentScore: result.row.sentimentScore,
+					sentimentLabel: result.row.sentimentLabel,
 					visibilityScore: result.row.visibilityScore,
 					sentimentRetryCount: result.row.sentimentRetryCount,
+				});
+				console.log("[sentiment-retry] recovered:", {
+					sentimentLabel: result.row.sentimentLabel,
+					sentimentScore: result.row.sentimentScore,
+					visibilityScore: result.row.visibilityScore,
 				});
 			} else {
 				logger.warn("Sentiment retry still falling back", {
@@ -39,10 +46,15 @@ export async function handleSentimentRetry(
 					sentimentScore: result.row.sentimentScore,
 					sentimentRetryCount: result.row.sentimentRetryCount,
 				});
+				console.log("[sentiment-retry] still falling back:", {
+					sentimentIsFallback: result.row.sentimentIsFallback,
+					sentimentRetryCount: result.row.sentimentRetryCount,
+				});
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			logger.error("Sentiment retry failed", { crawlId, error: message });
+			console.error("[sentiment-retry] error:", message);
 			throw error;
 		}
 	});

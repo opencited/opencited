@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "bun:test";
-import type { LLMCaller, SentimentJudgeResult } from "@opencited/score-actions";
+import type { SentimentJudgeResult } from "@opencited/score-actions";
+import { MockLanguageModelV3 } from "ai/test";
+import type { LanguageModel } from "ai";
 import { computeVisibilityScoreInternal } from "../src/aiVisibility/computeVisibilityScoreAction";
 
 interface CallRecord {
@@ -106,27 +108,24 @@ function makeMockDb(seed: {
 		const tableName = getDrizzleTableName(table);
 		calls.push({ type: "update", table: tableName });
 		return {
-			set: (data: unknown) => {
-				calls.push({ type: "update", table: tableName, set: data });
-				return {
-					where: (cond: unknown) => {
-						calls.push({
-							type: "update",
-							table: tableName,
-							set: data,
-							where: cond,
-						});
-						const id = (cond as { crawlId?: string } | undefined)?.crawlId;
-						if (id && scoreRows.has(id)) {
-							const existing = scoreRows.get(id);
-							if (existing) {
-								scoreRows.set(id, { ...existing, ...(data as object) });
-							}
+			set: (data: unknown) => ({
+				where: (cond: unknown) => {
+					calls.push({
+						type: "update",
+						table: tableName,
+						set: data,
+						where: cond,
+					});
+					const id = (cond as { crawlId?: string } | undefined)?.crawlId;
+					if (id && scoreRows.has(id)) {
+						const existing = scoreRows.get(id);
+						if (existing) {
+							scoreRows.set(id, { ...existing, ...(data as object) });
 						}
-						return Promise.resolve();
-					},
-				};
-			},
+					}
+					return Promise.resolve();
+				},
+			}),
 		};
 	};
 
@@ -138,12 +137,37 @@ const baseCtx = {
 	isAuthenticated: false,
 };
 
-const LLM_POSITIVE: LLMCaller = async () => "positive";
-const LLM_NEGATIVE: LLMCaller = async () => "negative";
-const LLM_NEUTRAL: LLMCaller = async () => "neutral";
-const LLM_THROWS: LLMCaller = async () => {
-	throw new Error("upstream LLM unavailable");
-};
+function makeModel(label: string): LanguageModel {
+	return new MockLanguageModelV3({
+		doGenerate: async () => ({
+			content: [{ type: "text", text: `{"label":"${label}"}` }],
+			finishReason: { unified: "stop", raw: undefined },
+			usage: {
+				inputTokens: {
+					total: 10,
+					noCache: 10,
+					cacheRead: undefined,
+					cacheWrite: undefined,
+				},
+				outputTokens: { total: 20, text: 20, reasoning: undefined },
+			},
+			warnings: [],
+		}),
+	});
+}
+
+function makeThrowingModel(error: Error): LanguageModel {
+	return new MockLanguageModelV3({
+		doGenerate: async () => {
+			throw error;
+		},
+	});
+}
+
+const MODEL_POSITIVE = makeModel("positive");
+const MODEL_NEGATIVE = makeModel("negative");
+const MODEL_NEUTRAL = makeModel("neutral");
+const MODEL_THROWS = makeThrowingModel(new Error("upstream LLM unavailable"));
 
 const FIXED_NOW = new Date("2026-06-25T12:00:00.000Z");
 
@@ -217,7 +241,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 				},
 			],
 		});
-		// Each test gets a fresh sentiment cache so the LLM caller is
+		// Each test gets a fresh sentiment cache so the model is
 		// actually invoked (the module-level cache would otherwise leak
 		// between tests and pin the first test's result).
 		freshCache = new Map();
@@ -227,7 +251,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		const result = await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_POSITIVE,
+			model: MODEL_POSITIVE,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -256,7 +280,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		const result = await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_POSITIVE,
+			model: MODEL_POSITIVE,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -273,7 +297,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		const result = await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_NEUTRAL,
+			model: MODEL_NEUTRAL,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -284,7 +308,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		const result = await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_NEGATIVE,
+			model: MODEL_NEGATIVE,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -295,7 +319,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		const result = await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_THROWS,
+			model: MODEL_THROWS,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -310,15 +334,30 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 
 	it("does not re-call the LLM on a second run for the same crawl (cache hit)", async () => {
 		let calls = 0;
-		const countingLlm: LLMCaller = async () => {
-			calls += 1;
-			return "positive";
-		};
+		const countingModel: LanguageModel = new MockLanguageModelV3({
+			doGenerate: async () => {
+				calls += 1;
+				return {
+					content: [{ type: "text", text: '{"label":"positive"}' }],
+					finishReason: { unified: "stop", raw: undefined },
+					usage: {
+						inputTokens: {
+							total: 10,
+							noCache: 10,
+							cacheRead: undefined,
+							cacheWrite: undefined,
+						},
+						outputTokens: { total: 20, text: 20, reasoning: undefined },
+					},
+					warnings: [],
+				};
+			},
+		});
 
 		await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: countingLlm,
+			model: countingModel,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -327,7 +366,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: countingLlm,
+			model: countingModel,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -345,7 +384,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 			computeVisibilityScoreInternal({
 				input: { crawlId: "missing" },
 				ctx: { ...baseCtx, db: emptyDb.db },
-				llmCaller: LLM_POSITIVE,
+				model: MODEL_POSITIVE,
 				sentimentCache: freshCache,
 				now: () => FIXED_NOW,
 			}),
@@ -387,7 +426,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		const result = await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-2" },
 			ctx: { ...baseCtx, db: aliasDb.db },
-			llmCaller: LLM_POSITIVE,
+			model: MODEL_POSITIVE,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -398,7 +437,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_POSITIVE,
+			model: MODEL_POSITIVE,
 			sentimentCache: freshCache,
 			now: () => FIXED_NOW,
 		});
@@ -410,7 +449,7 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		await computeVisibilityScoreInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_NEUTRAL,
+			model: MODEL_NEUTRAL,
 			sentimentCache: laterCache,
 			now: () => later,
 		});

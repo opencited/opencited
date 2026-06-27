@@ -74,8 +74,3 @@ export const sentimentJudgeResultSchema = z.object({
 	retryCount: z.number().int().min(0).max(2),
 });
 export type SentimentJudgeResult = z.infer<typeof sentimentJudgeResultSchema>;
-
-export type LLMCaller = (params: {
-	systemPrompt: string;
-	userPrompt: string;
-}) => Promise<string>;

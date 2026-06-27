@@ -1,14 +1,26 @@
 import { mock } from "bun:test";
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 
-process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/test";
-process.env.LLM_PROVIDER ??= "openai";
-process.env.LLM_MODEL ??= "test-model";
-process.env.LLM_API_KEY ??= "test-key";
-process.env.REDIS_URL ??= "redis://localhost:6379";
+const envPath = resolve(__dirname, "../../../../.env.local");
+if (existsSync(envPath)) {
+	const content = readFileSync(envPath, "utf-8");
+	for (const line of content.split("\n")) {
+		const trimmed = line.trim();
+		if (!trimmed || trimmed.startsWith("#")) continue;
+		const eqIdx = trimmed.indexOf("=");
+		if (eqIdx === -1) continue;
+		const key = trimmed.slice(0, eqIdx);
+		const value = trimmed.slice(eqIdx + 1);
+		if (key && value) {
+			process.env[key] = value;
+		}
+	}
+}
 
-// drizzle-orm pulls in @opentelemetry/api, which has ESM subpath-import
-// problems under some test runners. We don't need otel in these tests, so
-// stub its public surface. The real package is never loaded.
+process.env.LLM_PROVIDER ??= "groq";
+process.env.LLM_MODEL ??= "qwen/qwen3-32b";
+
 mock.module("@opentelemetry/api", () => ({
 	trace: {
 		getTracer: () => ({

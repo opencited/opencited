@@ -1,5 +1,5 @@
 import { eq, and } from "drizzle-orm";
-import { generateText } from "ai";
+import type { LanguageModel } from "ai";
 import { z } from "zod";
 import {
 	FORMULA_VERSION,
@@ -12,7 +12,6 @@ import {
 import type {
 	BrandMention,
 	CrawlCitation,
-	LLMCaller,
 	SentimentJudgeResult,
 	TargetBrand,
 	VisibilityScoreResult,
@@ -26,7 +25,6 @@ import {
 	promptQueryCrawlTable,
 } from "@opencited/db";
 import { createProvider } from "../ai/provider";
-import { env } from "../env";
 
 type ScoreRow = typeof crawlVisibilityScoreTable.$inferSelect;
 
@@ -64,41 +62,27 @@ function parseAliases(value: unknown): string[] {
 	return [];
 }
 
-function buildRealLlmCaller(modelName: string): LLMCaller {
-	return async ({ systemPrompt, userPrompt }) => {
-		const { model, providerOptions } = createProvider();
-		const result = await generateText({
-			model,
-			// The provider options shape varies by provider (groq vs openai vs
-			// openai-compatible) and the AI SDK's type is strict; the runtime
-			// value is what the provider implementation passes through.
-			// biome-ignore lint/suspicious/noExplicitAny: provider runtime shape is wider than the SDK's static type
-			providerOptions: providerOptions as any,
-			system: systemPrompt,
-			prompt: userPrompt,
-			temperature: 0,
-		});
-		void modelName;
-		return result.text;
-	};
-}
-
 const modelName = (() => {
 	try {
-		return env.LLM_MODEL;
+		return process.env.LLM_MODEL ?? "unknown-model";
 	} catch {
 		return "unknown-model";
 	}
 })();
 
-const moduleLlmCaller: LLMCaller = buildRealLlmCaller(modelName);
+const { model: moduleModel, providerOptions: rawProviderOptions } =
+	createProvider();
+const moduleProviderOptions = rawProviderOptions as
+	| Record<string, Record<string, unknown>>
+	| undefined;
 
 const moduleSentimentCache = new Map<string, SentimentJudgeResult>();
 
 export interface ComputeVisibilityScoreInternalParams {
 	input: z.infer<typeof computeVisibilityScoreInputSchema>;
 	ctx: z.infer<typeof computeVisibilityScoreContextSchema>;
-	llmCaller?: LLMCaller;
+	model?: LanguageModel;
+	providerOptions?: Record<string, Record<string, unknown>>;
 	sentimentCache?: Map<string, SentimentJudgeResult>;
 	now?: () => Date;
 }
@@ -107,7 +91,8 @@ export const computeVisibilityScoreInternal = async (
 	params: ComputeVisibilityScoreInternalParams,
 ): Promise<z.infer<typeof computeVisibilityScoreOutputSchema>> => {
 	const { input, ctx } = params;
-	const llmCaller = params.llmCaller ?? moduleLlmCaller;
+	const model = params.model ?? moduleModel;
+	const providerOptions = params.providerOptions ?? moduleProviderOptions;
 	const sentimentCache = params.sentimentCache ?? moduleSentimentCache;
 	const now = params.now ?? (() => new Date());
 
@@ -180,7 +165,7 @@ export const computeVisibilityScoreInternal = async (
 			promptVersion: PROMPT_VERSION,
 			modelName,
 		},
-		{ call: llmCaller, cache: sentimentCache },
+		{ model, cache: sentimentCache, providerOptions },
 	);
 
 	const computed: VisibilityScoreResult = computeVisibilityScore({
@@ -304,7 +289,8 @@ export const retrySentimentContextSchema = baseActionContextSchema;
 export interface RetrySentimentInternalParams {
 	input: z.infer<typeof retrySentimentInputSchema>;
 	ctx: z.infer<typeof retrySentimentContextSchema>;
-	llmCaller?: LLMCaller;
+	model?: LanguageModel;
+	providerOptions?: Record<string, Record<string, unknown>>;
 	now?: () => Date;
 }
 
@@ -328,7 +314,8 @@ export const retrySentimentInternal = async (
 	params: RetrySentimentInternalParams,
 ): Promise<z.infer<typeof retrySentimentOutputSchema>> => {
 	const { input, ctx } = params;
-	const llmCaller = params.llmCaller ?? moduleLlmCaller;
+	const model = params.model ?? moduleModel;
+	const providerOptions = params.providerOptions ?? moduleProviderOptions;
 	const now = params.now ?? (() => new Date());
 
 	const existingRows: ScoreRow[] = await ctx.db
@@ -385,7 +372,7 @@ export const retrySentimentInternal = async (
 			promptVersion: PROMPT_VERSION,
 			modelName,
 		},
-		{ call: llmCaller, cache: freshCache },
+		{ model, cache: freshCache, providerOptions },
 	);
 
 	const computedAt = now();

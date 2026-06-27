@@ -1,8 +1,18 @@
 import { describe, expect, it, mock } from "bun:test";
 
 mock.module("@opentelemetry/api", () => ({
-	trace: { getTracer: () => ({ startSpan: () => ({}) }) },
-	context: { active: () => ({}) },
+	trace: {
+		getTracer: () => ({
+			startSpan: (_name: string, _opts: unknown, fn: unknown) => {
+				if (typeof fn === "function") return fn({}, { active: () => ({}) });
+				return {};
+			},
+		}),
+	},
+	context: {
+		active: () => ({}),
+		with: (_ctx: unknown, fn: (...args: unknown[]) => unknown) => fn(),
+	},
 	propagation: { getBaggage: () => undefined },
 	metrics: { getMeter: () => ({}) },
 	diag: { setLogger: () => {}, createDiagLogger: () => ({}) },

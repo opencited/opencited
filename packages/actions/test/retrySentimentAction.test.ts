@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import type { LLMCaller } from "@opencited/score-actions";
+import { MockLanguageModelV3 } from "ai/test";
+import type { LanguageModel } from "ai";
 import { retrySentimentInternal } from "../src/aiVisibility/computeVisibilityScoreAction";
 
 interface ScoreRow {
@@ -92,11 +93,36 @@ function makeMockDb(seed: {
 
 const baseCtx = { userId: null, isAuthenticated: false };
 
-const LLM_POSITIVE: LLMCaller = async () => "positive";
-const LLM_NEGATIVE: LLMCaller = async () => "negative";
-const LLM_THROWS: LLMCaller = async () => {
-	throw new Error("upstream LLM unavailable");
-};
+function makeModel(label: string): LanguageModel {
+	return new MockLanguageModelV3({
+		doGenerate: async () => ({
+			content: [{ type: "text", text: `{"label":"${label}"}` }],
+			finishReason: { unified: "stop", raw: undefined },
+			usage: {
+				inputTokens: {
+					total: 10,
+					noCache: 10,
+					cacheRead: undefined,
+					cacheWrite: undefined,
+				},
+				outputTokens: { total: 20, text: 20, reasoning: undefined },
+			},
+			warnings: [],
+		}),
+	});
+}
+
+function makeThrowingModel(error: Error): LanguageModel {
+	return new MockLanguageModelV3({
+		doGenerate: async () => {
+			throw error;
+		},
+	});
+}
+
+const MODEL_POSITIVE = makeModel("positive");
+const MODEL_NEGATIVE = makeModel("negative");
+const MODEL_THROWS = makeThrowingModel(new Error("upstream LLM unavailable"));
 
 const FIXED_NOW = new Date("2026-06-25T12:00:00.000Z");
 
@@ -149,7 +175,7 @@ describe("retrySentimentInternal — success path", () => {
 		const result = await retrySentimentInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_POSITIVE,
+			model: MODEL_POSITIVE,
 			now: () => FIXED_NOW,
 		});
 
@@ -178,7 +204,7 @@ describe("retrySentimentInternal — success path", () => {
 		const result = await retrySentimentInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_NEGATIVE,
+			model: MODEL_NEGATIVE,
 			now: () => FIXED_NOW,
 		});
 
@@ -197,15 +223,30 @@ describe("retrySentimentInternal — success path", () => {
 		});
 
 		let calls = 0;
-		const countingLlm: LLMCaller = async () => {
-			calls += 1;
-			return "positive";
-		};
+		const countingModel: LanguageModel = new MockLanguageModelV3({
+			doGenerate: async () => {
+				calls += 1;
+				return {
+					content: [{ type: "text", text: '{"label":"positive"}' }],
+					finishReason: { unified: "stop", raw: undefined },
+					usage: {
+						inputTokens: {
+							total: 10,
+							noCache: 10,
+							cacheRead: undefined,
+							cacheWrite: undefined,
+						},
+						outputTokens: { total: 20, text: 20, reasoning: undefined },
+					},
+					warnings: [],
+				};
+			},
+		});
 
 		await retrySentimentInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: countingLlm,
+			model: countingModel,
 			now: () => FIXED_NOW,
 		});
 		expect(calls).toBe(1);
@@ -215,7 +256,7 @@ describe("retrySentimentInternal — success path", () => {
 		await retrySentimentInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: countingLlm,
+			model: countingModel,
 			now: () => FIXED_NOW,
 		});
 		expect(calls).toBe(2);
@@ -234,7 +275,7 @@ describe("retrySentimentInternal — success path", () => {
 		const result = await retrySentimentInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_POSITIVE,
+			model: MODEL_POSITIVE,
 			now: () => FIXED_NOW,
 		});
 
@@ -253,7 +294,7 @@ describe("retrySentimentInternal — failure path", () => {
 		const result = await retrySentimentInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_THROWS,
+			model: MODEL_THROWS,
 			now: () => FIXED_NOW,
 		});
 
@@ -278,7 +319,7 @@ describe("retrySentimentInternal — failure path", () => {
 		const result = await retrySentimentInternal({
 			input: { crawlId: "crawl-1" },
 			ctx: { ...baseCtx, db: mockDb.db },
-			llmCaller: LLM_THROWS,
+			model: MODEL_THROWS,
 			now: () => FIXED_NOW,
 		});
 
@@ -298,7 +339,7 @@ describe("retrySentimentInternal — error paths", () => {
 			retrySentimentInternal({
 				input: { crawlId: "crawl-1" },
 				ctx: { ...baseCtx, db: mockDb.db },
-				llmCaller: LLM_POSITIVE,
+				model: MODEL_POSITIVE,
 				now: () => FIXED_NOW,
 			}),
 		).rejects.toThrow(/No score row to retry sentiment/);
@@ -315,7 +356,7 @@ describe("retrySentimentInternal — error paths", () => {
 			retrySentimentInternal({
 				input: { crawlId: "crawl-1" },
 				ctx: { ...baseCtx, db: mockDb.db },
-				llmCaller: LLM_POSITIVE,
+				model: MODEL_POSITIVE,
 				now: () => FIXED_NOW,
 			}),
 		).rejects.toThrow(/Crawl not found/);

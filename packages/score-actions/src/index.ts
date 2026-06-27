@@ -25,7 +25,6 @@ export type {
 	VisibilityScoreResult,
 	SentimentJudgeInput,
 	SentimentJudgeResult,
-	LLMCaller,
 } from "./types";
 export {
 	sentimentLabelSchema,

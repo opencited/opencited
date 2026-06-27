@@ -11,7 +11,8 @@
 	},
 	"scripts": {
 		"tsc": "tsc --noEmit",
-		"test": "bun test"
+		"test": "bun test",
+		"test:integration": "RUN_INTEGRATION=1 bun test test/integration"
 	},
 	"dependencies": {
 		"@clerk/nextjs": "catalog:",
