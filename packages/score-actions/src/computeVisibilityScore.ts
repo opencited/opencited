@@ -77,7 +77,7 @@ function computeCitationScore(
 	return citations.some(
 		(c) =>
 			(extractHostname(c.url) === ownDomain ||
-				c.domain.replace(/^www\./, "") === ownDomain) &&
+				c.domain.toLowerCase().replace(/^www\./, "") === ownDomain) &&
 			ownDomain !== null,
 	)
 		? 100

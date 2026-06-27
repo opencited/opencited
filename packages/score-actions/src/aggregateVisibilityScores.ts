@@ -182,19 +182,15 @@ function computeTrend(
 	now.setHours(23, 59, 59, 999);
 
 	for (let daysAgo = 29; daysAgo >= 0; daysAgo--) {
-		const dayStart = new Date(now);
-		dayStart.setDate(dayStart.getDate() - daysAgo);
-		dayStart.setHours(0, 0, 0, 0);
-
-		const dayEnd = new Date(dayStart);
+		const dayEnd = new Date(now);
+		dayEnd.setDate(dayEnd.getDate() - daysAgo);
 		dayEnd.setHours(23, 59, 59, 999);
 
-		const dayCrawls = crawls.filter((c) => {
-			const t = c.completedAt.getTime();
-			return t >= dayStart.getTime() && t <= dayEnd.getTime();
-		});
+		const cumulativeCrawls = crawls.filter(
+			(c) => c.completedAt.getTime() <= dayEnd.getTime(),
+		);
 
-		const byEngine = groupByEngine(dayCrawls);
+		const byEngine = groupByEngine(cumulativeCrawls);
 		const engineScores: number[] = [];
 
 		for (const [_engine, engineCrawls] of byEngine) {
@@ -218,7 +214,7 @@ function computeTrend(
 			}
 		}
 
-		const dateStr = dayStart.toISOString().split("T")[0] as string;
+		const dateStr = dayEnd.toISOString().split("T")[0] as string;
 		if (engineScores.length === 0) {
 			trend.push({ date: dateStr, score: null });
 		} else {
