@@ -1,6 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
 import {
 	createProxyConfigHandler,
 	createProxyConfigInputSchema,
@@ -17,68 +15,47 @@ import {
 } from "@opencited/actions";
 
 export const proxyConfigRouter = createTRPCRouter({
-	create: publicProcedure
+	create: orgProtectedProcedure
 		.input(createProxyConfigInputSchema)
 		.output(createProxyConfigOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return createProxyConfigHandler({
 				input,
 				ctx,
-				clerkOrganizationId: orgId,
+				clerkOrganizationId: ctx.orgId,
 			});
 		}),
 
-	get: publicProcedure
+	get: orgProtectedProcedure
 		.input(getProxyConfigInputSchema)
 		.output(getProxyConfigOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return null;
-			}
-			return getProxyConfigHandler({ input, ctx, clerkOrganizationId: orgId });
-		}),
-
-	update: publicProcedure
-		.input(updateProxyConfigInputSchema)
-		.output(updateProxyConfigOutputSchema)
-		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
-			return updateProxyConfigHandler({
+			return getProxyConfigHandler({
 				input,
 				ctx,
-				clerkOrganizationId: orgId,
+				clerkOrganizationId: ctx.orgId,
 			});
 		}),
 
-	delete: publicProcedure
+	update: orgProtectedProcedure
+		.input(updateProxyConfigInputSchema)
+		.output(updateProxyConfigOutputSchema)
+		.mutation(async ({ ctx, input }) => {
+			return updateProxyConfigHandler({
+				input,
+				ctx,
+				clerkOrganizationId: ctx.orgId,
+			});
+		}),
+
+	delete: orgProtectedProcedure
 		.input(deleteProxyConfigInputSchema)
 		.output(deleteProxyConfigOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return deleteProxyConfigHandler({
 				input,
 				ctx,
-				clerkOrganizationId: orgId,
+				clerkOrganizationId: ctx.orgId,
 			});
 		}),
 });

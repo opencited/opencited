@@ -1,6 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
 import {
 	createCompetitorHandler,
 	createCompetitorInputSchema,
@@ -20,73 +18,41 @@ import {
 } from "@opencited/actions";
 
 export const competitorRouter = createTRPCRouter({
-	create: publicProcedure
+	create: orgProtectedProcedure
 		.input(createCompetitorInputSchema)
 		.output(createCompetitorOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return createCompetitorHandler({
 				input,
 				ctx,
 			});
 		}),
 
-	list: publicProcedure
+	list: orgProtectedProcedure
 		.input(listCompetitorsInputSchema)
 		.output(listCompetitorsOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return [];
-			}
 			return listCompetitorsHandler({ ctx, input });
 		}),
 
-	get: publicProcedure
+	get: orgProtectedProcedure
 		.input(getCompetitorInputSchema)
 		.output(getCompetitorOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return getCompetitorHandler({ ctx, input });
 		}),
 
-	update: publicProcedure
+	update: orgProtectedProcedure
 		.input(updateCompetitorInputSchema)
 		.output(updateCompetitorOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return updateCompetitorHandler({ ctx, input });
 		}),
 
-	delete: publicProcedure
+	delete: orgProtectedProcedure
 		.input(deleteCompetitorInputSchema)
 		.output(deleteCompetitorOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return deleteCompetitorHandler({ ctx, input });
 		}),
 });

@@ -1,5 +1,4 @@
-import { createTRPCRouter, publicProcedure } from "../trpc";
-import { authProtectedProcedure } from "../procedures/authProtectedProcedure";
+import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
 import {
 	crawledPageGetHandler,
 	crawledPageGetInputSchema,
@@ -19,35 +18,35 @@ import {
 } from "@opencited/actions";
 
 export const crawlRouter = createTRPCRouter({
-	get: publicProcedure
+	get: orgProtectedProcedure
 		.input(crawledPageGetInputSchema)
 		.output(crawledPageGetOutputSchema)
 		.query(async ({ ctx, input }) => {
 			return crawledPageGetHandler({ input, ctx });
 		}),
 
-	list: publicProcedure
+	list: orgProtectedProcedure
 		.input(crawledPageListInputSchema)
 		.output(crawledPageListOutputSchema)
 		.query(async ({ ctx, input }) => {
 			return crawledPageListHandler({ input, ctx });
 		}),
 
-	reCrawl: publicProcedure
+	reCrawl: orgProtectedProcedure
 		.input(crawlRetryPageInputSchema)
 		.output(crawlRetryPageOutputSchema)
 		.mutation(async ({ ctx, input }) => {
 			return crawlRetryPageHandler({ input, ctx });
 		}),
 
-	triggerSingleCrawl: publicProcedure
+	triggerSingleCrawl: orgProtectedProcedure
 		.input(crawlTriggerSingleInputSchema)
 		.output(crawlTriggerSingleOutputSchema)
 		.mutation(async ({ ctx, input }) => {
 			return crawlTriggerSingleHandler({ input, ctx });
 		}),
 
-	triggerSitemapCrawl: authProtectedProcedure
+	triggerSitemapCrawl: orgProtectedProcedure
 		.input(crawlTriggerSitemapInputSchema)
 		.output(crawlTriggerSitemapOutputSchema)
 		.mutation(async ({ ctx, input }) => {

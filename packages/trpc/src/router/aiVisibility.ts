@@ -1,6 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
 import {
 	listRunLogsHandler,
 	listRunLogsInputSchema,
@@ -29,106 +27,59 @@ import {
 } from "@opencited/actions";
 
 export const aiVisibilityRouter = createTRPCRouter({
-	listRunLogs: publicProcedure
+	listRunLogs: orgProtectedProcedure
 		.input(listRunLogsInputSchema)
 		.output(listRunLogsOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return { runs: [], total: 0 };
-			}
 			return listRunLogsHandler({ ctx, input });
 		}),
 
-	listCrawlSources: publicProcedure
+	listCrawlSources: orgProtectedProcedure
 		.input(listCrawlSourcesInputSchema)
 		.output(listCrawlSourcesOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return listCrawlSourcesHandler({ ctx, input });
 		}),
 
-	listBrandMentions: publicProcedure
+	listBrandMentions: orgProtectedProcedure
 		.input(listBrandMentionsInputSchema)
 		.output(listBrandMentionsOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return listBrandMentionsHandler({ ctx, input });
 		}),
 
-	getVisibilityOverview: publicProcedure
+	getVisibilityOverview: orgProtectedProcedure
 		.input(getVisibilityOverviewInputSchema)
 		.output(getVisibilityOverviewOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return [];
-			}
 			return getVisibilityOverviewHandler({ ctx, input });
 		}),
 
-	getCompetitorIntelligence: publicProcedure
+	getCompetitorIntelligence: orgProtectedProcedure
 		.input(getCompetitorIntelligenceInputSchema)
 		.output(getCompetitorIntelligenceOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return [];
-			}
 			return getCompetitorIntelligenceHandler({ ctx, input });
 		}),
 
-	getCompetitorDetail: publicProcedure
+	getCompetitorDetail: orgProtectedProcedure
 		.input(getCompetitorDetailInputSchema)
 		.output(getCompetitorDetailOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return getCompetitorDetailHandler({ ctx, input });
 		}),
 
-	getCrawlScore: publicProcedure
+	getCrawlScore: orgProtectedProcedure
 		.input(getCrawlScoreInputSchema)
 		.output(getCrawlScoreOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return getCrawlScoreHandler({ ctx, input });
 		}),
 
-	retrySentiment: publicProcedure
+	retrySentiment: orgProtectedProcedure
 		.input(retrySentimentInputSchema)
 		.output(retrySentimentOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return retrySentimentHandler({ ctx, input });
 		}),
 });

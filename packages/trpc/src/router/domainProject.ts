@@ -1,7 +1,10 @@
 import { eq, count } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
-import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import {
+	createTRPCRouter,
+	orgProtectedProcedure,
+	publicProcedure,
+} from "../trpc";
 import {
 	createDomainProjectHandler,
 	createDomainProjectOutputSchema,
@@ -24,42 +27,27 @@ import {
 import { domainProjectTable } from "@opencited/db";
 
 export const domainProjectRouter = createTRPCRouter({
-	create: publicProcedure
+	create: orgProtectedProcedure
 		.input(createDomainProjectInputSchema)
 		.output(createDomainProjectOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return createDomainProjectHandler({
-				input: { ...input, clerkOrganizationId: orgId },
+				input: { ...input, clerkOrganizationId: ctx.orgId },
 				ctx,
 			});
 		}),
 
-	get: publicProcedure
+	get: orgProtectedProcedure
 		.output(getDomainProjectOutputSchema)
 		.query(async ({ ctx }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return null;
-			}
-			return getDomainProjectHandler({ ctx, clerkOrganizationId: orgId });
+			return getDomainProjectHandler({ ctx, clerkOrganizationId: ctx.orgId });
 		}),
 
-	list: publicProcedure
+	list: orgProtectedProcedure
 		.input(listDomainProjectInputSchema)
 		.output(listDomainProjectOutputSchema)
 		.query(async ({ ctx }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return [];
-			}
-			return listDomainProjectHandler({ ctx, clerkOrganizationId: orgId });
+			return listDomainProjectHandler({ ctx, clerkOrganizationId: ctx.orgId });
 		}),
 
 	hasDomainProject: publicProcedure.query(async ({ ctx }) => {
@@ -75,39 +63,28 @@ export const domainProjectRouter = createTRPCRouter({
 		return (result[0]?.count ?? 0) > 0;
 	}),
 
-	update: publicProcedure
+	update: orgProtectedProcedure
 		.input(updateDomainProjectInputSchema)
 		.output(updateDomainProjectOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return updateDomainProjectHandler({
 				input,
 				ctx,
-				clerkOrganizationId: orgId,
+				clerkOrganizationId: ctx.orgId,
 			});
 		}),
 
-	delete: publicProcedure
+	delete: orgProtectedProcedure
 		.input(deleteDomainProjectInputSchema)
 		.output(deleteDomainProjectOutputSchema)
 		.mutation(async ({ ctx }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
-			return deleteDomainProjectHandler({ ctx, clerkOrganizationId: orgId });
+			return deleteDomainProjectHandler({
+				ctx,
+				clerkOrganizationId: ctx.orgId,
+			});
 		}),
 
-	discoverSitemaps: publicProcedure
+	discoverSitemaps: orgProtectedProcedure
 		.input(discoverSitemapsInputSchema)
 		.output(discoverSitemapsOutputSchema)
 		.mutation(async ({ ctx, input }) => {
