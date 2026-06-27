@@ -8,6 +8,9 @@ import {
 	getContentHealthMetricsHandler,
 	getContentHealthMetricsInputSchema,
 	getContentHealthMetricsOutputSchema,
+	getVisibilityAggregateHandler,
+	getVisibilityAggregateInputSchema,
+	getVisibilityAggregateOutputSchema,
 } from "@opencited/actions";
 
 export const dashboardRouter = createTRPCRouter({
@@ -36,5 +39,18 @@ export const dashboardRouter = createTRPCRouter({
 				});
 			}
 			return getContentHealthMetricsHandler({ ctx, input });
+		}),
+	getVisibilityAggregate: publicProcedure
+		.input(getVisibilityAggregateInputSchema)
+		.output(getVisibilityAggregateOutputSchema)
+		.query(async ({ ctx, input }) => {
+			const { orgId } = await auth();
+			if (!orgId) {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "No organization found",
+				});
+			}
+			return getVisibilityAggregateHandler({ ctx, input });
 		}),
 });

@@ -74,3 +74,50 @@ export const sentimentJudgeResultSchema = z.object({
 	retryCount: z.number().int().min(0).max(2),
 });
 export type SentimentJudgeResult = z.infer<typeof sentimentJudgeResultSchema>;
+
+export const scoredCrawlSchema = z.object({
+	brandId: z.string().min(1),
+	engine: z.string().min(1),
+	crawlId: z.string().min(1),
+	completedAt: z.date(),
+	mentionScore: z.number().int().min(0).max(100),
+	positionScore: z.number().int().min(0).max(100),
+	citationScore: z.number().int().min(0).max(100),
+	sentimentScore: z.number().int().min(0).max(100),
+	coMentionScore: z.number().int().min(0).max(100),
+});
+export type ScoredCrawl = z.infer<typeof scoredCrawlSchema>;
+
+export const aggregateOptionsSchema = z.object({
+	minCrawlsPerEngine: z.number().int().min(1).optional(),
+	winsorisePercentile: z.number().min(0).max(0.5).optional(),
+});
+export type AggregateOptions = z.infer<typeof aggregateOptionsSchema>;
+
+export const perBrandPerEngineScoreSchema = z.object({
+	engine: z.string(),
+	mentionScoreNorm: z.number(),
+	positionScoreNorm: z.number(),
+	citationScoreNorm: z.number(),
+	sentimentScoreNorm: z.number(),
+	coMentionScoreNorm: z.number(),
+	score: z.number(),
+});
+export type PerBrandPerEngineScore = z.infer<
+	typeof perBrandPerEngineScoreSchema
+>;
+
+export const trendPointSchema = z.object({
+	date: z.string(),
+	score: z.number().nullable(),
+});
+export type TrendPoint = z.infer<typeof trendPointSchema>;
+
+export const aggregateVisibilityScoresResultSchema = z.object({
+	perBrandPerEngineScores: z.array(perBrandPerEngineScoreSchema),
+	crossEngineScore: z.number().nullable(),
+	trend: z.array(trendPointSchema),
+});
+export type AggregateVisibilityScoresResult = z.infer<
+	typeof aggregateVisibilityScoresResultSchema
+>;

@@ -151,6 +151,15 @@ export {
 
 export { Spinner } from "./spinner";
 
+export {
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+	ChartLegend,
+	ChartLegendContent,
+} from "./chart";
+export type { ChartConfig } from "./chart";
+
 export { AutoForm } from "./components/ui/autoform";
 export type { AutoFormProps, FieldTypes } from "./components/ui/autoform";
 

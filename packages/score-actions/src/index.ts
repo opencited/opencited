@@ -11,6 +11,7 @@ export {
 	computeVisibilityScore,
 	cacheKey,
 } from "./computeVisibilityScore";
+export { aggregateVisibilityScores } from "./aggregateVisibilityScores";
 export {
 	callSentimentJudge,
 	type SentimentJudgeOptions,
@@ -25,6 +26,11 @@ export type {
 	VisibilityScoreResult,
 	SentimentJudgeInput,
 	SentimentJudgeResult,
+	ScoredCrawl,
+	AggregateOptions,
+	PerBrandPerEngineScore,
+	TrendPoint,
+	AggregateVisibilityScoresResult,
 } from "./types";
 export {
 	sentimentLabelSchema,
@@ -36,4 +42,9 @@ export {
 	visibilityScoreResultSchema,
 	sentimentJudgeInputSchema,
 	sentimentJudgeResultSchema,
+	scoredCrawlSchema,
+	aggregateOptionsSchema,
+	perBrandPerEngineScoreSchema,
+	trendPointSchema,
+	aggregateVisibilityScoresResultSchema,
 } from "./types";

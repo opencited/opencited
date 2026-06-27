@@ -6,3 +6,4 @@ export * from "./getCompetitorIntelligenceAction";
 export * from "./getCompetitorDetailAction";
 export * from "./computeVisibilityScoreAction";
 export * from "./getCrawlScoreAction";
+export * from "./getVisibilityAggregateAction";
