@@ -1,4 +1,4 @@
-import { pgTable, text } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import {
 	createSelectSchema,
@@ -16,7 +16,7 @@ export const competitorTable = pgTable("competitor", {
 
 	name: text("name").notNull(),
 	domain: text("domain").notNull(),
-	active: text("active").notNull().default("true"),
+	active: boolean("active").notNull().default(true),
 
 	createdAt: createdAt,
 	updatedAt: updatedAt,
@@ -28,6 +28,6 @@ export const competitorInsertSchema = competitorBaseInsertSchema.extend({
 	domainProjectId: z.string().min(1),
 	name: z.string().min(1),
 	domain: z.string().min(1),
-	active: z.string().optional(),
+	active: z.boolean().optional(),
 });
 export const competitorUpdateSchema = createUpdateSchema(competitorTable);

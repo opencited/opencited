@@ -1,7 +1,6 @@
 "use client";
 
 import {
-	Badge,
 	Card,
 	CardContent,
 	Skeleton,
@@ -53,12 +52,6 @@ export function CompetitorIntelligence({
 									<TableHead>
 										<Skeleton className="h-4 w-20" />
 									</TableHead>
-									<TableHead>
-										<Skeleton className="h-4 w-20" />
-									</TableHead>
-									<TableHead>
-										<Skeleton className="h-4 w-16" />
-									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -72,12 +65,6 @@ export function CompetitorIntelligence({
 										</TableCell>
 										<TableCell>
 											<Skeleton className="h-4 w-16" />
-										</TableCell>
-										<TableCell>
-											<Skeleton className="h-6 w-10 rounded-full" />
-										</TableCell>
-										<TableCell>
-											<Skeleton className="h-6 w-10 rounded-full" />
 										</TableCell>
 									</TableRow>
 								))}
@@ -112,8 +99,6 @@ export function CompetitorIntelligence({
 									<TableRow>
 										<TableHead>Competitor</TableHead>
 										<TableHead>Mentioned In</TableHead>
-										<TableHead>Before You</TableHead>
-										<TableHead>After You</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -139,28 +124,6 @@ export function CompetitorIntelligence({
 												<span className="text-sm">
 													{competitor.mentionedInCount} queries
 												</span>
-											</TableCell>
-											<TableCell>
-												{competitor.appearsBeforeYouCount > 0 ? (
-													<Badge variant="warning">
-														{competitor.appearsBeforeYouCount}
-													</Badge>
-												) : (
-													<span className="text-sm text-muted-foreground">
-														0
-													</span>
-												)}
-											</TableCell>
-											<TableCell>
-												{competitor.appearsAfterYouCount > 0 ? (
-													<Badge variant="success">
-														{competitor.appearsAfterYouCount}
-													</Badge>
-												) : (
-													<span className="text-sm text-muted-foreground">
-														0
-													</span>
-												)}
 											</TableCell>
 										</TableRow>
 									))}

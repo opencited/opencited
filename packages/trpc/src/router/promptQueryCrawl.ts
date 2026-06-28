@@ -1,6 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
 import { dispatch } from "@opencited/queue";
 import {
 	listCrawlsHandler,
@@ -27,18 +25,10 @@ import {
 } from "@opencited/actions";
 
 export const promptQueryCrawlRouter = createTRPCRouter({
-	start: publicProcedure
+	start: orgProtectedProcedure
 		.input(triggerCrawlTaskInputSchema)
 		.output(triggerCrawlTaskOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
-
 			// Create crawl record and get query text
 			const { crawlId, query, domainProjectId, provider } =
 				await triggerCrawlTaskHandler({
@@ -71,85 +61,45 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 			};
 		}),
 
-	saveResult: publicProcedure
+	saveResult: orgProtectedProcedure
 		.input(saveCrawlResultInputSchema)
 		.output(saveCrawlResultOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return saveCrawlResultHandler({ ctx, input });
 		}),
 
-	failCrawl: publicProcedure
+	failCrawl: orgProtectedProcedure
 		.input(failCrawlInputSchema)
 		.output(failCrawlOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return failCrawlHandler({ ctx, input });
 		}),
 
-	list: publicProcedure
+	list: orgProtectedProcedure
 		.input(listCrawlsInputSchema)
 		.output(listCrawlsOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return [];
-			}
 			return listCrawlsHandler({ ctx, input });
 		}),
 
-	get: publicProcedure
+	get: orgProtectedProcedure
 		.input(getCrawlInputSchema)
 		.output(getCrawlOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return getCrawlHandler({ ctx, input });
 		}),
 
-	update: publicProcedure
+	update: orgProtectedProcedure
 		.input(updateCrawlInputSchema)
 		.output(updateCrawlOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return updateCrawlHandler({ ctx, input });
 		}),
 
-	batchStart: publicProcedure
+	batchStart: orgProtectedProcedure
 		.input(batchTriggerCrawlTaskInputSchema)
 		.output(batchTriggerCrawlTaskOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
-
 			const { crawlIds, promptQueries } = await batchTriggerCrawlTaskHandler({
 				input,
 				ctx,

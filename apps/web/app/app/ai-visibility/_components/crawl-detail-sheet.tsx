@@ -28,7 +28,7 @@ import { QueryCell } from "@/app/components/query-cell";
 import { TimeAgo } from "@/app/components/time-ago";
 import { AnswerFormatBadge } from "./answer-format-badge";
 import { MentionTypeBadge } from "./mention-type-badge";
-import { RelativePositionBadge } from "./relative-position-badge";
+import { ScoreTab } from "./score-tab";
 
 interface CrawlDetailSheetProps {
 	crawlId: string;
@@ -110,6 +110,7 @@ export function CrawlDetailSheet({
 						<TabsTrigger value="sources">
 							Sources {crawl?.sourceCount ? `(${crawl.sourceCount})` : ""}
 						</TabsTrigger>
+						<TabsTrigger value="score">Score</TabsTrigger>
 						<TabsTrigger value="mentions">
 							Mentions{" "}
 							{crawl?.brandMentionCount ? `(${crawl.brandMentionCount})` : ""}
@@ -191,10 +192,10 @@ export function CrawlDetailSheet({
 														<span className="text-sm font-medium truncate">
 															{source.title ?? source.domain}
 														</span>
-														{source.isOwnDomain === "true" && (
+														{source.isOwnDomain && (
 															<Badge variant="success">Own</Badge>
 														)}
-														{source.isCompetitorDomain === "true" && (
+														{source.isCompetitorDomain && (
 															<Badge variant="warning">Competitor</Badge>
 														)}
 													</div>
@@ -220,6 +221,10 @@ export function CrawlDetailSheet({
 									);
 								}}
 							/>
+						</TabsContent>
+
+						<TabsContent value="score" className="mt-0">
+							<ScoreTab crawlId={crawlId} />
 						</TabsContent>
 
 						<TabsContent value="mentions" className="mt-0">
@@ -254,24 +259,8 @@ export function CrawlDetailSheet({
 															{mention.brandName}
 														</span>
 														<MentionTypeBadge type={mention.mentionType} />
-														{mention.relativePosition && (
-															<RelativePositionBadge
-																position={mention.relativePosition}
-															/>
-														)}
-														{mention.isRecommendation === "true" && (
-															<Badge variant="success">Recommended</Badge>
-														)}
 													</div>
 													<p className="text-sm">{mention.context}</p>
-													{mention.objection && (
-														<div className="bg-muted p-3 rounded-md">
-															<p className="text-xs text-muted-foreground mb-1">
-																Objection
-															</p>
-															<p className="text-sm">{mention.objection}</p>
-														</div>
-													)}
 												</div>
 											)}
 										/>

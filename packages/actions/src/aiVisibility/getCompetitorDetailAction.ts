@@ -27,9 +27,6 @@ export const getCompetitorDetailOutputSchema = z.object({
 			crawlId: z.string(),
 			context: z.string(),
 			mentionType: z.string(),
-			relativePosition: z.string().nullable(),
-			isRecommendation: z.boolean(),
-			objection: z.string().nullable(),
 			crawlDate: z.date(),
 			ownPosition: z.number().nullable(),
 			competitorPosition: z.number().nullable(),
@@ -149,7 +146,7 @@ export const getCompetitorDetailAction = async (params: {
 		const crawlSources = sourcesByCrawlId.get(mention.crawlId) ?? [];
 
 		const ownDomainSource = crawlSources.find(
-			(s: SourceRow) => s.isOwnDomain === "true",
+			(s: SourceRow) => s.isOwnDomain === true,
 		);
 		const competitorSource = crawlSources.find(
 			(s: SourceRow) => s.domain === competitor[0].domain,
@@ -161,9 +158,6 @@ export const getCompetitorDetailAction = async (params: {
 			crawlId: mention.crawlId,
 			context: mention.context,
 			mentionType: mention.mentionType,
-			relativePosition: mention.relativePosition,
-			isRecommendation: mention.isRecommendation === "true",
-			objection: mention.objection,
 			crawlDate: crawl.createdAt,
 			ownPosition: ownDomainSource?.position ?? null,
 			competitorPosition: competitorSource?.position ?? null,

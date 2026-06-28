@@ -1,6 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
 import {
 	createPromptQueryHandler,
 	createPromptQueryOutputSchema,
@@ -20,70 +18,41 @@ import {
 } from "@opencited/actions";
 
 export const promptQueryRouter = createTRPCRouter({
-	create: publicProcedure
+	create: orgProtectedProcedure
 		.input(createPromptQueryInputSchema)
 		.output(createPromptQueryOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return createPromptQueryHandler({
 				input,
 				ctx,
 			});
 		}),
 
-	list: publicProcedure
+	list: orgProtectedProcedure
 		.input(listPromptQueryInputSchema)
 		.output(listPromptQueryOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return [];
-			}
 			return listPromptQueryHandler({ ctx, input });
 		}),
 
-	delete: publicProcedure
+	delete: orgProtectedProcedure
 		.input(deletePromptQueryInputSchema)
 		.output(deletePromptQueryOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return deletePromptQueryHandler({ ctx, input });
 		}),
 
-	count: publicProcedure
+	count: orgProtectedProcedure
 		.input(countPromptQueryInputSchema)
 		.output(countPromptQueryOutputSchema)
 		.query(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				return { count: 0 };
-			}
 			return countPromptQueryHandler({ ctx, input });
 		}),
 
-	update: publicProcedure
+	update: orgProtectedProcedure
 		.input(updatePromptQueryInputSchema)
 		.output(updatePromptQueryOutputSchema)
 		.mutation(async ({ ctx, input }) => {
-			const { orgId } = await auth();
-			if (!orgId) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message: "No organization found",
-				});
-			}
 			return updatePromptQueryHandler({ ctx, input });
 		}),
 });

@@ -1,34 +1,41 @@
 ---
-description: Generate a git commit message from staged changes and recent commit history
+description: Generate a czg-ready commit message — copy-pasteable into czg's prompts without editing
 ---
 
-Analyze the staged changes and recent commit history to generate an effective commit message.
+Generate a commit message the user can paste directly into czg's interactive prompts.
+
+## Steps
+
+1. Identify change type from the diff
+2. Draft subject ≤64 chars matching repo conventions
+3. Add description only when non-obvious
+4. Add footer only when issues are referenced
+
+## Format
+
+**Subject:** `<type>: <emoji> <description>`
+
+- Type: `chore`, `feat`, `fix`, `perf`, `refactor`, `release`, `style`, `ci`, `docs`
+- Emoji: match from recent commits (🤖 chore, 🚀 feat, 💡 refactor, 📚 docs)
+- Total: ≤64 chars including type and emoji
+
+**Description:** `<line 1> | <line 2> | ...`
+
+- Lines separated by ` | ` (czg's line-break format)
+- Omit when subject is self-explanatory
+
+**Footer:** `<references>`
+
+- Format: `✅ Closes: #123`
+- Omit when no related issues
 
 ## Context
 
-Staged changes:
+Staged (summary):
 !`git diff --cached --stat`
 
-Full diff:
+Staged (full):
 !`git diff --cached`
 
-Recent commits (pattern reference):
+Recent:
 !`git log --oneline -10`
-
-Recent commit messages (style reference):
-!`git log -5 --format="%s"`
-
-## Instructions
-
-1. Identify the primary change type from the diff
-2. Match the commit message style from recent history
-3. Follow conventional commits format: `type(scope): description`
-4. Subject line must be <= 72 characters
-5. Use imperative mood ("add" not "added")
-6. No period at end of subject line
-7. Body explains WHAT and WHY, not HOW
-8. Include body only when change is non-obvious
-
-## Output
-
-Propose 1-3 commit message options (short to detailed). Do NOT run `git commit` or any mutating git command. Only read-only commands are allowed.

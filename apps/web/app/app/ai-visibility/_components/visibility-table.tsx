@@ -3,6 +3,9 @@
 import {
 	Badge,
 	Button,
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger,
 	Table,
 	TableBody,
 	TableCell,
@@ -14,16 +17,12 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@opencited/ui";
-import {
-	ArrowDownIcon,
-	ArrowUpIcon,
-	HelpCircleIcon,
-	MinusIcon,
-	SparklesIcon,
-} from "lucide-react";
+import { AlertCircleIcon, HelpCircleIcon } from "lucide-react";
 import { useState } from "react";
+import { ScoreExplainerTooltip } from "@/app/components/score-explainer-tooltip";
 import { TimeAgo } from "@/app/components/time-ago";
 import { CrawlDetailSheet } from "./crawl-detail-sheet";
+import { getScoreTier, TIER_DOT_CLASSES } from "@/app/lib/score-display";
 
 interface VisibilityOverviewRow {
 	queryId: string;
@@ -33,12 +32,18 @@ interface VisibilityOverviewRow {
 	latestCrawlId: string | null;
 	latestCrawlStatus: string | null;
 	cited: boolean;
-	citationPosition: number | null;
-	brandMentioned: boolean;
-	mentionPosition: string | null;
 	competitorCount: number;
-	trend: "up" | "down" | "same" | "new";
-	previousCitationPosition: number | null;
+	score: number | null;
+	scoreBreakdown: {
+		mentionScore: number;
+		positionScore: number;
+		citationScore: number;
+		sentimentScore: number;
+		coMentionScore: number;
+	} | null;
+	formulaVersion: string | null;
+	sampleSize: number;
+	sentimentIsFallback: boolean;
 }
 
 interface VisibilityTableProps {
@@ -72,7 +77,7 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 							<TableHead>
 								<ColumnHeaderWithTooltip
 									label="Cited"
-									tooltip="Whether your brand appears as a cited source in the AI response. Shows the position number in the source list, or just 'Cited' if position is unavailable."
+									tooltip="Whether your brand appears as a cited source in the AI response."
 								/>
 							</TableHead>
 							<TableHead>
@@ -82,35 +87,10 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 								/>
 							</TableHead>
 							<TableHead>
-								<ColumnHeaderWithTooltip
-									label="Trend"
-									tooltip={
-										<div className="space-y-1">
-											<p>
-												How your citation ranking changed compared to the
-												previous crawl.
-											</p>
-											<ul className="list-none space-y-0.5">
-												<li className="flex items-center gap-1.5">
-													<ArrowUpIcon className="h-3 w-3 text-emerald-600" />
-													<span>Improved = moved to a better position</span>
-												</li>
-												<li className="flex items-center gap-1.5">
-													<ArrowDownIcon className="h-3 w-3 text-destructive" />
-													<span>Declined = moved to a worse position</span>
-												</li>
-												<li className="flex items-center gap-1.5">
-													<MinusIcon className="h-3 w-3 text-muted-foreground" />
-													<span>No change = same position</span>
-												</li>
-												<li className="flex items-center gap-1.5">
-													<SparklesIcon className="h-3 w-3 text-muted-foreground" />
-													<span>New = first time being tracked</span>
-												</li>
-											</ul>
-										</div>
-									}
-								/>
+								<div className="flex items-center gap-1.5">
+									<span>Score</span>
+									<ScoreExplainerTooltip iconSize="sm" />
+								</div>
 							</TableHead>
 						</TableRow>
 					</TableHeader>
@@ -140,11 +120,7 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 								</TableCell>
 								<TableCell>
 									{row.cited ? (
-										<Badge variant="success">
-											{row.citationPosition !== null
-												? `Position ${row.citationPosition}`
-												: "Cited"}
-										</Badge>
+										<Badge variant="success">Cited</Badge>
 									) : (
 										<Badge variant="outline">Not cited</Badge>
 									)}
@@ -157,7 +133,7 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 									)}
 								</TableCell>
 								<TableCell>
-									<TrendIndicator trend={row.trend} />
+									<ScoreCell row={row} />
 								</TableCell>
 							</TableRow>
 						))}
@@ -175,40 +151,6 @@ export function VisibilityTable({ data }: VisibilityTableProps) {
 				/>
 			)}
 		</>
-	);
-}
-
-function TrendIndicator({ trend }: { trend: "up" | "down" | "same" | "new" }) {
-	const config = {
-		up: {
-			icon: <ArrowUpIcon className="h-3.5 w-3.5" />,
-			label: "Improved",
-			className: "text-emerald-600",
-		},
-		down: {
-			icon: <ArrowDownIcon className="h-3.5 w-3.5" />,
-			label: "Declined",
-			className: "text-destructive",
-		},
-		same: {
-			icon: <MinusIcon className="h-3.5 w-3.5" />,
-			label: "No change",
-			className: "text-muted-foreground",
-		},
-		new: {
-			icon: <SparklesIcon className="h-3.5 w-3.5" />,
-			label: "New",
-			className: "text-muted-foreground",
-		},
-	};
-
-	const { icon, label, className } = config[trend];
-
-	return (
-		<div className={`flex items-center gap-1.5 text-sm ${className}`}>
-			{icon}
-			<span>{label}</span>
-		</div>
 	);
 }
 
@@ -242,6 +184,144 @@ function ColumnHeaderWithTooltip({
 					)}
 				</TooltipContent>
 			</Tooltip>
+		</div>
+	);
+}
+
+function ScoreCell({ row }: { row: VisibilityOverviewRow }) {
+	if (row.score === null) {
+		let tooltipText =
+			"Needs at least 3 successful checks to calculate a score.";
+		if (row.totalCrawls === 0) {
+			tooltipText = "Run your first check to start building your score.";
+		} else if (row.competitorCount === 0) {
+			tooltipText =
+				"Your score is peer-relative — add at least one tracked competitor to enable scoring.";
+		} else if (row.totalCrawls < 3) {
+			tooltipText = `${row.totalCrawls} of 3 checks complete. Keep running prompts to calculate your score.`;
+		}
+
+		return (
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<div className="flex items-center gap-1.5">
+						<span className="text-muted-foreground">—</span>
+						<HelpCircleIcon className="h-3.5 w-3.5 text-muted-foreground" />
+					</div>
+				</TooltipTrigger>
+				<TooltipContent side="top" align="start" className="max-w-xs">
+					<p className="text-xs">{tooltipText}</p>
+				</TooltipContent>
+			</Tooltip>
+		);
+	}
+
+	return (
+		<div className="flex items-center gap-1.5">
+			<HoverCard openDelay={200} closeDelay={100}>
+				<HoverCardTrigger asChild>
+					<div className="flex items-center gap-1.5 cursor-help">
+						<span className="text-sm font-medium tabular-nums">
+							{row.score}
+						</span>
+					</div>
+				</HoverCardTrigger>
+				<HoverCardContent
+					side="top"
+					align="start"
+					className="w-72"
+					onClick={(e) => e.stopPropagation()}
+				>
+					<div className="space-y-3">
+						<div className="space-y-0.5">
+							<h4 className="text-sm font-semibold">Score Breakdown</h4>
+							<p className="text-xs text-muted-foreground">
+								Mean of {row.sampleSize} crawl{row.sampleSize !== 1 ? "s" : ""}
+								{row.formulaVersion ? ` · ${row.formulaVersion}` : ""}
+							</p>
+						</div>
+						{row.scoreBreakdown && (
+							<div className="space-y-1.5">
+								<SubScoreRow
+									label="Mention"
+									value={row.scoreBreakdown.mentionScore}
+								/>
+								<SubScoreRow
+									label="Position"
+									value={row.scoreBreakdown.positionScore}
+								/>
+								<SubScoreRow
+									label="Citation"
+									value={row.scoreBreakdown.citationScore}
+								/>
+								<SubScoreRow
+									label="Sentiment"
+									value={row.scoreBreakdown.sentimentScore}
+								/>
+								<SubScoreRow
+									label="Co-mention"
+									value={row.scoreBreakdown.coMentionScore}
+								/>
+							</div>
+						)}
+					</div>
+				</HoverCardContent>
+			</HoverCard>
+			{row.scoreBreakdown && (
+				<ScoreExplainerTooltip
+					iconSize="sm"
+					composite={row.score ?? undefined}
+					subScores={{
+						mention: row.scoreBreakdown.mentionScore,
+						position: row.scoreBreakdown.positionScore,
+						citation: row.scoreBreakdown.citationScore,
+						sentiment: row.scoreBreakdown.sentimentScore,
+						coMention: row.scoreBreakdown.coMentionScore,
+					}}
+					sampleSize={row.sampleSize}
+					formulaVersion={row.formulaVersion ?? undefined}
+					label="Prompt score"
+				/>
+			)}
+			{row.sentimentIsFallback && (
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Badge
+							variant="warning"
+							size="sm"
+							className="cursor-help"
+							onClick={(e) => e.stopPropagation()}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.stopPropagation();
+								}
+							}}
+						>
+							<AlertCircleIcon className="h-3 w-3" />
+						</Badge>
+					</TooltipTrigger>
+					<TooltipContent side="top" align="start" className="max-w-xs">
+						<p className="text-xs">
+							Sentiment pending retry — score may be understated
+						</p>
+					</TooltipContent>
+				</Tooltip>
+			)}
+		</div>
+	);
+}
+function SubScoreRow({ label, value }: { label: string; value: number }) {
+	const tier = getScoreTier(value);
+
+	return (
+		<div className="flex items-center justify-between text-xs">
+			<div className="flex items-center gap-1.5">
+				<span
+					className={`h-1.5 w-1.5 rounded-full ${TIER_DOT_CLASSES[tier]}`}
+				/>
+				<span className="text-muted-foreground">{label}</span>
+			</div>
+			<span className="font-medium tabular-nums">{value}</span>
 		</div>
 	);
 }

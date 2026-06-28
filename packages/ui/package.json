@@ -40,6 +40,7 @@
 		"@radix-ui/react-accordion": "^1.2.12",
 		"@radix-ui/react-checkbox": "^1.3.4",
 		"@radix-ui/react-dialog": "^1.1.15",
+		"@radix-ui/react-hover-card": "catalog:",
 		"@radix-ui/react-label": "^2.1.9",
 		"@radix-ui/react-progress": "^1.1.8",
 		"@radix-ui/react-scroll-area": "^1.2.10",
@@ -56,6 +57,9 @@
 		"react-day-picker": "^10.0.1",
 		"react-dom": "catalog:",
 		"react-hook-form": "^7.77.0",
+		"react-markdown": "catalog:",
+		"remark-gfm": "catalog:",
+		"recharts": "2.15.4",
 		"sonner": "catalog:",
 		"zod": "catalog:"
 	}

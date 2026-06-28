@@ -9,7 +9,7 @@ type DomainProject = {
 	name: string | null;
 	aliases: unknown;
 	logoUrl: string | null;
-	active: string;
+	active: boolean;
 	createdAt: string;
 	updatedAt: string;
 };

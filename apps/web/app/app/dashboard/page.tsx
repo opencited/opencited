@@ -12,16 +12,10 @@ import {
 	EntityCardSkeleton,
 } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
-import {
-	Target,
-	MessageSquare,
-	FileText,
-	CheckCircle,
-	Type,
-	AlertCircle,
-} from "lucide-react";
+import { Target, FileText, CheckCircle, Type, AlertCircle } from "lucide-react";
 import { PageShell } from "@/app/components/page-shell";
 import { useDomainProject } from "@/app/components/domain-project-provider";
+import { VisibilityScoreCard } from "./visibility-score-card";
 
 function StatCard({
 	icon: Icon,
@@ -56,6 +50,13 @@ export default function DashboardPage() {
 	const trpc = useTRPC();
 	const domainProject = useDomainProject();
 
+	const visibilityAggregateQuery = useQuery({
+		...trpc.dashboard.getVisibilityAggregate.queryOptions({
+			domainProjectId: domainProject.id,
+		}),
+		refetchInterval: 30000,
+	});
+
 	const visibilityMetricsQuery = useQuery({
 		...trpc.dashboard.getVisibilityMetrics.queryOptions({
 			domainProjectId: domainProject.id,
@@ -74,40 +75,44 @@ export default function DashboardPage() {
 				<div>
 					<h2 className="text-lg font-medium mb-2">AI Visibility</h2>
 					<QueryCell
-						query={visibilityMetricsQuery}
+						query={visibilityAggregateQuery}
 						loading={
-							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(4,200px)]">
-								{[1, 2].map((i) => (
-									<EntityCardSkeleton key={i} hasFooter />
-								))}
+							<div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-[360px_200px]">
+								<EntityCardSkeleton />
+								<EntityCardSkeleton hasFooter />
 							</div>
 						}
-						success={(metrics) => {
-							if (!metrics) return null;
-							return (
-								<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-[repeat(4,200px)]">
-									<StatCard
-										icon={Target}
-										label="Cited in queries"
-										value={
+						success={(aggregate) => (
+							<div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-[360px_200px]">
+								<VisibilityScoreCard
+									crossEngineScore={aggregate.crossEngineScore}
+									perBrandPerEngineScores={aggregate.perBrandPerEngineScores}
+									trend={aggregate.trend}
+									totalCompletedCrawls={aggregate.totalCompletedCrawls}
+									activeCompetitorCount={aggregate.activeCompetitorCount}
+									maxCrawlsPerEngine={aggregate.maxCrawlsPerEngine}
+								/>
+								<StatCard
+									icon={Target}
+									label="Cited in queries"
+									value={
+										visibilityMetricsQuery.data ? (
 											<span>
-												<span>{metrics.citedInRatio.cited}</span>
+												<span>
+													{visibilityMetricsQuery.data.citedInRatio.cited}
+												</span>
 												<span className="text-sm text-muted-foreground ml-1">
-													of {metrics.citedInRatio.total}
+													of {visibilityMetricsQuery.data.citedInRatio.total}
 												</span>
 											</span>
-										}
-										description="Queries where your brand appears"
-									/>
-									<StatCard
-										icon={MessageSquare}
-										label="Brand mentions"
-										value={metrics.brandMentionCount}
-										description="Total target mentions"
-									/>
-								</div>
-							);
-						}}
+										) : (
+											"—"
+										)
+									}
+									description="Queries where your brand appears"
+								/>
+							</div>
+						)}
 					/>
 				</div>
 

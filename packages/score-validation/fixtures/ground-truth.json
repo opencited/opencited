@@ -1,0 +1,385 @@
+[
+	{
+		"id": "seed-01-brand-not-mentioned",
+		"crawlData": {
+			"crawlContent": "The best project management tools include Asana, Monday, and Trello for teams of all sizes.",
+			"crawlProvider": "perplexity",
+			"crawlCitations": [
+				{
+					"domain": "asana.com",
+					"url": "https://asana.com/blog/best-pm-tools",
+					"position": 1
+				},
+				{
+					"domain": "monday.com",
+					"url": "https://monday.com/blog/pm-tools",
+					"position": 2
+				}
+			],
+			"brandMentions": [
+				{ "brandName": "Asana", "mentionType": "competitor", "position": 1 },
+				{ "brandName": "Monday", "mentionType": "competitor", "position": 2 },
+				{ "brandName": "Trello", "mentionType": "other", "position": 3 }
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": []
+			},
+			"sentimentInput": {
+				"label": "neutral",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	},
+	{
+		"id": "seed-02-rank1-cited-positive",
+		"crawlData": {
+			"crawlContent": "OpenCited is a leading AI visibility platform that helps brands track their presence in AI-generated answers. It provides comprehensive monitoring of brand mentions across multiple AI engines.",
+			"crawlProvider": "perplexity",
+			"crawlCitations": [
+				{
+					"domain": "opencited.com",
+					"url": "https://opencited.com/docs",
+					"position": 1
+				},
+				{
+					"domain": "techcrunch.com",
+					"url": "https://techcrunch.com/ai-visibility-tools",
+					"position": 2
+				}
+			],
+			"brandMentions": [
+				{
+					"brandName": "OpenCited",
+					"mentionType": "target",
+					"position": 1,
+					"brandUrl": "https://opencited.com"
+				},
+				{
+					"brandName": "Brandwatch",
+					"mentionType": "competitor",
+					"position": 2
+				},
+				{ "brandName": "Mention", "mentionType": "competitor", "position": 3 }
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": []
+			},
+			"sentimentInput": {
+				"label": "positive",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	},
+	{
+		"id": "seed-03-rank3-not-cited-neutral",
+		"crawlData": {
+			"crawlContent": "When it comes to AI visibility, several tools stand out. Brandwatch leads the market, followed by Mention. OpenCited is also noteworthy for its open-source approach to tracking AI citations.",
+			"crawlProvider": "chatgpt",
+			"crawlCitations": [
+				{
+					"domain": "brandwatch.com",
+					"url": "https://brandwatch.com/ai-visibility",
+					"position": 1
+				},
+				{
+					"domain": "mention.com",
+					"url": "https://mention.com/ai-tracking",
+					"position": 2
+				}
+			],
+			"brandMentions": [
+				{
+					"brandName": "Brandwatch",
+					"mentionType": "competitor",
+					"position": 1
+				},
+				{ "brandName": "Mention", "mentionType": "competitor", "position": 2 },
+				{
+					"brandName": "OpenCited",
+					"mentionType": "target",
+					"position": 3,
+					"brandUrl": "https://opencited.com"
+				}
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": []
+			},
+			"sentimentInput": {
+				"label": "neutral",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	},
+	{
+		"id": "seed-04-negative-sentiment",
+		"crawlData": {
+			"crawlContent": "While OpenCited aims to solve AI visibility tracking, users have reported issues with accuracy and limited engine support compared to established competitors.",
+			"crawlProvider": "perplexity",
+			"crawlCitations": [
+				{
+					"domain": "g2.com",
+					"url": "https://g2.com/products/opencited/reviews",
+					"position": 1
+				}
+			],
+			"brandMentions": [
+				{
+					"brandName": "OpenCited",
+					"mentionType": "target",
+					"position": 1,
+					"brandUrl": "https://opencited.com"
+				},
+				{
+					"brandName": "Brandwatch",
+					"mentionType": "competitor",
+					"position": 2
+				}
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": []
+			},
+			"sentimentInput": {
+				"label": "negative",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	},
+	{
+		"id": "seed-05-no-competitors",
+		"crawlData": {
+			"crawlContent": "OpenCited provides an open-source approach to AI visibility monitoring, helping brands understand their presence in AI-generated content.",
+			"crawlProvider": "groq",
+			"crawlCitations": [
+				{
+					"domain": "opencited.com",
+					"url": "https://opencited.com/about",
+					"position": 1
+				}
+			],
+			"brandMentions": [
+				{
+					"brandName": "OpenCited",
+					"mentionType": "target",
+					"position": 1,
+					"brandUrl": "https://opencited.com"
+				}
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": []
+			},
+			"sentimentInput": {
+				"label": "positive",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	},
+	{
+		"id": "seed-06-multiple-competitors",
+		"crawlData": {
+			"crawlContent": "The AI visibility space is competitive. Brandwatch, Mention, and Meltwater all offer AI tracking features. OpenCited differentiates itself with an open-source model and focus on citation tracking.",
+			"crawlProvider": "perplexity",
+			"crawlCitations": [
+				{
+					"domain": "brandwatch.com",
+					"url": "https://brandwatch.com/ai",
+					"position": 1
+				},
+				{
+					"domain": "mention.com",
+					"url": "https://mention.com/ai",
+					"position": 2
+				},
+				{
+					"domain": "meltwater.com",
+					"url": "https://meltwater.com/ai-tracking",
+					"position": 3
+				},
+				{
+					"domain": "opencited.com",
+					"url": "https://opencited.com",
+					"position": 4
+				}
+			],
+			"brandMentions": [
+				{
+					"brandName": "Brandwatch",
+					"mentionType": "competitor",
+					"position": 1
+				},
+				{ "brandName": "Mention", "mentionType": "competitor", "position": 2 },
+				{
+					"brandName": "Meltwater",
+					"mentionType": "competitor",
+					"position": 3
+				},
+				{
+					"brandName": "OpenCited",
+					"mentionType": "target",
+					"position": 4,
+					"brandUrl": "https://opencited.com"
+				},
+				{ "brandName": "Cision", "mentionType": "other", "position": 5 }
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": []
+			},
+			"sentimentInput": {
+				"label": "positive",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	},
+	{
+		"id": "seed-07-not-cited-with-mention",
+		"crawlData": {
+			"crawlContent": "For monitoring AI-generated content, Brandwatch remains the industry leader. OpenCited is a newer entrant focusing on open-source solutions.",
+			"crawlProvider": "chatgpt",
+			"crawlCitations": [
+				{
+					"domain": "brandwatch.com",
+					"url": "https://brandwatch.com/enterprise",
+					"position": 1
+				},
+				{
+					"domain": "forbes.com",
+					"url": "https://forbes.com/ai-monitoring-tools",
+					"position": 2
+				}
+			],
+			"brandMentions": [
+				{
+					"brandName": "Brandwatch",
+					"mentionType": "competitor",
+					"position": 1
+				},
+				{
+					"brandName": "OpenCited",
+					"mentionType": "target",
+					"position": 2,
+					"brandUrl": "https://opencited.com"
+				}
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": []
+			},
+			"sentimentInput": {
+				"label": "neutral",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	},
+	{
+		"id": "seed-08-rank5-negative",
+		"crawlData": {
+			"crawlContent": "Several tools track AI visibility. Brandwatch, Mention, Meltwater, Cision, and OpenCited round out the top options, though OpenCited has received mixed reviews for its limited feature set.",
+			"crawlProvider": "perplexity",
+			"crawlCitations": [],
+			"brandMentions": [
+				{
+					"brandName": "Brandwatch",
+					"mentionType": "competitor",
+					"position": 1
+				},
+				{ "brandName": "Mention", "mentionType": "competitor", "position": 2 },
+				{
+					"brandName": "Meltwater",
+					"mentionType": "competitor",
+					"position": 3
+				},
+				{ "brandName": "Cision", "mentionType": "other", "position": 4 },
+				{
+					"brandName": "OpenCited",
+					"mentionType": "target",
+					"position": 5,
+					"brandUrl": "https://opencited.com"
+				}
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": []
+			},
+			"sentimentInput": {
+				"label": "negative",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	},
+	{
+		"id": "seed-09-alias-mention-cited",
+		"crawlData": {
+			"crawlContent": "OpenCited AI is an emerging platform for tracking brand visibility in LLM outputs. The tool provides detailed analytics on how brands appear in AI-generated responses.",
+			"crawlProvider": "groq",
+			"crawlCitations": [
+				{
+					"domain": "opencited.com",
+					"url": "https://opencited.com/features",
+					"position": 1
+				},
+				{
+					"domain": "producthunt.com",
+					"url": "https://producthunt.com/posts/opencited",
+					"position": 2
+				}
+			],
+			"brandMentions": [
+				{ "brandName": "OpenCited AI", "mentionType": "other", "position": 1 },
+				{
+					"brandName": "Brandwatch",
+					"mentionType": "competitor",
+					"position": 2
+				}
+			],
+			"targetBrand": {
+				"name": "OpenCited",
+				"domain": "opencited.com",
+				"aliases": ["OpenCited AI"]
+			},
+			"sentimentInput": {
+				"label": "positive",
+				"cacheHit": false,
+				"fallback": false,
+				"retryCount": 0
+			}
+		},
+		"humanLabel": null
+	}
+]

@@ -1,4 +1,4 @@
-import { pgTable, text, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, boolean, jsonb } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import {
 	createSelectSchema,
@@ -14,7 +14,7 @@ export const domainProjectTable = pgTable("domain_project", {
 	name: text("name"),
 	aliases: jsonb("aliases").default("[]"),
 	logoUrl: text("logo_url"),
-	active: text("active").notNull().default("true"),
+	active: boolean("active").notNull().default(true),
 	createdAt: createdAt,
 	updatedAt: updatedAt,
 });
@@ -27,6 +27,6 @@ export const domainProjectInsertSchema = domainProjectBaseInsertSchema.extend({
 	name: z.string().optional(),
 	aliases: z.array(z.string()).optional(),
 	logoUrl: z.string().url().optional(),
-	active: z.string().optional(),
+	active: z.boolean().optional(),
 });
 export const domainProjectUpdateSchema = createUpdateSchema(domainProjectTable);

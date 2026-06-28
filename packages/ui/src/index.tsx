@@ -124,6 +124,12 @@ export {
 } from "./dialog";
 
 export {
+	HoverCard,
+	HoverCardTrigger,
+	HoverCardContent,
+} from "./hover-card";
+
+export {
 	Tabs,
 	TabsList,
 	TabsTrigger,
@@ -144,6 +150,17 @@ export {
 } from "./select";
 
 export { Spinner } from "./spinner";
+
+export { Markdown } from "./markdown";
+
+export {
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+	ChartLegend,
+	ChartLegendContent,
+} from "./chart";
+export type { ChartConfig } from "./chart";
 
 export { AutoForm } from "./components/ui/autoform";
 export type { AutoFormProps, FieldTypes } from "./components/ui/autoform";

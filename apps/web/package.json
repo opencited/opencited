@@ -16,6 +16,7 @@
 		"@opencited/db": "workspace:*",
 		"@opencited/trpc": "workspace:*",
 		"@opencited/ui": "*",
+		"@t3-oss/env-nextjs": "catalog:",
 		"@tanstack/react-query": "catalog:",
 		"@trpc/client": "catalog:",
 		"@trpc/server": "catalog:",
@@ -29,11 +30,11 @@
 		"react": "catalog:",
 		"react-dom": "catalog:",
 		"react-markdown": "catalog:",
+		"recharts": "^3.9.0",
 		"remark-gfm": "catalog:",
 		"sonner": "catalog:",
 		"tailwind-merge": "catalog:",
 		"workflow": "catalog:",
-		"@t3-oss/env-nextjs": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

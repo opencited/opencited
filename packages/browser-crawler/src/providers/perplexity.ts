@@ -12,6 +12,7 @@ import type {
 import type { Logger } from "@opencited/logger";
 import { defaultLogger } from "@opencited/logger";
 import { toMarkdown } from "./turndown";
+import type { FailureType } from "../errors";
 
 const DEBUG_DIR = path.join(process.cwd(), "debug");
 const BUILD_TIMESTAMP = "2026-05-31T14:00:00Z";
@@ -606,6 +607,31 @@ export class PerplexityProvider implements CrawlerProvider {
 	}
 
 	private detectAnswerFormat(_session: BrowserSession): AnswerFormat {
+		return "unknown";
+	}
+
+	classifyError(error: Error): FailureType {
+		const msg = error.message.toLowerCase();
+		const causeMsg = error.cause
+			? (error.cause instanceof Error
+					? error.cause.message
+					: String(error.cause)
+				).toLowerCase()
+			: "";
+		const combined = `${msg} ${causeMsg}`;
+
+		if (/search input.*not found|#ask-input.*not found/i.test(combined)) {
+			return "no_editor";
+		}
+		if (/cloudflare.*challenge.*timeout|cloudflare.*timeout/i.test(combined)) {
+			return "bot_detection";
+		}
+		if (/login wall detected/i.test(combined)) {
+			return "logged_out";
+		}
+		if (/extraction failed.*content too short/i.test(combined)) {
+			return "extraction_failed";
+		}
 		return "unknown";
 	}
 }

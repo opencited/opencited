@@ -26,7 +26,7 @@ export const listBrandMentionsAction = async (params: {
 		.select()
 		.from(crawlBrandMentionTable)
 		.where(eq(crawlBrandMentionTable.crawlId, input.crawlId))
-		.orderBy(crawlBrandMentionTable.position);
+		.orderBy(crawlBrandMentionTable.createdAt);
 
 	return result;
 };

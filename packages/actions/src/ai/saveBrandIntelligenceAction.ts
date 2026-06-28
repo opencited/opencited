@@ -12,7 +12,6 @@ export const saveBrandIntelligenceInputSchema = z.object({
 	crawlId: z.string().min(1),
 	domainProjectId: z.string().optional(),
 	intelligence: extractBrandIntelligenceOutputSchema,
-	content: z.string().min(1),
 });
 
 export const saveBrandIntelligenceOutputSchema = z.object({
@@ -28,7 +27,7 @@ export const saveBrandIntelligenceAction = async (params: {
 	ctx: z.infer<typeof saveBrandIntelligenceContextSchema>;
 }) => {
 	const { input, ctx } = params;
-	const { crawlId, domainProjectId, intelligence, content } = input;
+	const { crawlId, domainProjectId, intelligence } = input;
 
 	const existingCompetitors = domainProjectId
 		? await ctx.db
@@ -91,7 +90,6 @@ export const saveBrandIntelligenceAction = async (params: {
 		}
 	}
 
-	const contentLength = content.length;
 	const mentionsToInsert = intelligence.brandMentions.map((mention) => {
 		const nameKey = mention.brandName.toLowerCase();
 		let competitorId: string | undefined;
@@ -103,20 +101,14 @@ export const saveBrandIntelligenceAction = async (params: {
 				competitorByDomain.get(mention.brandUrl?.toLowerCase() ?? "")?.id;
 		}
 
-		const position = findPosition(content, mention.context, mention.brandName);
-		const relativePosition = calculateRelativePosition(position, contentLength);
-
 		return {
 			crawlId,
 			competitorId,
 			brandName: mention.brandName,
 			brandUrl: mention.brandUrl,
 			context: mention.context,
-			position,
 			mentionType: mention.mentionType,
-			relativePosition,
-			isRecommendation: mention.isRecommendation ? "true" : "false",
-			objection: mention.objection,
+			position: mention.position,
 			metadata: {},
 		};
 	});
@@ -153,39 +145,6 @@ export const saveBrandIntelligenceAction = async (params: {
 		competitorsMatched,
 	};
 };
-
-function findPosition(
-	content: string,
-	context: string,
-	brandName: string,
-): number {
-	let position = content.indexOf(context);
-	if (position >= 0) return position;
-
-	position = content.indexOf(brandName);
-	if (position >= 0) return position;
-
-	const lowerContent = content.toLowerCase();
-	const lowerBrand = brandName.toLowerCase();
-	position = lowerContent.indexOf(lowerBrand);
-	if (position >= 0) return position;
-
-	return 0;
-}
-
-function calculateRelativePosition(
-	position: number,
-	totalLength: number,
-): "first" | "early" | "middle" | "late" {
-	if (totalLength === 0) return "middle";
-
-	const ratio = position / totalLength;
-
-	if (ratio < 0.1) return "first";
-	if (ratio < 0.4) return "early";
-	if (ratio < 0.7) return "middle";
-	return "late";
-}
 
 export const saveBrandIntelligenceHandler = async (params: {
 	input: z.infer<typeof saveBrandIntelligenceInputSchema>;

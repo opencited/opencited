@@ -75,10 +75,7 @@ export default function AIVisibilityPage() {
 											<Skeleton className="h-4 w-6" />
 										</TableCell>
 										<TableCell>
-											<div className="flex items-center gap-1.5">
-												<Skeleton className="h-3.5 w-3.5 rounded-full" />
-												<Skeleton className="h-4 w-16" />
-											</div>
+											<Skeleton className="h-4 w-8" />
 										</TableCell>
 									</TableRow>
 								))}

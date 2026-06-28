@@ -5,66 +5,28 @@ import {
 	Crawler,
 	PerplexityProvider,
 	AllProxiesFailedError,
-	type ProxyOptions,
 	type LoggerContext,
 } from "@opencited/browser-crawler";
 import {
-	saveCrawlResultAction,
+	intakeCrawlResultAction,
 	failCrawlAction,
-	saveStructuredCrawlDataAction,
-	extractBrandIntelligenceAction,
-	saveBrandIntelligenceAction,
 	getCrawlContextAction,
 } from "@opencited/actions";
-import type { JobPayload } from "@opencited/queue";
+import { dispatch, type JobPayload } from "@opencited/queue";
 import { withDb } from "../db";
 import {
+	resolveProxies,
 	fetchProxyList,
-	buildProxyOptions,
-	setStickyProxy,
 	clearStickyProxy,
-	getStickyProxy,
-} from "../lib/proxy-resolver";
+	setStickyProxy,
+} from "../lib/proxy-resolution";
 import { env } from "../env";
-import { proxyConfigTable, eq } from "@opencited/db";
 
 function adaptLogger(
 	base: CrawlerLogger,
 	context: LoggerContext,
 ): CrawlerLogger {
 	return base.withContext(context);
-}
-
-function parseBatchProxyList(raw: string): string[] {
-	return raw
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => line.length > 0 && line.includes(":"));
-}
-
-async function resolveProxies(
-	proxyApiUrl: string,
-	domainProjectId: string,
-	redis: Redis,
-	logger: CrawlerLogger,
-	stickyProxyEnabled: boolean,
-): Promise<{ proxies: ProxyOptions[]; usedSticky: boolean }> {
-	if (stickyProxyEnabled) {
-		const stickyProxy = await getStickyProxy(redis, domainProjectId);
-		if (stickyProxy) {
-			logger.info("Using sticky proxy from last successful crawl", {
-				server: stickyProxy.server,
-			});
-			return { proxies: [stickyProxy], usedSticky: true };
-		}
-	}
-
-	const proxyList = await fetchProxyList(proxyApiUrl);
-	const proxies = buildProxyOptions(proxyList);
-	logger.info("Proxy list fetched", {
-		proxyCount: proxies.length,
-	});
-	return { proxies, usedSticky: false };
 }
 
 export async function handlePerplexityCrawl(
@@ -91,74 +53,15 @@ export async function handlePerplexityCrawl(
 		const provider = new PerplexityProvider(crawlLogger);
 		const crawler = new Crawler({ logger: crawlLogger });
 
-		// Check for custom proxy config
-		const proxyConfigs = await db
-			.select()
-			.from(proxyConfigTable)
-			.where(eq(proxyConfigTable.domainProjectId, domainProjectId));
-
-		const customProxyConfig = proxyConfigs[0];
-		const isCustomProxyEnabled = customProxyConfig?.enabled === true;
-		const isStickyProxyEnabled = customProxyConfig?.stickyProxyEnabled === true;
-
 		try {
 			const startTime = Date.now();
 
-			let proxies: ProxyOptions[] | undefined;
-			let singleProxy: ProxyOptions | undefined;
-			let usedSticky = false;
-			let customProxySource: string | undefined;
-
-			if (isCustomProxyEnabled && customProxyConfig) {
-				if (customProxyConfig.sourceType === "api") {
-					({ proxies, usedSticky } = await resolveProxies(
-						customProxyConfig.sourceValue,
-						domainProjectId,
-						redis,
-						logger,
-						isStickyProxyEnabled,
-					));
-					customProxySource = customProxyConfig.sourceValue;
-				} else {
-					// batch
-					if (isStickyProxyEnabled) {
-						const stickyProxy = await getStickyProxy(redis, domainProjectId);
-						if (stickyProxy) {
-							logger.info("Using sticky proxy from last successful crawl", {
-								server: stickyProxy.server,
-							});
-							proxies = [stickyProxy];
-							usedSticky = true;
-						}
-					}
-
-					if (!usedSticky) {
-						const proxyList = parseBatchProxyList(
-							customProxyConfig.sourceValue,
-						);
-						if (proxyList.length > 0) {
-							proxies = buildProxyOptions(proxyList);
-							logger.info("Using custom batch proxy list", {
-								proxyCount: proxies.length,
-							});
-						}
-					}
-				}
-			} else if (env.THORDATA_PROXY_API_URL) {
-				({ proxies, usedSticky } = await resolveProxies(
-					env.THORDATA_PROXY_API_URL,
-					domainProjectId,
-					redis,
-					logger,
-					env.STICKY_PROXY_ENABLED,
-				));
-			} else if (env.PROXY_SERVER) {
-				singleProxy = {
-					server: env.PROXY_SERVER,
-					username: env.PROXY_USERNAME,
-					password: env.PROXY_PASSWORD,
-				};
-			}
+			const { proxies, usedSticky } = await resolveProxies({
+				domainProjectId,
+				db,
+				redis,
+				logger,
+			});
 
 			const result = await crawler
 				.crawl({
@@ -167,24 +70,23 @@ export async function handlePerplexityCrawl(
 					browserOptions: {
 						headless: env.HEADLESS,
 						persist: false,
-						proxy: singleProxy,
 					},
 					proxies,
 				})
 				.catch(async (err) => {
-					if (
-						err instanceof AllProxiesFailedError &&
-						usedSticky &&
-						customProxySource
-					) {
+					if (err instanceof AllProxiesFailedError && usedSticky) {
 						logger.warn(
 							"Sticky proxy failed — falling back to fresh proxy list",
 							{ lastFailureType: err.lastFailureType },
 						);
 						await clearStickyProxy(redis, domainProjectId);
 
-						const proxyList = await fetchProxyList(customProxySource);
-						const freshProxies = buildProxyOptions(proxyList);
+						const freshProxyList = await fetchProxyList(
+							env.THORDATA_PROXY_API_URL!,
+						);
+						const freshProxies = freshProxyList.map((p) => ({
+							server: `http://${p}`,
+						}));
 						logger.info("Retrying with fresh proxy list", {
 							proxyCount: freshProxies.length,
 						});
@@ -201,7 +103,7 @@ export async function handlePerplexityCrawl(
 
 			const endTime = Date.now();
 
-			if (result.usedProxy && isCustomProxyEnabled) {
+			if (result.usedProxy) {
 				await setStickyProxy(redis, domainProjectId, result.usedProxy);
 				logger.info("Sticky proxy updated after successful crawl", {
 					server: result.usedProxy.server,
@@ -216,81 +118,48 @@ export async function handlePerplexityCrawl(
 				citationsCount: result.structured?.citations.length ?? 0,
 			});
 
-			await saveCrawlResultAction({
+			const intakeResult = await intakeCrawlResultAction({
 				input: {
 					crawlId: promptQueryCrawlId,
-					provider: result.provider,
-					content: result.content,
-					url: result.metadata.url,
-					title: result.metadata.title,
-					loadTimeMs: endTime - startTime,
-					timestamp: result.metadata.timestamp.toISOString(),
 					promptQueryId,
+					domainProjectId: crawlContext.domainProjectId ?? domainProjectId,
+					query,
+					result,
+					loadTimeMs: endTime - startTime,
+					crawlContext: {
+						targetBrand: crawlContext.targetBrand,
+						targetDomain: crawlContext.targetDomain,
+						targetAliases: crawlContext.targetAliases,
+						knownCompetitors: crawlContext.knownCompetitors,
+					},
+					logger,
 				},
 				ctx: { db, userId: null, isAuthenticated: false },
 			});
 
-			if (result.structured) {
-				await saveStructuredCrawlDataAction({
-					input: {
-						crawlId: promptQueryCrawlId,
-						promptQueryId,
-						domainProjectId: crawlContext.domainProjectId,
-						structured: {
-							citations: result.structured.citations,
-							brandMentions: [],
-							answerFormat: result.structured.answerFormat,
-							wordCount: result.content.split(/\s+/).length,
-						},
-					},
-					ctx: { db, userId: null, isAuthenticated: false },
+			if (!intakeResult.success) {
+				logger.warn("Crawl intake completed with partial failures", {
+					crawlId: promptQueryCrawlId,
+					failedSteps: intakeResult.failedSteps,
 				});
 			}
 
-			try {
-				const intelligence = await extractBrandIntelligenceAction({
-					content: result.content,
-					query,
-					targetBrand: crawlContext.targetBrand,
-					targetDomain: crawlContext.targetDomain,
-					targetAliases: crawlContext.targetAliases,
-					knownCompetitors: crawlContext.knownCompetitors,
+			if (intakeResult.sentimentRetryNeeded) {
+				await dispatch("sentiment-retry", {
+					crawlId: promptQueryCrawlId,
+					promptQueryCrawlId,
+					domainProjectId: crawlContext.domainProjectId ?? domainProjectId,
 				});
-
-				logger.info("LLM extraction completed", {
-					brandMentionsCount: intelligence.brandMentions.length,
-					discoveredCompetitorsCount: intelligence.discoveredCompetitors.length,
-					answerFormat: intelligence.answerFormat,
+				logger.info("Sentiment retry enqueued", {
+					crawlId: promptQueryCrawlId,
 				});
-
-				const saveResult = await saveBrandIntelligenceAction({
-					input: {
-						crawlId: promptQueryCrawlId,
-						domainProjectId: crawlContext.domainProjectId,
-						intelligence,
-						content: result.content,
-					},
-					ctx: { db, userId: null, isAuthenticated: false },
-				});
-
-				logger.info("Brand intelligence saved", {
-					mentionsSaved: saveResult.mentionsSaved,
-					competitorsCreated: saveResult.competitorsCreated,
-					competitorsMatched: saveResult.competitorsMatched,
-				});
-			} catch (llmError) {
-				const llmErrorMessage =
-					llmError instanceof Error ? llmError.message : String(llmError);
-				logger.error("LLM extraction failed", { error: llmErrorMessage });
 			}
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
 
-			if (isCustomProxyEnabled) {
-				await clearStickyProxy(redis, domainProjectId);
-				logger.info("Sticky proxy cleared after crawl failure");
-			}
+			await clearStickyProxy(redis, domainProjectId);
+			logger.info("Sticky proxy cleared after crawl failure");
 
 			logger.error("Crawl task failed", {
 				error: errorMessage,

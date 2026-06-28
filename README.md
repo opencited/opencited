@@ -36,6 +36,61 @@ OpenCited is MIT licensed, self-hostable, and puts no limits on workspaces, doma
 - `@opencited/tailwind-config` — Shared Tailwind v4 theme and PostCSS config
 - `@opencited/typescript-config` — Shared TypeScript configurations
 
+## AI Visibility Score
+
+OpenCited computes a peer-relative **AI Visibility Score** (0–100) that measures how well your brand appears in AI-generated answers. The score is a weighted composite of five sub-scores, normalised against your tracked competitors.
+
+### Composite formula
+
+```
+visibilityScore = 0.35 × mentionScore
+                + 0.25 × positionScore
+                + 0.20 × citationScore
+                + 0.10 × sentimentScore
+                + 0.10 × coMentionScore
+```
+
+### Sub-scores
+
+| Sub-score | Weight | Description |
+|-----------|--------|-------------|
+| **Mention** | 0.35 | Whether your brand appears in the response at all (0 or 100) |
+| **Position** | 0.25 | How prominently your brand is positioned — earlier mentions score higher (logarithmic decay) |
+| **Citation** | 0.20 | Whether your domain is cited as a source (binary per crawl, ratio at aggregate) |
+| **Sentiment** | 0.10 | Whether the response tone toward your brand is positive, neutral, or negative (LLM-as-judge) |
+| **Co-mention** | 0.10 | Your brand's share of all brand mentions in the response |
+
+### Worked example
+
+A user tracks 2 competitors for their brand `MyBrand` and runs 3 crawls of one prompt on Perplexity:
+
+| Crawl | Mention | Position | Citation | Sentiment | Co-mention | Composite |
+|-------|---------|----------|----------|-----------|------------|-----------|
+| 1 | 100 | 100 (rank 1) | 0 | 100 (positive) | 25 (1 of 4) | 73 |
+| 2 | 100 | 50 (rank 3) | 100 (cited) | 50 (neutral) | 25 (1 of 4) | 75 |
+| 3 | 100 | 100 (rank 1) | 0 | 50 (neutral) | 50 (2 of 4) | 70 |
+
+After min-max normalisation against the peer set:
+
+```
+visibilityScore(MyBrand, Perplexity) = 0.35×100 + 0.25×100 + 0.20×0 + 0.10×57 + 0.10×50
+                                     = 35 + 25 + 0 + 5.7 + 5
+                                     → 71
+```
+
+### v1 known limitations
+
+- **Own-domain citations only** — third-party "earned media" citations are not scored (v1.1)
+- **No within-sentence position** — ordinal rank among brands, not character offset
+- **Peer-relative only** — score depends on your tracked competitors; no global category baseline
+- **No temporal decay** — a 1-month-old crawl is weighted equally to yesterday's
+- **Equal-weight cross-engine** — all engines with data contribute equally to the final score
+
+### Learn more
+
+- [ADR-0002: AI Visibility Score](docs/adr/0002-visibility-score.md) — architectural decision record
+- [Full formula specification](docs/agents/visibility-score.md) — normative reference with glossary, deterministic guarantees, and validation criteria
+
 ## Getting Started
 
 ### Prerequisites

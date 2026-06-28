@@ -5,6 +5,7 @@ import {
 	promptQueryTable,
 	promptQueryCrawlTable,
 	crawlBrandMentionTable,
+	crawlVisibilityScoreTable,
 } from "@opencited/db";
 
 export const getVisibilityOverviewInputSchema = z.object({
@@ -20,12 +21,20 @@ export const getVisibilityOverviewOutputSchema = z.array(
 		latestCrawlId: z.string().nullable(),
 		latestCrawlStatus: z.string().nullable(),
 		cited: z.boolean(),
-		citationPosition: z.number().nullable(),
-		brandMentioned: z.boolean(),
-		mentionPosition: z.string().nullable(),
 		competitorCount: z.number(),
-		trend: z.enum(["up", "down", "same", "new"]),
-		previousCitationPosition: z.number().nullable(),
+		score: z.number().nullable(),
+		scoreBreakdown: z
+			.object({
+				mentionScore: z.number(),
+				positionScore: z.number(),
+				citationScore: z.number(),
+				sentimentScore: z.number(),
+				coMentionScore: z.number(),
+			})
+			.nullable(),
+		formulaVersion: z.string().nullable(),
+		sampleSize: z.number(),
+		sentimentIsFallback: z.boolean(),
 	}),
 );
 
@@ -34,6 +43,7 @@ export const getVisibilityOverviewContextSchema = baseActionContextSchema;
 type PromptQueryRow = typeof promptQueryTable.$inferSelect;
 type CrawlRow = typeof promptQueryCrawlTable.$inferSelect;
 type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
+type ScoreRow = typeof crawlVisibilityScoreTable.$inferSelect;
 
 export const getVisibilityOverviewAction = async (params: {
 	input: z.infer<typeof getVisibilityOverviewInputSchema>;
@@ -82,6 +92,19 @@ export const getVisibilityOverviewAction = async (params: {
 		mentionsByCrawlId.set(mention.crawlId, existing);
 	}
 
+	let allScores: ScoreRow[] = [];
+	if (crawlIds.length > 0) {
+		allScores = await ctx.db
+			.select()
+			.from(crawlVisibilityScoreTable)
+			.where(inArray(crawlVisibilityScoreTable.crawlId, crawlIds));
+	}
+
+	const scoresByCrawlId = new Map<string, ScoreRow>();
+	for (const score of allScores) {
+		scoresByCrawlId.set(score.crawlId, score);
+	}
+
 	const results: z.infer<typeof getVisibilityOverviewOutputSchema> = [];
 
 	for (const query of promptQueries) {
@@ -100,18 +123,17 @@ export const getVisibilityOverviewAction = async (params: {
 				latestCrawlId: null,
 				latestCrawlStatus: null,
 				cited: false,
-				citationPosition: null,
-				brandMentioned: false,
-				mentionPosition: null,
 				competitorCount: 0,
-				trend: "new" as const,
-				previousCitationPosition: null,
+				score: null,
+				scoreBreakdown: null,
+				formulaVersion: null,
+				sampleSize: 0,
+				sentimentIsFallback: false,
 			});
 			continue;
 		}
 
 		const latestCrawl = crawls[0]!;
-		const previousCrawl = crawls.length > 1 ? crawls[1] : null;
 
 		const brandMentions = mentionsByCrawlId.get(latestCrawl.id) ?? [];
 
@@ -119,12 +141,6 @@ export const getVisibilityOverviewAction = async (params: {
 			(m: MentionRow) => m.mentionType === "target",
 		);
 		const cited = !!targetMention;
-		const citationPosition =
-			targetMention &&
-			targetMention.position !== null &&
-			targetMention.position >= 0
-				? targetMention.position
-				: null;
 
 		const competitorMentions = brandMentions.filter(
 			(m: MentionRow) => m.mentionType === "competitor",
@@ -133,46 +149,62 @@ export const getVisibilityOverviewAction = async (params: {
 			competitorMentions.map((m: MentionRow) => m.competitorId).filter(Boolean),
 		).size;
 
-		const brandMentioned = !!targetMention;
-		const mentionPosition = targetMention?.relativePosition ?? null;
+		const successfulCrawls = crawls.filter((c) => c.status === "completed");
+		const recentSuccessfulCrawls = successfulCrawls.slice(0, 5);
 
-		let trend: "up" | "down" | "same" | "new" = "new";
-		let previousCitationPosition: number | null = null;
+		let score: number | null = null;
+		let scoreBreakdown: {
+			mentionScore: number;
+			positionScore: number;
+			citationScore: number;
+			sentimentScore: number;
+			coMentionScore: number;
+		} | null = null;
+		let formulaVersion: string | null = null;
+		let sampleSize = 0;
+		let sentimentIsFallback = false;
 
-		if (previousCrawl) {
-			const previousBrandMentions =
-				mentionsByCrawlId.get(previousCrawl.id) ?? [];
+		if (recentSuccessfulCrawls.length >= 3) {
+			const scores = recentSuccessfulCrawls
+				.map((c) => scoresByCrawlId.get(c.id))
+				.filter((s): s is ScoreRow => s !== undefined);
 
-			const previousTargetMention = previousBrandMentions.find(
-				(m: MentionRow) => m.mentionType === "target",
-			);
-			previousCitationPosition =
-				previousTargetMention &&
-				previousTargetMention.position !== null &&
-				previousTargetMention.position >= 0
-					? previousTargetMention.position
-					: null;
+			if (scores.length >= 3) {
+				const totalScore = scores.reduce(
+					(sum, s) => sum + s.visibilityScore,
+					0,
+				);
+				score = Math.round(totalScore / scores.length);
 
-			if (citationPosition !== null && previousCitationPosition !== null) {
-				if (citationPosition < previousCitationPosition) {
-					trend = "up";
-				} else if (citationPosition > previousCitationPosition) {
-					trend = "down";
-				} else {
-					trend = "same";
-				}
-			} else if (
-				citationPosition !== null &&
-				previousCitationPosition === null
-			) {
-				trend = "up";
-			} else if (
-				citationPosition === null &&
-				previousCitationPosition !== null
-			) {
-				trend = "down";
-			} else {
-				trend = "same";
+				const totalMention = scores.reduce((sum, s) => sum + s.mentionScore, 0);
+				const totalPosition = scores.reduce(
+					(sum, s) => sum + s.positionScore,
+					0,
+				);
+				const totalCitation = scores.reduce(
+					(sum, s) => sum + s.citationScore,
+					0,
+				);
+				const totalSentiment = scores.reduce(
+					(sum, s) => sum + s.sentimentScore,
+					0,
+				);
+				const totalCoMention = scores.reduce(
+					(sum, s) => sum + s.coMentionScore,
+					0,
+				);
+
+				scoreBreakdown = {
+					mentionScore: Math.round(totalMention / scores.length),
+					positionScore: Math.round(totalPosition / scores.length),
+					citationScore: Math.round(totalCitation / scores.length),
+					sentimentScore: Math.round(totalSentiment / scores.length),
+					coMentionScore: Math.round(totalCoMention / scores.length),
+				};
+
+				formulaVersion = scores[0]?.formulaVersion ?? null;
+				sampleSize = scores.length;
+				sentimentIsFallback = scores.some((s) => s.sentimentIsFallback);
 			}
 		}
 
@@ -187,12 +219,12 @@ export const getVisibilityOverviewAction = async (params: {
 			latestCrawlId: latestCrawl.id,
 			latestCrawlStatus: latestCrawl.status,
 			cited,
-			citationPosition,
-			brandMentioned,
-			mentionPosition,
 			competitorCount,
-			trend,
-			previousCitationPosition,
+			score,
+			scoreBreakdown,
+			formulaVersion,
+			sampleSize,
+			sentimentIsFallback,
 		});
 	}
 

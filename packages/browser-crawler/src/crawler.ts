@@ -11,7 +11,6 @@ import {
 	NavigationError,
 	ExtractionError,
 	AllProxiesFailedError,
-	classifyError,
 	shouldRotateProxy,
 	type FailureType,
 } from "./errors";
@@ -106,7 +105,10 @@ export class Crawler {
 
 			return result;
 		} catch (error) {
-			const failureType = classifyError(error);
+			const failureType =
+				error instanceof Error
+					? options.provider.classifyError(error)
+					: "unknown";
 			const step = error instanceof CrawlerError ? error.step : "unknown";
 			await captureDebugInfo(
 				session,
@@ -230,7 +232,10 @@ export class Crawler {
 						break;
 					} catch (error) {
 						_attemptError = error;
-						failureType = classifyError(error);
+						failureType =
+							error instanceof Error
+								? options.provider.classifyError(error)
+								: "unknown";
 						const errorMessage =
 							error instanceof Error ? error.message : String(error);
 						const errorCause =

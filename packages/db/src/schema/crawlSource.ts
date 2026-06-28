@@ -1,4 +1,4 @@
-import { pgTable, text, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import {
 	createSelectSchema,
@@ -20,8 +20,8 @@ export const crawlSourceTable = pgTable("crawl_source", {
 	description: text("description"),
 	position: integer("position"),
 
-	isOwnDomain: text("is_own_domain").notNull().default("false"),
-	isCompetitorDomain: text("is_competitor_domain").notNull().default("false"),
+	isOwnDomain: boolean("is_own_domain").notNull().default(false),
+	isCompetitorDomain: boolean("is_competitor_domain").notNull().default(false),
 
 	metadata: jsonb("metadata"),
 
@@ -38,8 +38,8 @@ export const crawlSourceInsertSchema = crawlSourceBaseInsertSchema.extend({
 	title: z.string().optional(),
 	description: z.string().optional(),
 	position: z.number().int().optional(),
-	isOwnDomain: z.string().optional(),
-	isCompetitorDomain: z.string().optional(),
+	isOwnDomain: z.boolean().optional(),
+	isCompetitorDomain: z.boolean().optional(),
 	metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export const crawlSourceUpdateSchema = createUpdateSchema(crawlSourceTable);

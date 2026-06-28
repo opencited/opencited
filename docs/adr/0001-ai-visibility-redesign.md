@@ -20,7 +20,7 @@ The existing tab structure inverted this hierarchy, leading with operational met
 
 | Page | Before | After |
 |------|--------|-------|
-| **Dashboard** | Generic stats (Sitemaps count, URLs count, Prompts count) | Visibility metrics: cited-in ratio, brand mention count, avg citation position, competitor outrank count, recent activity |
+| **Dashboard** | Generic stats (Sitemaps count, URLs count, Prompts count) | Visibility metrics: cited-in ratio |
 | **Prompts** | Prompt cards + History tab (crawl list) | Prompt management only (create, edit, delete, view). History tab removed. |
 | **AI Visibility** | Three equal tabs: Analytics, Citations, Run Logs | Consolidated results page: visibility table, competitor intelligence, run logs (tertiary) |
 
@@ -28,20 +28,24 @@ The existing tab structure inverted this hierarchy, leading with operational met
 
 **Primary view — Visibility Table** (replaces Analytics tab):
 - One row per query (not per crawl)
-- Columns: Query, Last Checked, Cited + Position, Brand Mentioned + Position, Competitors Cited, Trend (↑/↓/→)
+- Columns: Query, Last Checked, Cited (yes/no), Competitors Cited
 - Clicking a row opens a detail sheet (latest crawl by default)
 - Sheet header includes "View history" dropdown to switch between past runs
 - Empty state with CTA to run first prompt when zero crawls exist
 
+**Note:** Position numbers, trend indicators, and brand mention position were removed pending the visibility scoring algorithm (issue #22). These will be reintroduced as part of a composite score rather than raw position data.
+
 **Sheet Detail** (unified, replaces RunLogDetailSheet + CitationDetailSheet):
 - **Answer tab** (default): Full AI response rendered as HTML with Copy button
 - **Sources tab**: Citation list with position, own/competitor badges, URL; expandable for description and metadata
-- **Mentions tab**: Brand mentions with type, relative position, full context, objections
+- **Mentions tab**: Brand mentions with type, full context
 - **Details tab**: Provider, load time, duration, answer format, word count, trigger run ID, prompt snapshot
 
 **Secondary section — Competitor Intelligence**:
-- Table: Competitor, Mentioned In, Avg Position, Appears Before You, Appears After You
-- Clicking a competitor opens a sheet with: queries where mentioned, context snippets, recommendation vs mention, objections, head-to-head comparison
+- Table: Competitor, Mentioned In
+- Clicking a competitor opens a sheet with: queries where mentioned, context snippets
+
+**Note:** "Appears Before You" / "Appears After You" columns, recommendation badges, objection displays, and head-to-head position comparisons were removed pending the visibility scoring algorithm (issue #22). These will be reintroduced as part of a composite score rather than raw position comparisons.
 
 **Tertiary — Run Logs**:
 - Collapsed operational view for debugging failed crawls
