@@ -6,6 +6,11 @@ import { useTRPC } from "@/app/_trpc/client";
 import { Button, Spinner } from "@opencited/ui";
 import { useConfirmation } from "@/app/hooks/use-confirmation";
 import { useActiveCrawls } from "@/app/hooks/use-active-crawls";
+import {
+	CRAWL_PROVIDER_OPTIONS,
+	defaultCrawlProvider,
+	type CrawlProviderId,
+} from "./crawl-providers";
 
 import { toast } from "sonner";
 
@@ -21,6 +26,8 @@ export function RunCrawlButton({
 	const trpc = useTRPC();
 	const queryClient = useQueryClient();
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [selectedProvider, setSelectedProvider] =
+		useState<CrawlProviderId>(defaultCrawlProvider);
 	const { confirm, dialog } = useConfirmation();
 
 	const { activeCrawls } = useActiveCrawls({
@@ -70,21 +77,40 @@ export function RunCrawlButton({
 		});
 
 		if (!confirmed) return;
-		startCrawlMutation.mutate({ promptQueryId, provider: "perplexity" });
+		startCrawlMutation.mutate({
+			promptQueryId,
+			provider: selectedProvider,
+		});
 	};
 
 	return (
 		<>
-			<Button
-				variant="outline"
-				size="sm"
-				onClick={handleClick}
-				disabled={isRunning || isSubmitting}
-				className="gap-2 run-crawl-btn"
-			>
-				{(isRunning || isSubmitting) && <Spinner className="h-3 w-3" />}
-				{isRunning || isSubmitting ? "Running..." : "Run Crawl"}
-			</Button>
+			<div className="flex items-center gap-2">
+				<select
+					value={selectedProvider}
+					onClick={(e) => e.stopPropagation()}
+					onChange={(e) =>
+						setSelectedProvider(e.target.value as CrawlProviderId)
+					}
+					className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+				>
+					{CRAWL_PROVIDER_OPTIONS.map((opt) => (
+						<option key={opt.id} value={opt.id}>
+							{opt.label}
+						</option>
+					))}
+				</select>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={handleClick}
+					disabled={isRunning || isSubmitting}
+					className="gap-2 run-crawl-btn"
+				>
+					{(isRunning || isSubmitting) && <Spinner className="h-3 w-3" />}
+					{isRunning || isSubmitting ? "Running..." : "Run Crawl"}
+				</Button>
+			</div>
 			{dialog}
 		</>
 	);

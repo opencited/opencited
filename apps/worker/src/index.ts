@@ -7,7 +7,7 @@ import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { HonoAdapter } from "@bull-board/hono";
 import { createLogger, flush } from "@opencited/logger";
-import { handlePerplexityCrawl } from "./handlers/perplexity-crawl";
+import { handleCrawlJob } from "./handlers/perplexity-crawl";
 import { handleSentimentRetry } from "./handlers/sentiment-retry";
 import { env } from "./env";
 
@@ -20,11 +20,19 @@ const perplexityCrawlQueue = new Queue("perplexity-crawl", {
 	connection: createRedisConnection(),
 });
 
+const chatgptCrawlQueue = new Queue("chatgpt-crawl", {
+	connection: createRedisConnection(),
+});
+
 const sentimentRetryQueue = new Queue("sentiment-retry", {
 	connection: createRedisConnection(),
 });
 
 const queueEvents = new QueueEvents("perplexity-crawl", {
+	connection: createRedisConnection(),
+});
+
+const chatgptQueueEvents = new QueueEvents("chatgpt-crawl", {
 	connection: createRedisConnection(),
 });
 
@@ -44,6 +52,18 @@ queueEvents.on("failed", ({ jobId, failedReason }) => {
 	logger.error("Job failed", { jobId, failedReason });
 });
 
+chatgptQueueEvents.on("active", ({ jobId }) => {
+	logger.info("ChatGPT job active", { jobId });
+});
+
+chatgptQueueEvents.on("completed", ({ jobId }) => {
+	logger.info("ChatGPT job completed", { jobId });
+});
+
+chatgptQueueEvents.on("failed", ({ jobId, failedReason }) => {
+	logger.error("ChatGPT job failed", { jobId, failedReason });
+});
+
 sentimentRetryQueueEvents.on("failed", ({ jobId, failedReason }) => {
 	logger.error("Sentiment retry job failed", { jobId, failedReason });
 });
@@ -58,7 +78,19 @@ const worker = new Worker(
 	"perplexity-crawl",
 	async (job) => {
 		logger.info("Processing job", { jobId: job.id, data: job.data });
-		await handlePerplexityCrawl(job, logger, sharedRedis);
+		await handleCrawlJob(job, logger, sharedRedis);
+	},
+	{
+		connection: createRedisConnection(),
+		concurrency,
+	},
+);
+
+const chatgptWorker = new Worker(
+	"chatgpt-crawl",
+	async (job) => {
+		logger.info("Processing ChatGPT job", { jobId: job.id, data: job.data });
+		await handleCrawlJob(job, logger, sharedRedis);
 	},
 	{
 		connection: createRedisConnection(),
@@ -95,6 +127,23 @@ worker.on("error", (err) => {
 	logger.error("Worker error", { error: err.message });
 });
 
+chatgptWorker.on("completed", async (job) => {
+	logger.info("ChatGPT worker: job completed", { jobId: job.id });
+	await flush();
+});
+
+chatgptWorker.on("failed", async (job, err) => {
+	logger.error("ChatGPT worker: job failed", {
+		jobId: job?.id,
+		error: err.message,
+	});
+	await flush();
+});
+
+chatgptWorker.on("error", (err) => {
+	logger.error("ChatGPT worker error", { error: err.message });
+});
+
 sentimentRetryWorker.on("completed", async (job) => {
 	logger.info("Sentiment retry: job completed", { jobId: job.id });
 	await flush();
@@ -118,6 +167,7 @@ const serverAdapter = new HonoAdapter(serveStatic);
 createBullBoard({
 	queues: [
 		new BullMQAdapter(perplexityCrawlQueue),
+		new BullMQAdapter(chatgptCrawlQueue),
 		new BullMQAdapter(sentimentRetryQueue),
 	],
 	serverAdapter,
@@ -154,10 +204,13 @@ async function shutdown(signal: string) {
 	try {
 		await Promise.all([
 			worker.close(),
+			chatgptWorker.close(),
 			sentimentRetryWorker.close(),
 			queueEvents.close(),
+			chatgptQueueEvents.close(),
 			sentimentRetryQueueEvents.close(),
 			perplexityCrawlQueue.close(),
+			chatgptCrawlQueue.close(),
 			sentimentRetryQueue.close(),
 			sharedRedis.quit(),
 			flush(),

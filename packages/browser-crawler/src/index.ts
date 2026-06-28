@@ -53,6 +53,7 @@ export type {
 	AuthCredentials,
 	CrawlResult,
 	CrawlMetadata,
+	InlineLink,
 } from "./providers";
 
 export type {

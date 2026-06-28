@@ -92,6 +92,25 @@ const result = await crawler.crawl({
 - **Bot detection:** More aggressive than Perplexity. Camoufox with the default config passes through, but a Google sign-in modal appears on detected automation. Apply the `CRAWL_RATE_LIMITS` env var with a conservative RPS for `chatgpt` (e.g. `0.2`).
 - **Empty state:** Before any query, the page shows "Ready when you are." or "What's on your mind today?" — the response container will be empty. After submitting, the user message appears in a `[data-message-id]` div followed by the assistant's response in another `[data-message-id]` div.
 
+## Lifecycle Hooks
+
+The `CrawlerProvider` interface includes optional lifecycle hooks that the
+`Crawler` orchestrator calls at specific points. Providers implement only the
+hooks they need; the orchestrator no-ops for missing ones.
+
+| Hook | When called | Use case |
+|------|-------------|----------|
+| `beforePrompt` | After navigate/auth, before submitQuery | Dismiss modals, prepare input |
+| `afterTyping` | After submitQuery (typing), before waitForResponse | Additional UI interactions |
+| `beforeSubmit` | After typing, before response wait | Confirm submission state |
+| `afterSubmit` | After waitForResponse completes | Post-response cleanup |
+| `beforeRetry` | After a failed attempt, before next retry | Reset state between retries |
+| `betweenPrompts` | Between retry attempts on same proxy | Clean up between retries |
+
+ChatGPT uses `beforePrompt`, `afterTyping`, `beforeSubmit`, `afterSubmit` for
+its auth-modal dismissal flow (the "Stay logged out" button at four lifecycle
+points with growing wait windows).
+
 ## Adding a New Provider
 
 1. **Explore the target site.** Write a throwaway script in

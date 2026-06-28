@@ -47,3 +47,13 @@ export type AnswerFormat =
 	| "unknown";
 
 export type AuthCredentials = Record<string, string>;
+
+/**
+ * Inline link extracted from a chat-engine response (e.g., ChatGPT's
+ * `<a class="decorated-link">` anchors). Populated in Slice 3.
+ */
+export interface InlineLink {
+	title: string;
+	url: string;
+	domain: string;
+}

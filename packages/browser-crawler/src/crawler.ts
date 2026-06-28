@@ -93,9 +93,12 @@ export class Crawler {
 				);
 			}
 
+			await options.provider.beforePrompt?.(session, options.query);
 			await this.safeSubmitQuery(options.provider, session, options.query);
-
+			await options.provider.afterTyping?.(session, options.query);
+			await options.provider.beforeSubmit?.(session, options.query);
 			await this.safeWaitForResponse(options.provider, session);
+			await options.provider.afterSubmit?.(session, options.query);
 
 			const result = await this.safeExtractResult(options.provider, session);
 
@@ -188,6 +191,11 @@ export class Crawler {
 						break;
 					}
 
+					// Between retry attempts, let the provider do cleanup
+					if (attempt > 0 && session) {
+						await options.provider.betweenPrompts?.(session, options.query);
+					}
+
 					totalAttempts++;
 					this.logger.info(
 						`🌐 Proxy ${i + 1}/${proxies.length} attempt ${attempt + 1}: ${proxy.server}${isCanary && attempt === 0 ? " [canary]" : ""}`,
@@ -213,12 +221,16 @@ export class Crawler {
 							);
 						}
 
+						await options.provider.beforePrompt?.(session, options.query);
 						await this.safeSubmitQuery(
 							options.provider,
 							session,
 							options.query,
 						);
+						await options.provider.afterTyping?.(session, options.query);
+						await options.provider.beforeSubmit?.(session, options.query);
 						await this.safeWaitForResponse(options.provider, session);
+						await options.provider.afterSubmit?.(session, options.query);
 
 						result = await this.safeExtractResult(options.provider, session);
 						result.query = options.query;
@@ -282,6 +294,10 @@ export class Crawler {
 								// UI/local failures: allow retries on same proxy
 								attemptsForThisProxy = isCanary ? 1 : maxAttemptsPerProxy;
 							}
+						}
+
+						if (error instanceof Error && session) {
+							await options.provider.beforeRetry?.(session, error, attempt + 1);
 						}
 					} finally {
 						if (session) {
