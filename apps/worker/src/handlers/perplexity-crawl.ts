@@ -20,6 +20,7 @@ import {
 	clearStickyProxy,
 	setStickyProxy,
 } from "../lib/proxy-resolution";
+import { rateLimit } from "../lib/rate-limit";
 import { env } from "../env";
 
 function adaptLogger(
@@ -51,6 +52,8 @@ export async function handleCrawlJob(
 			input: { promptQueryId },
 			ctx: { db, userId: null, isAuthenticated: false },
 		});
+
+		await rateLimit(provider);
 
 		const crawlLogger = adaptLogger(logger, {
 			jobId: job.id ?? undefined,

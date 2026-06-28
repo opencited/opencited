@@ -12,6 +12,7 @@ export const env = createEnv({
 		PROXY_USERNAME: z.string().optional(),
 		PROXY_PASSWORD: z.string().optional(),
 		STICKY_PROXY_ENABLED: z.coerce.boolean().default(false),
+		CRAWL_RATE_LIMITS: z.string().optional().default("{}"),
 	},
 	runtimeEnv: process.env,
 	extends: [BrowserCrawlerEnv],
