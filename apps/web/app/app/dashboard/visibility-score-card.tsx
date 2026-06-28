@@ -86,10 +86,7 @@ function CustomTooltip({
 				{formattedDate}
 			</p>
 			<div className="flex items-center gap-2">
-				<div
-					className="h-2 w-2 rounded-sm"
-					style={{ backgroundColor: "hsl(240 10% 3.9%)" }}
-				/>
+				<div className="h-2 w-2 rounded-sm bg-foreground" />
 				<span className="text-xs text-muted-foreground">Score</span>
 				<span className="text-xs font-medium text-foreground ml-auto tabular-nums">
 					{value}
@@ -143,9 +140,9 @@ function Sparkline({ data }: { data: TrendPoint[] }) {
 					<Area
 						type="monotone"
 						dataKey="score"
-						stroke="hsl(240 10% 3.9%)"
+						stroke="var(--color-foreground)"
 						strokeWidth={2}
-						fill="hsl(240 10% 3.9%)"
+						fill="var(--color-foreground)"
 						fillOpacity={0.1}
 						activeDot={{ r: 4, strokeWidth: 0 }}
 					/>
