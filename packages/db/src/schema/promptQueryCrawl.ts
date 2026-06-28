@@ -17,7 +17,7 @@ export const promptQueryCrawlStatusEnum = z.enum([
 ]);
 export type PromptQueryCrawlStatus = z.infer<typeof promptQueryCrawlStatusEnum>;
 
-export const crawlProviderEnum = z.enum(["perplexity"]);
+export const crawlProviderEnum = z.enum(["perplexity", "chatgpt"]);
 export type CrawlProvider = z.infer<typeof crawlProviderEnum>;
 
 export const promptQueryCrawlTable = pgTable("prompt_query_crawl", {

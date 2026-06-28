@@ -4,6 +4,10 @@ import { jobs, type JobName, type JobPayload } from "./jobs";
 import { env } from "./env";
 
 export { jobs, type JobName, type JobPayload } from "./jobs";
+export {
+	dispatchCrawlJob,
+	getJobNameForProvider,
+} from "./dispatch-crawl-job";
 
 const queues = new Map<string, Queue>();
 

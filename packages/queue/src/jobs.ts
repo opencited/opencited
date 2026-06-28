@@ -7,15 +7,27 @@ export interface JobDefinition<T extends z.ZodType> {
 	options: DefaultJobOptions;
 }
 
+const crawlJobPayload = z.object({
+	query: z.string(),
+	promptQueryId: z.string(),
+	promptQueryCrawlId: z.string(),
+	domainProjectId: z.string(),
+	provider: crawlProviderEnum,
+});
+
 export const jobs = {
 	"perplexity-crawl": {
-		payload: z.object({
-			query: z.string(),
-			promptQueryId: z.string(),
-			promptQueryCrawlId: z.string(),
-			domainProjectId: z.string(),
-			provider: crawlProviderEnum,
-		}),
+		payload: crawlJobPayload,
+		options: {
+			attempts: 0,
+			backoff: {
+				type: "exponential",
+				delay: 1000,
+			},
+		},
+	},
+	"chatgpt-crawl": {
+		payload: crawlJobPayload,
 		options: {
 			attempts: 0,
 			backoff: {

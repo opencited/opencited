@@ -1,5 +1,6 @@
 import type { Logger } from "@opencited/logger";
 import { PerplexityProvider } from "./perplexity";
+import { ChatGPTProvider } from "./chatgpt";
 import type { CrawlerProvider } from "./base";
 
 export const providerRegistry: Record<
@@ -9,6 +10,7 @@ export const providerRegistry: Record<
 	) => CrawlerProvider
 > = {
 	perplexity: PerplexityProvider,
+	chatgpt: ChatGPTProvider,
 };
 
 export function createProvider(name: string, logger?: Logger): CrawlerProvider {
