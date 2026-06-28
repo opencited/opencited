@@ -182,6 +182,7 @@
       "name": "@opencited/queue",
       "version": "0.0.0",
       "dependencies": {
+        "@opencited/db": "workspace:*",
         "@t3-oss/env-core": "catalog:",
         "bullmq": "catalog:",
         "ioredis": "catalog:",

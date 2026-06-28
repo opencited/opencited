@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { DefaultJobOptions } from "bullmq";
-
-export const crawlProviderEnum = z.enum(["perplexity"]);
+import { crawlProviderEnum } from "@opencited/db";
 
 export interface JobDefinition<T extends z.ZodType> {
 	payload: T;

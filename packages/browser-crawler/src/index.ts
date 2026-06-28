@@ -46,6 +46,7 @@ export {
 } from "./errors";
 
 export { PerplexityProvider } from "./providers/perplexity";
+export { createProvider, providerRegistry } from "./providers/factory";
 export type {
 	CrawlerProvider,
 	AuthCredentials,
