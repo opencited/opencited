@@ -58,4 +58,6 @@ export interface InlineLink {
 	url: string;
 	domain: string;
 	position: number;
+	/** Surrounding text snippet from the source panel, when available. */
+	citedText?: string;
 }

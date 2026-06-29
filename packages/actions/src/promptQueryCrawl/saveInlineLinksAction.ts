@@ -14,6 +14,7 @@ export const inlineLinkSchema = z.object({
 	url: z.string().url(),
 	domain: z.string().min(1),
 	position: z.number().int(),
+	citedText: z.string().optional(),
 });
 
 export const saveInlineLinksInputSchema = z.object({
@@ -91,6 +92,7 @@ export const saveInlineLinksAction = async (params: {
 		isCompetitorDomain: competitorDomains.has(link.domain.toLowerCase())
 			? "true"
 			: "false",
+		...(link.citedText ? { metadata: { citedText: link.citedText } } : {}),
 	}));
 
 	await ctx.db.insert(crawlReferenceTable).values(rowsToInsert);

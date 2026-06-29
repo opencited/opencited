@@ -1,8 +1,9 @@
 import type { BrowserSession } from "../types";
 import type { CrawlerProvider } from "./base";
-import type { CrawlResult } from "./types";
+import type { CrawlResult, InlineLink } from "./types";
 import type { FailureType } from "../errors";
 import { toMarkdown } from "./turndown";
+import { filterSelfCitations } from "./self-citation-filter";
 
 const AUTH_MODAL_SELECTOR = '[role="dialog"][data-state="open"]';
 const AUTH_MODAL_TEXT_RE = /Thanks for trying ChatGPT|Log in or sign up/i;
@@ -462,6 +463,142 @@ export class ChatGPTProvider implements CrawlerProvider {
 		return links;
 	}
 
+	private async findSourcesButton(
+		session: BrowserSession,
+	): Promise<{ found: boolean; score?: number }> {
+		return session.page.evaluate(() => {
+			const TEXT_RE = /\b\d+\s*sources?\b/i;
+			const ARIA_RE = /\bsources?\b/i;
+
+			const candidates = document.querySelectorAll(
+				'button, [role="button"], a[href]',
+			);
+
+			let bestEl: Element | null = null;
+			let bestScore = 0;
+
+			for (const el of candidates) {
+				let score = 0;
+				const text = el.textContent?.trim() ?? "";
+				const ariaLabel = el.getAttribute("aria-label") ?? "";
+
+				if (TEXT_RE.test(text)) score += 120;
+				if (ARIA_RE.test(ariaLabel)) score += 90;
+
+				const responseEls = document.querySelectorAll(
+					'[data-message-author-role="assistant"]',
+				);
+				for (const resp of responseEls) {
+					if (resp.contains(el) || el.contains(resp)) {
+						score += 60;
+						break;
+					}
+				}
+
+				if (score > bestScore) {
+					bestScore = score;
+					bestEl = el;
+				}
+			}
+
+			if (!bestEl || bestScore < 60) {
+				return { found: false };
+			}
+
+			return { found: true, score: bestScore };
+		});
+	}
+
+	private async extractPanelLinks(
+		session: BrowserSession,
+	): Promise<import("./types").InlineLink[]> {
+		return session.page.evaluate(() => {
+			const panel = document.querySelector(
+				'[role="dialog"], [data-state="open"]',
+			);
+			if (!panel) return [];
+
+			const anchors = panel.querySelectorAll("ul li > a");
+			return Array.from(anchors)
+				.filter(
+					(a) =>
+						a.hasAttribute("href") &&
+						(a.getAttribute("target") === "_blank" ||
+							a.getAttribute("rel")?.includes("noopener")),
+				)
+				.map((a, i) => {
+					const href = (a as HTMLAnchorElement).href;
+					const allTexts = Array.from(a.childNodes)
+						.filter(
+							(n) =>
+								n.nodeType === Node.TEXT_NODE ||
+								(n as Element).tagName !== "SUP",
+						)
+						.map((n) => n.textContent?.trim() ?? "")
+						.filter(Boolean);
+					const title = allTexts.sort((a, b) => b.length - a.length)[0] ?? "";
+					const citedTexts = Array.from(a.querySelectorAll("span, p, div"))
+						.map((el) => el.textContent?.trim() ?? "")
+						.filter(Boolean);
+					const citedText =
+						citedTexts.sort((a, b) => b.length - a.length)[0] ?? "";
+
+					return {
+						title,
+						url: href,
+						domain: new URL(href).hostname.replace("www.", ""),
+						citedText: citedText || undefined,
+						position: i + 1,
+					};
+				});
+		});
+	}
+
+	private async extractFromSourcesPanel(
+		session: BrowserSession,
+	): Promise<import("./types").InlineLink[]> {
+		const button = await this.findSourcesButton(session);
+		if (!button.found) return [];
+
+		await session.page.evaluate(() => {
+			const candidates = document.querySelectorAll(
+				'button, [role="button"], a[href]',
+			);
+			const TEXT_RE = /\b\d+\s*sources?\b/i;
+			for (const el of candidates) {
+				const text = el.textContent?.trim() ?? "";
+				const ariaLabel = el.getAttribute("aria-label") ?? "";
+				if (TEXT_RE.test(text) || /\bsources?\b/i.test(ariaLabel)) {
+					(el as HTMLElement).click();
+					return true;
+				}
+			}
+			return false;
+		});
+
+		await session.page.waitForTimeout(500);
+
+		const links = await this.extractPanelLinks(session);
+
+		await session.page.evaluate(() => {
+			const candidates = document.querySelectorAll(
+				'button, [role="button"], a[href]',
+			);
+			const TEXT_RE = /\b\d+\s*sources?\b/i;
+			for (const el of candidates) {
+				const text = el.textContent?.trim() ?? "";
+				const ariaLabel = el.getAttribute("aria-label") ?? "";
+				if (TEXT_RE.test(text) || /\bsources?\b/i.test(ariaLabel)) {
+					(el as HTMLElement).click();
+					return true;
+				}
+			}
+			return false;
+		});
+
+		return links;
+	}
+
 	private validateResponse(content: string): string | null {
 		const blocklist = [
 			"our systems have detected unusual traffic",
@@ -512,7 +649,16 @@ export class ChatGPTProvider implements CrawlerProvider {
 				);
 			}
 
-			const inlineLinks = await this.extractInlineLinks(session);
+			let inlineLinks: InlineLink[] = [];
+
+			const panelLinks = await this.extractFromSourcesPanel(session);
+			if (panelLinks.length > 0) {
+				inlineLinks = panelLinks;
+			} else {
+				inlineLinks = await this.extractInlineLinks(session);
+			}
+
+			inlineLinks = filterSelfCitations(this.name, inlineLinks);
 
 			const loadTimeMs = Date.now() - startTime;
 			return {

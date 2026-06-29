@@ -9,6 +9,15 @@ function createMockSession(
 		inlineLinks?: Array<{ text: string; href: string }>;
 		botDetectionText?: string;
 		extractionEmpty?: boolean;
+		sourcesPanel?: {
+			buttonFound?: boolean;
+			buttonScore?: number;
+			links?: Array<{
+				title: string;
+				url: string;
+				citedText: string;
+			}>;
+		};
 	} = {},
 ): BrowserSession {
 	const {
@@ -17,6 +26,7 @@ function createMockSession(
 		inlineLinks = [],
 		botDetectionText = "",
 		extractionEmpty = false,
+		sourcesPanel = { buttonFound: false },
 	} = options;
 
 	const evaluateCalls: Array<{ fn: string; args: unknown }> = [];
@@ -68,6 +78,37 @@ function createMockSession(
 							position: i + 1,
 						})),
 					);
+				}
+
+				// findSourcesButton: scoring algorithm
+				if (
+					fnStr.includes("sourcesButton") ||
+					fnStr.includes("\\bsources?\\b")
+				) {
+					if (sourcesPanel.buttonFound) {
+						return Promise.resolve({
+							found: true,
+							score: sourcesPanel.buttonScore ?? 120,
+						});
+					}
+					return Promise.resolve({ found: false });
+				}
+
+				// extractPanelLinks: panel link extraction
+				if (fnStr.includes("panelLinks") || fnStr.includes("ul li > a")) {
+					const links = (sourcesPanel.links ?? []).map((l, i) => ({
+						title: l.title,
+						url: l.url,
+						domain: new URL(l.url).hostname.replace("www.", ""),
+						citedText: l.citedText,
+						position: i + 1,
+					}));
+					return Promise.resolve(links);
+				}
+
+				// Panel click/close
+				if (fnStr.includes("sourcesPanel") || fnStr.includes("panelClick")) {
+					return Promise.resolve(sourcesPanel.buttonFound ?? false);
 				}
 
 				// Bot detection validation
@@ -386,5 +427,216 @@ describe("ChatGPTProvider.findLatestResponseElement", () => {
 		await expect(provider.extractResult(session)).rejects.toThrow(
 			/no assistant response/i,
 		);
+	});
+});
+
+describe("ChatGPTProvider.findSourcesButton", () => {
+	it("finds button by text match score", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				buttonFound: true,
+				buttonScore: 120,
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result).toEqual({ found: true, score: 120 });
+	});
+
+	it("returns not-found when no sources button exists", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				buttonFound: false,
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result).toEqual({ found: false });
+	});
+
+	it("scores aria-label 'sources' higher than plain text", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				buttonFound: true,
+				buttonScore: 210,
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result).toEqual({ found: true, score: 210 });
+	});
+});
+
+describe("ChatGPTProvider.extractPanelLinks", () => {
+	it("extracts links from the sources panel with citedText", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				links: [
+					{
+						title: "Example Article",
+						url: "https://example.com/article",
+						citedText: "Example is a leading provider of web services.",
+					},
+				],
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).extractPanelLinks(session);
+		expect(result).toHaveLength(1);
+		expect(result[0]).toEqual({
+			title: "Example Article",
+			url: "https://example.com/article",
+			domain: "example.com",
+			citedText: "Example is a leading provider of web services.",
+			position: 1,
+		});
+	});
+
+	it("returns empty array when panel has no links", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				links: [],
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).extractPanelLinks(session);
+		expect(result).toEqual([]);
+	});
+
+	it("extracts multiple links with correct positions", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				links: [
+					{ title: "First", url: "https://a.com", citedText: "text a" },
+					{ title: "Second", url: "https://b.com", citedText: "text b" },
+					{ title: "Third", url: "https://c.com", citedText: "text c" },
+				],
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).extractPanelLinks(session);
+		expect(result).toHaveLength(3);
+		expect(result[0].position).toBe(1);
+		expect(result[1].position).toBe(2);
+		expect(result[2].position).toBe(3);
+	});
+});
+
+describe("ChatGPTProvider.extractFromSourcesPanel", () => {
+	it("finds button, clicks it, extracts links, and closes panel", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				buttonFound: true,
+				buttonScore: 120,
+				links: [
+					{ title: "Source", url: "https://source.com", citedText: "A source" },
+				],
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).extractFromSourcesPanel(session);
+		expect(result).toHaveLength(1);
+		expect(result[0].title).toBe("Source");
+		expect(result[0].domain).toBe("source.com");
+	});
+
+	it("returns empty array when no button found", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				buttonFound: false,
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).extractFromSourcesPanel(session);
+		expect(result).toEqual([]);
+	});
+
+	it("returns empty array when button clicked but panel has no links", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			sourcesPanel: {
+				buttonFound: true,
+				buttonScore: 120,
+				links: [],
+			},
+		}) as BrowserSession;
+
+		const result = await (provider as any).extractFromSourcesPanel(session);
+		expect(result).toEqual([]);
+	});
+});
+
+describe("ChatGPTProvider.extractResult with sources panel", () => {
+	it("prefers side-panel links over inline links", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			responseInner:
+				'<p>Check out <a class="decorated-link" href="https://inline.com">Inline</a> for more details about this topic and how it relates to modern web development practices.</p>',
+			inlineLinks: [{ text: "Inline", href: "https://inline.com" }],
+			sourcesPanel: {
+				buttonFound: true,
+				buttonScore: 120,
+				links: [
+					{
+						title: "Panel Source",
+						url: "https://panel.com",
+						citedText: "From the panel",
+					},
+				],
+			},
+		}) as BrowserSession;
+
+		const result = await provider.extractResult(session);
+		const links = result.structured?.inlineLinks ?? [];
+		expect(links).toHaveLength(1);
+		expect(links[0].title).toBe("Panel Source");
+		expect(links[0].domain).toBe("panel.com");
+		expect(links[0].citedText).toBe("From the panel");
+	});
+
+	it("falls back to inline links when no side-panel button found", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			responseInner:
+				'<p>Check out <a class="decorated-link" href="https://inline.com">Inline</a> for more details about this topic and how it relates to modern web development practices.</p>',
+			inlineLinks: [{ text: "Inline", href: "https://inline.com" }],
+			sourcesPanel: {
+				buttonFound: false,
+			},
+		}) as BrowserSession;
+
+		const result = await provider.extractResult(session);
+		const links = result.structured?.inlineLinks ?? [];
+		expect(links).toHaveLength(1);
+		expect(links[0].title).toBe("Inline");
+		expect(links[0].domain).toBe("inline.com");
+	});
+
+	it("filters out self-citations from combined results", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			responseInner:
+				'<p>Visit <a class="decorated-link" href="https://chatgpt.com">ChatGPT</a> and <a class="decorated-link" href="https://example.com">Example</a> for details about this topic in modern web development practices.</p>',
+			inlineLinks: [
+				{ text: "ChatGPT", href: "https://chatgpt.com" },
+				{ text: "Example", href: "https://example.com" },
+			],
+			sourcesPanel: {
+				buttonFound: false,
+			},
+		}) as BrowserSession;
+
+		const result = await provider.extractResult(session);
+		const links = result.structured?.inlineLinks ?? [];
+		expect(links).toHaveLength(1);
+		expect(links[0].domain).toBe("example.com");
 	});
 });
