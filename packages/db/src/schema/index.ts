@@ -8,6 +8,7 @@ export * from "./promptQuery";
 export * from "./promptQueryCrawl";
 export * from "./competitor";
 export * from "./crawlSource";
+export * from "./crawlReference";
 export * from "./crawlBrandMention";
 export * from "./crawlVisibilityScore";
 export * from "./proxyConfig";

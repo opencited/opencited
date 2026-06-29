@@ -55,6 +55,15 @@ export function CrawlDetailSheet({
 	const sourcesQuery = useQuery({
 		...trpc.aiVisibility.listCrawlSources.queryOptions({
 			crawlId,
+			kind: "citation",
+		}),
+		enabled: open && activeTab === "sources",
+	});
+
+	const inlineLinksQuery = useQuery({
+		...trpc.aiVisibility.listCrawlSources.queryOptions({
+			crawlId,
+			kind: "inline-link",
 		}),
 		enabled: open && activeTab === "sources",
 	});
@@ -159,9 +168,6 @@ export function CrawlDetailSheet({
 						</TabsContent>
 
 						<TabsContent value="sources" className="mt-0">
-							<p className="text-xs text-muted-foreground mb-3">
-								Websites and pages cited by the AI as references
-							</p>
 							<QueryCell
 								query={sourcesQuery}
 								loading={
@@ -171,7 +177,11 @@ export function CrawlDetailSheet({
 									</div>
 								}
 								success={(data) => {
-									if (!data || data.length === 0) {
+									const inlineLinks = inlineLinksQuery.data ?? [];
+									const hasSources = data && data.length > 0;
+									const hasInlineLinks = inlineLinks.length > 0;
+
+									if (!hasSources && !hasInlineLinks) {
 										return (
 											<div className="py-8 text-center text-muted-foreground">
 												<p>No sources found</p>
@@ -180,44 +190,94 @@ export function CrawlDetailSheet({
 									}
 
 									return (
-										<DataList
-											items={data}
-											keyExtractor={(source) => source.id}
-											renderItem={(source) => (
-												<div className="space-y-2">
-													<div className="flex items-center gap-2">
-														<span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
-															#{source.position}
-														</span>
-														<span className="text-sm font-medium truncate">
-															{source.title ?? source.domain}
-														</span>
-														{source.isOwnDomain && (
-															<Badge variant="success">Own</Badge>
+										<div className="space-y-4">
+											{hasSources && (
+												<div>
+													<p className="text-xs text-muted-foreground mb-3">
+														Websites cited by the AI as references
+													</p>
+													<DataList
+														items={data}
+														keyExtractor={(source) => source.id}
+														renderItem={(source) => (
+															<div className="space-y-2">
+																<div className="flex items-center gap-2">
+																	<span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+																		#{source.position}
+																	</span>
+																	<span className="text-sm font-medium truncate">
+																		{source.title ?? source.domain}
+																	</span>
+																	{source.isOwnDomain && (
+																		<Badge variant="success">Own</Badge>
+																	)}
+																	{source.isCompetitorDomain && (
+																		<Badge variant="warning">Competitor</Badge>
+																	)}
+																</div>
+																{source.url && (
+																	<a
+																		href={source.url}
+																		target="_blank"
+																		rel="noopener noreferrer"
+																		className="text-xs text-primary hover:underline flex items-center gap-1"
+																	>
+																		{source.url}
+																		<ExternalLink className="h-3 w-3" />
+																	</a>
+																)}
+																{source.description && (
+																	<p className="text-sm text-muted-foreground">
+																		{source.description}
+																	</p>
+																)}
+															</div>
 														)}
-														{source.isCompetitorDomain && (
-															<Badge variant="warning">Competitor</Badge>
-														)}
-													</div>
-													{source.url && (
-														<a
-															href={source.url}
-															target="_blank"
-															rel="noopener noreferrer"
-															className="text-xs text-primary hover:underline flex items-center gap-1"
-														>
-															{source.url}
-															<ExternalLink className="h-3 w-3" />
-														</a>
-													)}
-													{source.description && (
-														<p className="text-sm text-muted-foreground">
-															{source.description}
-														</p>
-													)}
+													/>
 												</div>
 											)}
-										/>
+
+											{hasInlineLinks && (
+												<div>
+													<p className="text-xs text-muted-foreground mb-3">
+														Links embedded inline in the response
+													</p>
+													<DataList
+														items={inlineLinks}
+														keyExtractor={(link) => link.id}
+														renderItem={(link) => (
+															<div className="space-y-2">
+																<div className="flex items-center gap-2">
+																	<span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">
+																		#{link.position}
+																	</span>
+																	<span className="text-sm font-medium truncate">
+																		{link.title ?? link.domain}
+																	</span>
+																	{link.isOwnDomain && (
+																		<Badge variant="success">Own</Badge>
+																	)}
+																	{link.isCompetitorDomain && (
+																		<Badge variant="warning">Competitor</Badge>
+																	)}
+																</div>
+																{link.url && (
+																	<a
+																		href={link.url}
+																		target="_blank"
+																		rel="noopener noreferrer"
+																		className="text-xs text-primary hover:underline flex items-center gap-1"
+																	>
+																		{link.url}
+																		<ExternalLink className="h-3 w-3" />
+																	</a>
+																)}
+															</div>
+														)}
+													/>
+												</div>
+											)}
+										</div>
 									);
 								}}
 							/>

@@ -3,6 +3,7 @@ import type { Logger } from "@opencited/logger";
 import { baseActionContextSchema } from "../context";
 import { saveCrawlResultAction } from "../promptQueryCrawl/triggerCrawlAction";
 import { saveStructuredCrawlDataAction } from "../promptQueryCrawl/saveStructuredCrawlDataAction";
+import { saveInlineLinksAction } from "../promptQueryCrawl/saveInlineLinksAction";
 import { extractBrandIntelligenceAction } from "../ai/extractBrandIntelligenceAction";
 import { saveBrandIntelligenceAction } from "../ai/saveBrandIntelligenceAction";
 import { computeVisibilityScoreAction } from "../aiVisibility/computeVisibilityScoreAction";
@@ -41,6 +42,16 @@ export const intakeCrawlResultInputSchema = z.object({
 						brandUrl: z.string().optional(),
 					}),
 				),
+				inlineLinks: z
+					.array(
+						z.object({
+							title: z.string(),
+							url: z.string(),
+							domain: z.string(),
+							position: z.number(),
+						}),
+					)
+					.optional(),
 				answerFormat: z.string().optional(),
 			})
 			.optional(),
@@ -122,6 +133,21 @@ export const intakeCrawlResultAction = async (params: {
 			},
 			ctx,
 		});
+
+		if (
+			result.structured.inlineLinks &&
+			result.structured.inlineLinks.length > 0
+		) {
+			await saveInlineLinksAction({
+				input: {
+					crawlId,
+					promptQueryId,
+					domainProjectId,
+					inlineLinks: result.structured.inlineLinks,
+				},
+				ctx,
+			});
+		}
 	}
 
 	let sentimentRetryNeeded = false;

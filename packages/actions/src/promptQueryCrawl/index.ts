@@ -4,4 +4,5 @@ export * from "./updateCrawlAction";
 export * from "./triggerCrawlAction";
 export * from "./batchTriggerCrawlAction";
 export * from "./saveStructuredCrawlDataAction";
+export * from "./saveInlineLinksAction";
 export * from "./getCrawlContextAction";

@@ -5,6 +5,9 @@ const saveStructuredMock = mock(async () => ({
 	sourcesSaved: 2,
 	mentionsSaved: 0,
 }));
+const saveInlineLinksMock = mock(async () => ({
+	linksSaved: 2,
+}));
 const extractIntelligenceMock = mock(async () => ({
 	brandMentions: [
 		{
@@ -45,6 +48,10 @@ mock.module("../src/promptQueryCrawl/triggerCrawlAction", () => ({
 
 mock.module("../src/promptQueryCrawl/saveStructuredCrawlDataAction", () => ({
 	saveStructuredCrawlDataAction: saveStructuredMock,
+}));
+
+mock.module("../src/promptQueryCrawl/saveInlineLinksAction", () => ({
+	saveInlineLinksAction: saveInlineLinksMock,
 }));
 
 mock.module("../src/ai/extractBrandIntelligenceAction", () => ({
@@ -118,6 +125,7 @@ describe("intakeCrawlResultAction", () => {
 	beforeEach(() => {
 		saveCrawlResultMock.mockClear();
 		saveStructuredMock.mockClear();
+		saveInlineLinksMock.mockClear();
 		extractIntelligenceMock.mockClear();
 		saveIntelligenceMock.mockClear();
 		computeScoreMock.mockClear();
@@ -314,5 +322,100 @@ describe("intakeCrawlResultAction", () => {
 			"AI Visibility Score computation failed",
 			expect.objectContaining({ error: "Score failed" }),
 		);
+	});
+
+	it("calls saveInlineLinksAction when inlineLinks are present", async () => {
+		const input = makeInput({
+			result: {
+				provider: "chatgpt",
+				content: "MyBrand is great. Here is a link.",
+				metadata: {
+					url: "https://chatgpt.com/share/abc",
+					title: "ChatGPT Response",
+					timestamp: new Date("2026-06-27T12:00:00Z"),
+					loadTimeMs: 5000,
+				},
+				structured: {
+					citations: [],
+					brandMentions: [],
+					inlineLinks: [
+						{
+							title: "Acme Article",
+							url: "https://acme.com/article",
+							domain: "acme.com",
+							position: 1,
+						},
+						{
+							title: "MyBrand Site",
+							url: "https://mybrand.com",
+							domain: "mybrand.com",
+							position: 2,
+						},
+					],
+				},
+			},
+		});
+
+		const result = await intakeCrawlResultAction({ input, ctx: baseCtx });
+
+		expect(result.success).toBe(true);
+		expect(saveInlineLinksMock).toHaveBeenCalledTimes(1);
+		expect(saveInlineLinksMock).toHaveBeenCalledWith({
+			input: {
+				crawlId: "crawl-1",
+				promptQueryId: "pq-1",
+				domainProjectId: "dp-1",
+				inlineLinks: [
+					{
+						title: "Acme Article",
+						url: "https://acme.com/article",
+						domain: "acme.com",
+						position: 1,
+					},
+					{
+						title: "MyBrand Site",
+						url: "https://mybrand.com",
+						domain: "mybrand.com",
+						position: 2,
+					},
+				],
+			},
+			ctx: baseCtx,
+		});
+	});
+
+	it("does not call saveInlineLinksAction when inlineLinks are absent", async () => {
+		const result = await intakeCrawlResultAction({
+			input: makeInput(),
+			ctx: baseCtx,
+		});
+
+		expect(result.success).toBe(true);
+		expect(saveInlineLinksMock).not.toHaveBeenCalled();
+	});
+
+	it("does not call saveInlineLinksAction when inlineLinks are empty", async () => {
+		const input = makeInput({
+			result: {
+				provider: "chatgpt",
+				content: "Some content",
+				metadata: {
+					url: "https://chatgpt.com/share/abc",
+					title: "Response",
+					timestamp: new Date(),
+					loadTimeMs: 3000,
+				},
+				structured: {
+					citations: [],
+					brandMentions: [],
+					inlineLinks: [],
+				},
+			},
+		});
+
+		const result = await intakeCrawlResultAction({ input, ctx: baseCtx });
+
+		expect(result.success).toBe(true);
+		expect(saveInlineLinksMock).not.toHaveBeenCalled();
 	});
 });

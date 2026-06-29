@@ -1,10 +1,10 @@
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
 import {
 	competitorTable,
 	crawlBrandMentionTable,
-	crawlSourceTable,
+	crawlReferenceTable,
 	promptQueryCrawlTable,
 	promptQueryTable,
 } from "@opencited/db";
@@ -46,7 +46,7 @@ type PromptQueryRow = {
 	id: string;
 	query: string;
 };
-type SourceRow = typeof crawlSourceTable.$inferSelect;
+type SourceRow = typeof crawlReferenceTable.$inferSelect;
 
 export const getCompetitorDetailAction = async (params: {
 	input: z.infer<typeof getCompetitorDetailInputSchema>;
@@ -108,8 +108,13 @@ export const getCompetitorDetailAction = async (params: {
 
 	const sources: SourceRow[] = await ctx.db
 		.select()
-		.from(crawlSourceTable)
-		.where(inArray(crawlSourceTable.crawlId, crawlIds));
+		.from(crawlReferenceTable)
+		.where(
+			and(
+				inArray(crawlReferenceTable.crawlId, crawlIds),
+				eq(crawlReferenceTable.kind, "citation"),
+			),
+		);
 
 	const crawlMap = new Map<
 		string,

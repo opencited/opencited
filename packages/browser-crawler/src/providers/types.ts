@@ -18,6 +18,7 @@ export interface CrawlMetadata {
 export interface StructuredCrawlData {
 	citations: CitationSource[];
 	brandMentions: BrandMention[];
+	inlineLinks?: InlineLink[];
 	relatedQuestions?: string[];
 	answerFormat?: AnswerFormat;
 	headings?: string[];
@@ -56,4 +57,5 @@ export interface InlineLink {
 	title: string;
 	url: string;
 	domain: string;
+	position: number;
 }

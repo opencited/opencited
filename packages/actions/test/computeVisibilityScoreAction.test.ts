@@ -59,6 +59,7 @@ function makeMockDb(seed: {
 					case "crawl_brand_mention":
 						return seed.mentions;
 					case "crawl_source":
+					case "crawl_reference":
 						return seed.sources;
 					case "crawl_visibility_score": {
 						const id = (cond as { crawlId?: string } | undefined)?.crawlId;
@@ -459,5 +460,115 @@ describe("computeVisibilityScoreInternal — full pipeline", () => {
 		expect(after?.computedAt).toEqual(later);
 		expect(after?.sentimentScore).toBe(50);
 		expect(before?.sentimentScore).toBe(100);
+	});
+
+	it("citationScore is 100 when the brand domain appears in inline links (kind='inline-link')", async () => {
+		const inlineLinkDb = makeMockDb({
+			crawl: {
+				id: "crawl-inline",
+				promptQueryId: "pq-1",
+				domainProjectId: "dp-1",
+				content: "MyBrand is mentioned with a link.",
+				provider: "chatgpt",
+				sourceCount: 0,
+				brandMentionCount: 0,
+				status: "completed",
+				query: "best AEO platform",
+			},
+			project: {
+				id: "dp-1",
+				domain: "mybrand.com",
+				name: "MyBrand",
+				aliases: ["MyBrand Inc"],
+				active: true,
+			},
+			mentions: [
+				{
+					id: "m-1",
+					crawlId: "crawl-inline",
+					brandName: "MyBrand",
+					brandUrl: "https://mybrand.com",
+					mentionType: "target",
+					position: 1,
+				},
+			],
+			sources: [
+				{
+					id: "il-1",
+					crawlId: "crawl-inline",
+					domain: "mybrand.com",
+					url: "https://mybrand.com/page",
+					position: 1,
+					isOwnDomain: true,
+					kind: "inline-link",
+				},
+			],
+		});
+
+		const cache = new Map();
+		const result = await computeVisibilityScoreInternal({
+			input: { crawlId: "crawl-inline" },
+			ctx: { ...baseCtx, db: inlineLinkDb.db },
+			model: MODEL_POSITIVE,
+			sentimentCache: cache,
+			now: () => FIXED_NOW,
+		});
+
+		expect(result.row.citationScore).toBe(100);
+	});
+
+	it("citationScore is 0 when the brand domain does not appear in inline links", async () => {
+		const noInlineLinkDb = makeMockDb({
+			crawl: {
+				id: "crawl-no-inline",
+				promptQueryId: "pq-1",
+				domainProjectId: "dp-1",
+				content: "Some content without brand link.",
+				provider: "chatgpt",
+				sourceCount: 0,
+				brandMentionCount: 0,
+				status: "completed",
+				query: "best AEO platform",
+			},
+			project: {
+				id: "dp-1",
+				domain: "mybrand.com",
+				name: "MyBrand",
+				aliases: ["MyBrand Inc"],
+				active: true,
+			},
+			mentions: [
+				{
+					id: "m-1",
+					crawlId: "crawl-no-inline",
+					brandName: "MyBrand",
+					brandUrl: "https://mybrand.com",
+					mentionType: "target",
+					position: 1,
+				},
+			],
+			sources: [
+				{
+					id: "il-1",
+					crawlId: "crawl-no-inline",
+					domain: "acme.com",
+					url: "https://acme.com/page",
+					position: 1,
+					isOwnDomain: false,
+					kind: "inline-link",
+				},
+			],
+		});
+
+		const cache = new Map();
+		const result = await computeVisibilityScoreInternal({
+			input: { crawlId: "crawl-no-inline" },
+			ctx: { ...baseCtx, db: noInlineLinkDb.db },
+			model: MODEL_POSITIVE,
+			sentimentCache: cache,
+			now: () => FIXED_NOW,
+		});
+
+		expect(result.row.citationScore).toBe(0);
 	});
 });
