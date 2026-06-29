@@ -2,6 +2,7 @@ import type { BrowserSession } from "../types";
 import type { CrawlerProvider } from "./base";
 import type { CrawlResult } from "./types";
 import type { FailureType } from "../errors";
+import { toMarkdown } from "./turndown";
 
 const AUTH_MODAL_SELECTOR = '[role="dialog"][data-state="open"]';
 const AUTH_MODAL_TEXT_RE = /Thanks for trying ChatGPT|Log in or sign up/i;
@@ -300,12 +301,239 @@ export class ChatGPTProvider implements CrawlerProvider {
 		await this.submitWithFallback(session);
 	}
 
-	async waitForResponse(_session: BrowserSession): Promise<void> {
-		throw new Error("Not implemented yet");
+	async waitForResponse(session: BrowserSession): Promise<void> {
+		const pollInterval = 300;
+		const jitterRange = 50;
+		const stableWindow = 1500;
+		const maxWait = PROVIDER_TIMINGS.forceExitStable;
+
+		let elapsed = 0;
+		let seenContent = false;
+		let lastResponseSig = "";
+		let lastGenerationSig = "";
+		let stableSince = 0;
+
+		while (elapsed < maxWait) {
+			const state = await session.page.evaluate(() => {
+				const stopButton = document.querySelector(
+					'button[data-testid="stop-button"]',
+				);
+				const stopVisible = !!stopButton;
+				const stopText = stopButton?.textContent?.trim() ?? "";
+				const stopAriaLabel = stopButton?.getAttribute("aria-label") ?? "";
+				const stopDisabled =
+					stopButton?.getAttribute("aria-disabled") === "true";
+
+				const responseEls = document.querySelectorAll(
+					'[data-message-author-role="assistant"]',
+				);
+				let lastEl: Element | null = null;
+				for (const el of responseEls) {
+					const style = window.getComputedStyle(el);
+					if (style.display !== "none" && style.visibility !== "hidden") {
+						lastEl = el;
+					}
+				}
+
+				const textContent = lastEl?.textContent ?? "";
+				const textLength = textContent.length;
+				const innerHTML = (lastEl as HTMLElement)?.innerHTML ?? "";
+				const innerHTMLLen = innerHTML.length;
+				const childCount = lastEl?.children.length ?? 0;
+				const textTail =
+					textLength > 120 ? textContent.slice(-120) : textContent;
+
+				return {
+					textLength,
+					innerHTMLLen,
+					childCount,
+					textTail,
+					stopVisible,
+					stopText,
+					stopAriaLabel,
+					stopDisabled,
+				};
+			});
+
+			if (state.textLength > 0) {
+				seenContent = true;
+			}
+
+			const responseSig = `${state.textLength}:${state.innerHTMLLen}:${state.childCount}:${state.textTail}`;
+			const generationSig = `${state.stopVisible}:${state.stopText}:${state.stopAriaLabel}:${state.stopDisabled}`;
+
+			if (
+				responseSig === lastResponseSig &&
+				generationSig === lastGenerationSig
+			) {
+				if (!state.stopVisible && seenContent) {
+					const stableFor = elapsed - stableSince;
+					if (stableFor >= stableWindow) {
+						return;
+					}
+				}
+			} else {
+				lastResponseSig = responseSig;
+				lastGenerationSig = generationSig;
+				stableSince = elapsed;
+			}
+
+			const jitter =
+				Math.floor(Math.random() * (jitterRange * 2 + 1)) - jitterRange;
+			const waitMs = pollInterval + jitter;
+			await session.page.waitForTimeout(waitMs);
+			elapsed += pollInterval;
+		}
 	}
 
-	async extractResult(_session: BrowserSession): Promise<CrawlResult> {
-		throw new Error("Not implemented yet");
+	private async findLatestResponseElement(session: BrowserSession): Promise<{
+		innerHTML: string;
+		outerHTML: string;
+		processedHTML: string;
+	} | null> {
+		const result = await session.page.evaluate(() => {
+			const elements = document.querySelectorAll(
+				'[data-message-author-role="assistant"]',
+			);
+			let lastVisible: Element | null = null;
+			for (const el of elements) {
+				const style = window.getComputedStyle(el);
+				if (style.display !== "none" && style.visibility !== "hidden") {
+					lastVisible = el;
+				}
+			}
+			if (!lastVisible) return null;
+
+			const clone = lastVisible.cloneNode(true) as HTMLElement;
+
+			for (const el of clone.querySelectorAll('[aria-hidden="true"]')) {
+				el.remove();
+			}
+			for (const el of clone.querySelectorAll("sup")) {
+				el.remove();
+			}
+			for (const el of clone.querySelectorAll("button")) {
+				el.remove();
+			}
+			for (const el of clone.querySelectorAll(
+				'[data-testid="copy-turn-action-button"], [data-testid="thumbs-up-button"], [data-testid="thumbs-down-button"], [data-testid="share-turn-action-button"]',
+			)) {
+				el.remove();
+			}
+
+			return {
+				innerHTML: (lastVisible as HTMLElement).innerHTML,
+				outerHTML: (lastVisible as HTMLElement).outerHTML,
+				processedHTML: clone.innerHTML,
+			};
+		});
+
+		return result;
+	}
+
+	private async extractInlineLinks(
+		session: BrowserSession,
+	): Promise<import("./types").InlineLink[]> {
+		const links = await session.page.evaluate(() => {
+			const responseEls = document.querySelectorAll(
+				'[data-message-author-role="assistant"]',
+			);
+			let lastVisible: Element | null = null;
+			for (const el of responseEls) {
+				const style = window.getComputedStyle(el);
+				if (style.display !== "none" && style.visibility !== "hidden") {
+					lastVisible = el;
+				}
+			}
+			if (!lastVisible) return [];
+
+			const anchors = lastVisible.querySelectorAll("a.decorated-link");
+			return Array.from(anchors).map((a, i) => ({
+				title: a.textContent?.trim() ?? "",
+				url: (a as HTMLAnchorElement).href,
+				domain: new URL((a as HTMLAnchorElement).href).hostname.replace(
+					"www.",
+					"",
+				),
+				position: i + 1,
+			}));
+		});
+
+		return links;
+	}
+
+	private validateResponse(content: string): string | null {
+		const blocklist = [
+			"our systems have detected unusual traffic",
+			"please verify you're human",
+			"too many requests",
+			"service is unavailable",
+			"sign in to continue",
+			"access denied",
+			"you've been logged out",
+		];
+		const lower = content.toLowerCase();
+		for (const phrase of blocklist) {
+			if (lower.includes(phrase)) return phrase;
+		}
+		return null;
+	}
+
+	async extractResult(session: BrowserSession): Promise<CrawlResult> {
+		const startTime = Date.now();
+		const maxRetries = 2;
+		const backoffMs = [1500, 5000];
+
+		for (let attempt = 0; attempt <= maxRetries; attempt++) {
+			if (attempt > 0) {
+				const waitMs = backoffMs[attempt - 1] ?? 5000;
+				await session.page.waitForTimeout(waitMs);
+			}
+
+			const element = await this.findLatestResponseElement(session);
+			if (!element) {
+				if (attempt < maxRetries) continue;
+				throw new Error("No assistant response element found");
+			}
+
+			const content = toMarkdown(element.processedHTML);
+
+			const blockedPhrase = this.validateResponse(content);
+			if (blockedPhrase) {
+				if (attempt < maxRetries) continue;
+				throw new Error(`Bot detection triggered: "${blockedPhrase}"`);
+			}
+
+			if (content.trim().length < 50) {
+				if (attempt < maxRetries) continue;
+				const visibleTextChars = content.trim().length;
+				throw new Error(
+					`Empty extraction: content too short (${visibleTextChars} chars)`,
+				);
+			}
+
+			const inlineLinks = await this.extractInlineLinks(session);
+
+			const loadTimeMs = Date.now() - startTime;
+			return {
+				provider: this.name,
+				query: "",
+				content,
+				metadata: {
+					url: session.page.url(),
+					title: await session.page.title(),
+					timestamp: new Date(),
+					loadTimeMs,
+				},
+				structured: {
+					citations: [],
+					brandMentions: [],
+					inlineLinks,
+				},
+			};
+		}
+
+		throw new Error("Extraction failed after retries");
 	}
 
 	classifyError(error: Error): FailureType {
