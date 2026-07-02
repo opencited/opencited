@@ -11,12 +11,10 @@ function makeChain(result: unknown) {
 	return chain;
 }
 
-let capturedValues: unknown[][] = [];
-
 function makeDb() {
 	let selectCalls = 0;
 	const selectResults: unknown[][] = [];
-	capturedValues = [];
+	const capturedValues: unknown[][] = [];
 
 	return {
 		select: mock(() => {
@@ -38,6 +36,7 @@ function makeDb() {
 			selectResults.length = 0;
 			selectResults.push(...results);
 		},
+		__getCapturedValues: () => capturedValues,
 	};
 }
 
@@ -52,7 +51,6 @@ describe("saveInlineLinksAction", () => {
 
 	beforeEach(() => {
 		db = makeDb();
-		capturedValues = [];
 	});
 
 	it("inserts inline links into crawl_reference with kind='inline-link'", async () => {
@@ -89,6 +87,7 @@ describe("saveInlineLinksAction", () => {
 
 		expect(result.linksSaved).toBe(2);
 		expect(db.insert).toHaveBeenCalledTimes(1);
+		const capturedValues = db.__getCapturedValues();
 		expect(capturedValues).toHaveLength(1);
 		expect(capturedValues[0]).toHaveLength(2);
 
@@ -129,6 +128,7 @@ describe("saveInlineLinksAction", () => {
 			ctx: makeCtx(db),
 		});
 
+		const capturedValues = db.__getCapturedValues();
 		const row = capturedValues[0]?.[0] as Record<string, unknown>;
 		expect(row.isOwnDomain).toBe("true");
 	});
@@ -159,6 +159,7 @@ describe("saveInlineLinksAction", () => {
 			ctx: makeCtx(db),
 		});
 
+		const capturedValues = db.__getCapturedValues();
 		const row = capturedValues[0]?.[0] as Record<string, unknown>;
 		expect(row.isCompetitorDomain).toBe("true");
 	});
