@@ -70,7 +70,7 @@ export async function handleCrawlJob(
 
 			const { proxies, usedSticky } = await resolveProxies({
 				domainProjectId,
-				db,
+				ctx: { db, userId: null, isAuthenticated: false },
 				redis,
 				logger,
 			});

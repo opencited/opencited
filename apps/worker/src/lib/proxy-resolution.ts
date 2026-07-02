@@ -1,8 +1,8 @@
 import type { Redis } from "ioredis";
 import type { Logger as CrawlerLogger } from "@opencited/logger";
 import type { ProxyOptions } from "@opencited/browser-crawler";
-import { eq } from "drizzle-orm";
-import { proxyConfigTable } from "@opencited/db";
+import { getProxyConfigByDomainProjectIdAction } from "@opencited/actions";
+import type { Context } from "@opencited/actions";
 import { env } from "../env";
 
 const STICKY_PROXY_PREFIX = "proxy:sticky";
@@ -185,26 +185,24 @@ function resolveSingleProxy(): {
 
 export interface ResolveProxiesParams {
 	domainProjectId: string;
-	db: any;
+	ctx: Context;
 	redis: Redis;
 	logger: CrawlerLogger;
 }
 
 export async function resolveProxies({
 	domainProjectId,
-	db,
+	ctx,
 	redis,
 	logger,
 }: ResolveProxiesParams): Promise<{
 	proxies: ProxyOptions[];
 	usedSticky: boolean;
 }> {
-	const proxyConfigs = await db
-		.select()
-		.from(proxyConfigTable)
-		.where(eq(proxyConfigTable.domainProjectId as any, domainProjectId));
-
-	const customProxyConfig = proxyConfigs[0] as ProxyConfig | undefined;
+	const customProxyConfig = await getProxyConfigByDomainProjectIdAction({
+		input: { domainProjectId },
+		ctx,
+	});
 
 	if (customProxyConfig?.enabled) {
 		if (customProxyConfig.sourceType === "api") {
