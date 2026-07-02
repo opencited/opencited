@@ -127,7 +127,8 @@ export async function handleCrawlJob(
 				title: result.metadata.title,
 				contentLength: result.content.length,
 				loadTimeMs: result.metadata.loadTimeMs,
-				citationsCount: result.structured?.citations.length ?? 0,
+				inlineLinksCount: result.structured?.inlineLinks.length ?? 0,
+				sourcePanelLinksCount: result.structured?.sourcePanelLinks.length ?? 0,
 			});
 
 			const intakeResult = await intakeCrawlResultAction({

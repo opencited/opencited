@@ -28,7 +28,7 @@ src/
 ├── types.ts           # shared types
 └── providers/
     ├── base.ts        # CrawlerProvider interface
-    ├── types.ts       # provider types (CitationSource, InlineLink, CrawlResult, etc.)
+    ├── types.ts       # provider types (InlineLink, CrawlResult, etc.)
     ├── factory.ts     # providerFactory — name → constructor map
     ├── index.ts       # provider exports
     ├── perplexity.ts  # Perplexity.ai provider
@@ -48,8 +48,7 @@ src/
 | `closeBrowser` | Function | Close browser session |
 | `extractContent` | Function | Extract text/links/images |
 | `CrawlerProvider` | Interface | Provider contract |
-| `CitationSource` | Type | Search-engine citation (Perplexity sources panel) |
-| `InlineLink` | Type | Chat-engine inline anchor (ChatGPT decorated-link) |
+| `InlineLink` | Type | Reference link from answer prose or sources panel |
 | `CrawlerError` | Class | Base error type |
 | `NavigationError` | Class | Navigation failure |
 | `AuthenticationError` | Class | Auth failure |
@@ -76,7 +75,7 @@ const result = await crawler.crawl({
 - **Auth:** `requiresAuth: false`
 - **Input:** `<textarea id="ask-input">`, Enter to submit
 - **Response container:** `.prose` inside `div[id^="markdown-content-"]`
-- **Citations:** Dedicated sources panel + inline `[1]`-style markers. Each citation card has a URL, title, domain, favicon. Extracted into `CitationSource[]`.
+- **Inline links:** Extracts `<a>` elements from the answer prose. Each link has a URL, title (anchor text), domain. Extracted into `InlineLink[]` and saved with `kind = 'inline-link'`.
 - **Streaming:** Detect via the stop button visibility + content stability for 2s
 - **Cloudflare:** May show a challenge. `waitForCloudflareChallenge()` polls up to 15s.
 
@@ -87,7 +86,10 @@ const result = await crawler.crawl({
 - **Input:** ProseMirror contenteditable div `#prompt-textarea.ProseMirror`. The `<textarea>` is a hidden fallback (`display: none`) and must not be targeted. Click the ProseMirror div to focus, then `keyboard.type()`.
 - **Sign-in popup:** On first visit, ChatGPT shows a "Sign in with Google" modal in the top-right. Dismiss it before interacting with the input: click outside, press Escape, or remove `[role='dialog']` elements via JS.
 - **Response container:** `.markdown.prose` (class `markdown prose dark:prose-invert wrap-break-word w-full dark markdown-new-styling`). The response is standard markdown HTML — `<p>`, `<table>`, `<ul>`, etc.
-- **Citations / inline links:** ChatGPT has no citation panel. It embeds `<a class="decorated-link">` anchors inline in the response prose as it mentions a brand or product. Extract these into `InlineLink[]`. The link text becomes `title`, the `href` becomes `url`, the parsed hostname becomes `domain`.
+- **Inline links and source panel:** ChatGPT produces two kinds of references:
+  - **Inline links:** `<a class="decorated-link">` anchors embedded in the response prose. Extracted into `InlineLink[]` and saved with `kind = 'inline-link'`.
+  - **Source panel links:** When the side-panel "Sources" UI is available, the provider opens it and extracts links. Saved with `kind = 'source-panel'`.
+  - Both are returned in `structured.inlineLinks` and `structured.sourcePanelLinks` respectively.
 - **Streaming:** No dedicated stop button. Detect via content stability — poll the response text, wait for it to remain unchanged for 3 consecutive checks (~6s).
 - **Bot detection:** More aggressive than Perplexity. Camoufox with the default config passes through, but a Google sign-in modal appears on detected automation. Apply the `CRAWL_RATE_LIMITS` env var with a conservative RPS for `chatgpt` (e.g. `0.2`).
 - **Empty state:** Before any query, the page shows "Ready when you are." or "What's on your mind today?" — the response container will be empty. After submitting, the user message appears in a `[data-message-id]` div followed by the assistant's response in another `[data-message-id]` div.
@@ -139,9 +141,11 @@ points with growing wait windows).
    }
    ```
 
-   The `extractResult` method must return the right structured data type for
-   the provider — `CitationSource[]` for search engines, `InlineLink[]` for
-   chat engines, or a new type for a third shape. Document the choice in a
+   The `extractResult` method must return `InlineLink[]` for prose links in
+   `structured.inlineLinks`. If the provider has a dedicated sources panel
+   (like ChatGPT), also return panel links in `structured.sourcePanelLinks`.
+   Both are saved to the DB with the appropriate `kind` discriminator
+   (`'inline-link'` or `'source-panel'`). Document the extraction logic in a
    comment at the top of the file.
 
 3. **Register the provider** in
@@ -174,9 +178,9 @@ points with growing wait windows).
    be updated to include the new provider name.
 
 8. **Document the provider** by appending a subsection to the "Provider
-   Reference" section of this file. Capture the same findings from step 1:
-   URL, input mechanism, response container, citation/ink shape, streaming
-   detection, anti-bot behaviour, empty state.
+    Reference" section of this file. Capture the same findings from step 1:
+    URL, input mechanism, response container, inline links / source panel
+    shape, streaming detection, anti-bot behaviour, empty state.
 
 9. **Write a smoke test.** Add a quick run script that submits a known query
    ("What is the best CRM for small business?") and asserts the response

@@ -494,10 +494,14 @@ describe("ChatGPTProvider side-panel fallback to inline links", () => {
 		} as unknown as BrowserSession;
 
 		const result = await provider.extractResult(session);
-		const links = result.structured?.inlineLinks ?? [];
-		expect(links).toHaveLength(1);
-		expect(links[0].title).toBe("Panel Source");
-		expect(links[0].domain).toBe("panel.com");
+		const panelLinks = result.structured?.sourcePanelLinks ?? [];
+		expect(panelLinks).toHaveLength(1);
+		expect(panelLinks[0].title).toBe("Panel Source");
+		expect(panelLinks[0].domain).toBe("panel.com");
+		const inlineLinks = result.structured?.inlineLinks ?? [];
+		expect(inlineLinks).toHaveLength(1);
+		expect(inlineLinks[0].title).toBe("Inline");
+		expect(inlineLinks[0].domain).toBe("inline.com");
 	});
 
 	it("extractResult falls back to inline links when no panel button found", async () => {

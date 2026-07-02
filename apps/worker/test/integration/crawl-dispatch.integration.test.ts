@@ -15,8 +15,6 @@ const mockCrawlResult: CrawlResult = {
 		loadTimeMs: 12000,
 	},
 	structured: {
-		citations: [],
-		brandMentions: [],
 		inlineLinks: [
 			{
 				title: "HubSpot CRM",
@@ -31,6 +29,8 @@ const mockCrawlResult: CrawlResult = {
 				position: 2,
 			},
 		],
+		sourcePanelLinks: [],
+		brandMentions: [],
 	},
 };
 

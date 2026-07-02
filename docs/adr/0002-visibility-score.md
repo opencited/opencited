@@ -84,7 +84,7 @@ The UI surfaces this as "N/A — needs N more checks" or "N/A — add a competit
 
 ### Computation timing
 
-The score is computed in the worker (`apps/worker/src/handlers/perplexity-crawl.ts`), **after** the LLM-based brand intelligence extraction completes, so we have all the data: `content`, mentions (with `position` populated), citations, and brand context. The sentiment LLM call is the only async step; on failure the score is computed with `sentimentScore = 50` and a background retry is enqueued.
+The score is computed in the worker (`apps/worker/src/handlers/perplexity-crawl.ts`), **after** the LLM-based brand intelligence extraction completes, so we have all the data: `content`, mentions (with `position` populated), references (inline links and source panel links), and brand context. The sentiment LLM call is the only async step; on failure the score is computed with `sentimentScore = 50` and a background retry is enqueued.
 
 The user can manually retry a fallback sentiment from the crawl detail sheet via a new `retrySentimentAnalysis` tRPC mutation that busts the cache and re-runs the LLM call.
 

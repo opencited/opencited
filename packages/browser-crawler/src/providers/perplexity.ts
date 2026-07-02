@@ -4,7 +4,7 @@ import { getClipboard, waitFor } from "../actions";
 import type { BrowserSession } from "../types";
 import type { CrawlerProvider } from "./base";
 import type {
-	CitationSource,
+	InlineLink,
 	CrawlResult,
 	StructuredCrawlData,
 	AnswerFormat,
@@ -466,7 +466,7 @@ export class PerplexityProvider implements CrawlerProvider {
 		this.logger.info(`Extraction complete in ${loadTimeMs}ms`);
 		this.logger.info(`Content length: ${content.length} chars`);
 		this.logger.info(`Content preview: "${content.substring(0, 150)}"`);
-		this.logger.info(`Citations: ${structured.citations.length}`);
+		this.logger.info(`Inline links: ${structured.inlineLinks.length}`);
 		this.logger.info(
 			`Related questions: ${structured.relatedQuestions?.length ?? 0}`,
 		);
@@ -505,22 +505,23 @@ export class PerplexityProvider implements CrawlerProvider {
 	private async extractStructuredData(
 		session: BrowserSession,
 	): Promise<StructuredCrawlData> {
-		const citations = await this.extractCitations(session);
+		const inlineLinks = await this.extractInlineLinks(session);
 		const relatedQuestions = await this.extractRelatedQuestions(session);
 		const answerFormat = this.detectAnswerFormat(session);
 
 		return {
-			citations,
+			inlineLinks,
+			sourcePanelLinks: [],
 			brandMentions: [],
 			relatedQuestions,
 			answerFormat,
 		};
 	}
 
-	private async extractCitations(
+	private async extractInlineLinks(
 		session: BrowserSession,
-	): Promise<CitationSource[]> {
-		const citations: CitationSource[] = [];
+	): Promise<InlineLink[]> {
+		const inlineLinks: InlineLink[] = [];
 
 		try {
 			const externalLinks = await session.page.evaluate(() => {
@@ -561,18 +562,18 @@ export class PerplexityProvider implements CrawlerProvider {
 				const url = new URL(link.href);
 				const domain = url.hostname.replace("www.", "");
 
-				citations.push({
+				inlineLinks.push({
 					domain,
 					url: link.href,
 					position: position++,
-					sourceName: link.text.split(/\s+/)[0]?.toLowerCase() ?? domain,
+					title: link.text.split(/\s+/)[0]?.toLowerCase() ?? domain,
 				});
 			}
 		} catch {
-			// Citations extraction is non-critical
+			// Inline links extraction is non-critical
 		}
 
-		return citations;
+		return inlineLinks;
 	}
 
 	private async extractRelatedQuestions(

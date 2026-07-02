@@ -599,11 +599,15 @@ describe("ChatGPTProvider.extractResult with sources panel", () => {
 		}) as BrowserSession;
 
 		const result = await provider.extractResult(session);
-		const links = result.structured?.inlineLinks ?? [];
-		expect(links).toHaveLength(1);
-		expect(links[0].title).toBe("Panel Source");
-		expect(links[0].domain).toBe("panel.com");
-		expect(links[0].citedText).toBe("From the panel");
+		const panelLinks = result.structured?.sourcePanelLinks ?? [];
+		expect(panelLinks).toHaveLength(1);
+		expect(panelLinks[0].title).toBe("Panel Source");
+		expect(panelLinks[0].domain).toBe("panel.com");
+		expect(panelLinks[0].citedText).toBe("From the panel");
+		const inlineLinks = result.structured?.inlineLinks ?? [];
+		expect(inlineLinks).toHaveLength(1);
+		expect(inlineLinks[0].title).toBe("Inline");
+		expect(inlineLinks[0].domain).toBe("inline.com");
 	});
 
 	it("falls back to inline links when no side-panel button found", async () => {

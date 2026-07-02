@@ -15,7 +15,7 @@ import {
 import { id, createdAt, updatedAt } from "./common-fields";
 import { promptQueryCrawlTable } from "./promptQueryCrawl";
 
-export const crawlReferenceKindEnum = z.enum(["citation", "inline-link"]);
+export const crawlReferenceKindEnum = z.enum(["inline-link", "source-panel"]);
 export type CrawlReferenceKind = z.infer<typeof crawlReferenceKindEnum>;
 
 export const crawlReferenceTable = pgTable(

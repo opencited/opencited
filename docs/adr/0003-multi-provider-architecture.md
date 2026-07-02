@@ -15,12 +15,20 @@ above it supported more than one provider. Adding a second provider (ChatGPT)
 required either duplicating the hardcoded path or generalising the integration
 layer.
 
-We also discovered that Perplexity and ChatGPT produce structurally different
-"reference" data. Perplexity has a dedicated sources panel with inline
-`[1]`-style citation markers — these are sources the engine explicitly cites to
-back a claim. ChatGPT has no citation panel; it just embeds `<a>` anchors
-inline in the response prose as it mentions a brand or product. Treating these
-as the same concept would conflate two semantically different signals.
+We initially believed that Perplexity and ChatGPT produced structurally different
+"reference" data. Perplexity was thought to have a dedicated sources panel with
+inline `[1]`-style citation markers — sources the engine explicitly cites to
+back a claim. ChatGPT was thought to embed `<a>` anchors inline in the response
+prose as it mentions a brand or product. We planned to treat these as two
+semantically different signals with distinct types (`CitationSource` vs
+`InlineLink`).
+
+However, upon implementation, we discovered that **both providers actually
+produce inline links** — `<a>` elements extracted from the answer prose. The
+only real distinction is that ChatGPT also has a side-panel "Sources" UI that
+can be opened to show explicit citations. This led to a simplification: both
+providers produce `inline-link` rows, and ChatGPT additionally produces
+`source-panel` rows when the panel is available.
 
 ## Decision
 
@@ -42,48 +50,43 @@ The worker and tRPC router call `createProvider(name)` instead of
 `new PerplexityProvider()`. Adding a third provider means one new file in
 `providers/` and one entry in the registry.
 
-### 2. Single `crawl` job, provider in payload
+### 2. Per-provider job queues
 
-Replace `perplexity-crawl` and any future `chatgpt-crawl` with a single `crawl`
-job whose payload includes `provider: crawlProviderEnum`. The worker dispatches
-to the right provider via the factory. Per-provider rate limits and
-concurrency are configured via env, not via separate queues.
-
-The BullMQ job name no longer encodes the provider. Retries, dead-letter
-queues, and concurrency limits are per-queue and not per-provider — we have
-one queue.
+Each provider has its own BullMQ queue (`perplexity-crawl`, `chatgpt-crawl`).
+Per-provider concurrency, retries, and dead-letter handling are isolated. The
+provider is in the queue name AND in the job payload.
 
 ### 3. Polymorphic `crawl_reference` table
 
-A new DB table stores both citation and inline-link data:
+A new DB table stores all reference links from AI answer engines:
 
 | Column | Type | Notes |
 |--------|------|-------|
 | `id` | uuid | PK |
 | `crawl_id` | uuid | FK → `prompt_query_crawl.id`, cascade delete |
-| `kind` | enum | `'citation' \| 'inline-link'` |
+| `kind` | enum | `'inline-link' \| 'source-panel'` |
 | `position` | int | 1-indexed ordinal in the response |
 | `url` | text | The referenced URL |
 | `domain` | text | Parsed hostname (for fast `citationScore` lookups) |
-| `title` | text | For citations: the source title. For inline links: the anchor text. |
-| `description` | text | Citation-only; null for inline links |
-| `favicon` | text | Citation-only |
-| `source_name` | text | Citation-only; null for inline links |
+| `title` | text | The anchor text or source title |
+| `metadata` | jsonb | Optional fields (e.g., `citedText` for panel links) |
 
-The `kind` column is the discriminator. The `citationScore` sub-score reads
-from this one table and asks the same question for both kinds: "is the
-brand's own domain in the reference list?"
+The `kind` column distinguishes between:
+- **`inline-link`**: Links extracted from the answer prose (both Perplexity and ChatGPT)
+- **`source-panel`**: Links from ChatGPT's side-panel "Sources" UI
 
-### 4. Distinct types in the browser-crawler layer
+The `citationScore` sub-score reads from this one table, deduplicates by domain
+(binary per domain), and asks the same question for both kinds: "is the brand's
+own domain in the reference list?"
 
-`CitationSource` and `InlineLink` are two different types in
-`packages/browser-crawler/src/providers/types.ts`. The provider that produced
-the data knows which type to populate. The DB layer collapses both into
-`crawl_reference` with a `kind` discriminator.
+### 4. Unified `InlineLink` type
 
-This keeps the provider interface honest about the data it produces, while
-the DB layer normalises the storage shape. The visibility score doesn't care
-which kind a row is — it only checks `domain`.
+Both providers return `InlineLink[]` for their prose links. ChatGPT additionally
+returns `sourcePanelLinks: InlineLink[]` when the panel is available. The DB
+layer stores both with the appropriate `kind` discriminator.
+
+This keeps the provider interface simple while preserving the semantic
+distinction in the DB for debugging and analysis.
 
 ### 5. Per-provider rate limit via env
 
@@ -117,16 +120,17 @@ crawl level, just a new enum value.
   `providers/`, one entry in the factory map, one env var entry for rate
   limits, one DB enum value, one UI dropdown item.
 - **The visibility score formula stays engine-agnostic** (ADR-0002). The
-  `citationScore` reads from `crawl_reference` and doesn't care which kind
-  the row is. No `formulaVersion` bump required.
+  `citationScore` reads from `crawl_reference`, deduplicates by domain, and
+  doesn't care which kind the row is. No `formulaVersion` bump required.
 - **The polymorphic table is queryable**: `WHERE crawl_id = ? AND domain = ?`
   gives the citation sub-score in one index lookup, regardless of kind.
+- **Simplified type system**: Only `InlineLink` type, no redundant `CitationSource`.
 
 ### Trade-offs
 
-- **Two types in the provider layer, one table in the DB** — there's a
+- **Two kinds in the DB, one type in the provider layer** — there's a
   translation step in the worker when saving structured data. The worker
-  knows which kind to set on each row.
+  knows which kind to set on each row based on the source (prose vs panel).
 - **Per-provider rate limit is an in-process token bucket** — not
   distributed. If we scale to multiple worker instances, each instance has
   its own bucket. This is fine for the current single-instance deployment,
@@ -145,8 +149,3 @@ crawl level, just a new enum value.
   the `kind` column.
 - **Rate limit env var is low-cost to replace** with a Redis-backed
   distributed limiter when we need it.
-- **The `CitationSource` vs `InlineLink` split is the costliest thing to
-  reverse** — downstream code (UI, score actions) learns to handle both. If
-  we later decide the split was wrong and unify them, every read site needs
-  to change. We accept this because the semantic distinction is real and
-  documented.

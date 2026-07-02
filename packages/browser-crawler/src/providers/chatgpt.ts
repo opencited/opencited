@@ -292,9 +292,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 		}
 	}
 
-	private async isEditorFocusedAndReady(
-		session: BrowserSession,
-	): Promise<{
+	private async isEditorFocusedAndReady(session: BrowserSession): Promise<{
 		focused: boolean;
 		documentHasFocus: boolean;
 		editorTextLength: number;
@@ -823,9 +821,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 		return links;
 	}
 
-	private async findSourcesButton(
-		session: BrowserSession,
-	): Promise<{
+	private async findSourcesButton(session: BrowserSession): Promise<{
 		found: boolean;
 		score?: number;
 		tag?: string;
@@ -1180,49 +1176,43 @@ export class ChatGPTProvider implements CrawlerProvider {
 			}
 
 			let inlineLinks: InlineLink[] = [];
+			let sourcePanelLinks: InlineLink[] = [];
 
 			try {
-				const panelLinks = await this.extractFromSourcesPanel(session);
-				if (panelLinks.length > 0) {
-					inlineLinks = panelLinks;
-					this.logger.info("[chatgpt:extract] using side-panel links", {
-						count: panelLinks.length,
-					});
-				} else {
-					inlineLinks = await this.extractInlineLinks(session);
-					this.logger.info("[chatgpt:extract] using inline links", {
-						count: inlineLinks.length,
-					});
-				}
+				sourcePanelLinks = await this.extractFromSourcesPanel(session);
+				this.logger.info("[chatgpt:extract] extracted source panel links", {
+					count: sourcePanelLinks.length,
+				});
 			} catch (e) {
 				this.logger.info(
-					`[chatgpt:extract] ❌ link extraction failed on attempt ${attempt + 1}; falling back to inline links (or empty if that also fails)`,
+					`[chatgpt:extract] ❌ source panel extraction failed on attempt ${attempt + 1}`,
 					{
 						error: e instanceof Error ? e.message : String(e),
-						stack: e instanceof Error ? e.stack : undefined,
 					},
 				);
-				try {
-					inlineLinks = await this.extractInlineLinks(session);
-					this.logger.info("[chatgpt:extract] using inline links (fallback)", {
-						count: inlineLinks.length,
-					});
-				} catch (e2) {
-					this.logger.info(
-						`[chatgpt:extract] ❌ inline-link fallback also failed on attempt ${attempt + 1}`,
-						{
-							error: e2 instanceof Error ? e2.message : String(e2),
-						},
-					);
-					inlineLinks = [];
-				}
+			}
+
+			try {
+				inlineLinks = await this.extractInlineLinks(session);
+				this.logger.info("[chatgpt:extract] extracted inline links", {
+					count: inlineLinks.length,
+				});
+			} catch (e) {
+				this.logger.info(
+					`[chatgpt:extract] ❌ inline link extraction failed on attempt ${attempt + 1}`,
+					{
+						error: e instanceof Error ? e.message : String(e),
+					},
+				);
 			}
 
 			inlineLinks = filterSelfCitations(this.name, inlineLinks);
+			sourcePanelLinks = filterSelfCitations(this.name, sourcePanelLinks);
 			const loadTimeMs = Date.now() - startTime;
 			this.logger.info("[chatgpt:extract] done", {
 				contentLength: content.length,
 				inlineLinkCount: inlineLinks.length,
+				sourcePanelLinkCount: sourcePanelLinks.length,
 				loadTimeMs,
 				url: session.page.url(),
 			});
@@ -1237,9 +1227,9 @@ export class ChatGPTProvider implements CrawlerProvider {
 					loadTimeMs,
 				},
 				structured: {
-					citations: [],
-					brandMentions: [],
 					inlineLinks,
+					sourcePanelLinks,
+					brandMentions: [],
 				},
 			};
 		}

@@ -22,6 +22,7 @@ export const saveInlineLinksInputSchema = z.object({
 	promptQueryId: z.string().min(1, "Prompt query is required"),
 	domainProjectId: z.string().optional(),
 	inlineLinks: z.array(inlineLinkSchema),
+	sourcePanelLinks: z.array(inlineLinkSchema).optional(),
 });
 
 export const saveInlineLinksOutputSchema = z.object({
@@ -35,9 +36,15 @@ export const saveInlineLinksAction = async (params: {
 	ctx: z.infer<typeof saveInlineLinksContextSchema>;
 }) => {
 	const { input, ctx } = params;
-	const { crawlId, promptQueryId, domainProjectId, inlineLinks } = input;
+	const {
+		crawlId,
+		promptQueryId,
+		domainProjectId,
+		inlineLinks,
+		sourcePanelLinks = [],
+	} = input;
 
-	if (inlineLinks.length === 0) {
+	if (inlineLinks.length === 0 && sourcePanelLinks.length === 0) {
 		return { linksSaved: 0 };
 	}
 
@@ -80,7 +87,7 @@ export const saveInlineLinksAction = async (params: {
 			)[0]?.domain?.toLowerCase()
 		: undefined;
 
-	const rowsToInsert = inlineLinks.map((link) => ({
+	const inlineLinksToInsert = inlineLinks.map((link) => ({
 		crawlId,
 		kind: "inline-link" as const,
 		domain: link.domain,
@@ -95,9 +102,31 @@ export const saveInlineLinksAction = async (params: {
 		...(link.citedText ? { metadata: { citedText: link.citedText } } : {}),
 	}));
 
-	await ctx.db.insert(crawlReferenceTable).values(rowsToInsert);
+	const sourcePanelLinksToInsert = sourcePanelLinks.map((link) => ({
+		crawlId,
+		kind: "source-panel" as const,
+		domain: link.domain,
+		url: link.url,
+		title: link.title,
+		position: link.position,
+		isOwnDomain:
+			ownDomain && link.domain.toLowerCase() === ownDomain ? "true" : "false",
+		isCompetitorDomain: competitorDomains.has(link.domain.toLowerCase())
+			? "true"
+			: "false",
+		...(link.citedText ? { metadata: { citedText: link.citedText } } : {}),
+	}));
 
-	return { linksSaved: rowsToInsert.length };
+	const allLinksToInsert = [
+		...inlineLinksToInsert,
+		...sourcePanelLinksToInsert,
+	];
+
+	if (allLinksToInsert.length > 0) {
+		await ctx.db.insert(crawlReferenceTable).values(allLinksToInsert);
+	}
+
+	return { linksSaved: allLinksToInsert.length };
 };
 
 export const saveInlineLinksHandler = async (params: {

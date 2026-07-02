@@ -148,20 +148,20 @@ export const computeVisibilityScoreInternal = async (
 	const sourceRows: SourceRow[] = await ctx.db
 		.select()
 		.from(crawlReferenceTable)
-		.where(
-			and(
-				eq(crawlReferenceTable.crawlId, input.crawlId),
-				eq(crawlReferenceTable.kind, "citation"),
-			),
-		);
+		.where(eq(crawlReferenceTable.crawlId, input.crawlId));
 
-	const crawlCitations: CrawlCitation[] = sourceRows.map((s: SourceRow) => ({
-		domain: s.domain,
-		url: s.url,
-		position: s.position ?? undefined,
-		isOwnDomain: s.isOwnDomain ?? undefined,
-		isCompetitorDomain: s.isCompetitorDomain ?? undefined,
-	}));
+	const crawlCitations: CrawlCitation[] = sourceRows
+		.filter(
+			(row, index, self) =>
+				self.findIndex((r) => r.domain === row.domain) === index,
+		)
+		.map((s: SourceRow) => ({
+			domain: s.domain,
+			url: s.url,
+			position: s.position ?? undefined,
+			isOwnDomain: s.isOwnDomain ?? undefined,
+			isCompetitorDomain: s.isCompetitorDomain ?? undefined,
+		}));
 
 	const sentimentResult = await callSentimentJudge(
 		{

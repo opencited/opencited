@@ -82,6 +82,7 @@ describe("saveInlineLinksAction", () => {
 						position: 2,
 					},
 				],
+				sourcePanelLinks: [],
 			},
 			ctx: makeCtx(db),
 		});
@@ -123,6 +124,7 @@ describe("saveInlineLinksAction", () => {
 						position: 1,
 					},
 				],
+				sourcePanelLinks: [],
 			},
 			ctx: makeCtx(db),
 		});
@@ -152,6 +154,7 @@ describe("saveInlineLinksAction", () => {
 						position: 1,
 					},
 				],
+				sourcePanelLinks: [],
 			},
 			ctx: makeCtx(db),
 		});
@@ -174,6 +177,7 @@ describe("saveInlineLinksAction", () => {
 				promptQueryId: "pq-1",
 				domainProjectId: "dp-1",
 				inlineLinks: [],
+				sourcePanelLinks: [],
 			},
 			ctx: makeCtx(db),
 		});
@@ -199,6 +203,7 @@ describe("saveInlineLinksAction", () => {
 							position: 1,
 						},
 					],
+					sourcePanelLinks: [],
 				},
 				ctx: makeCtx(db),
 			}),

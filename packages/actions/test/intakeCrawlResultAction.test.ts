@@ -1,13 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 const saveCrawlResultMock = mock(async () => ({ id: "crawl-1" }));
-const saveStructuredMock = mock(async () => ({
-	sourcesSaved: 2,
-	mentionsSaved: 0,
-}));
 const saveInlineLinksMock = mock(async () => ({
 	linksSaved: 2,
 }));
+const updateCrawlMock = mock(async () => ({ id: "crawl-1" }));
 const extractIntelligenceMock = mock(async () => ({
 	brandMentions: [
 		{
@@ -46,12 +43,12 @@ mock.module("../src/promptQueryCrawl/triggerCrawlAction", () => ({
 	saveCrawlResultAction: saveCrawlResultMock,
 }));
 
-mock.module("../src/promptQueryCrawl/saveStructuredCrawlDataAction", () => ({
-	saveStructuredCrawlDataAction: saveStructuredMock,
-}));
-
 mock.module("../src/promptQueryCrawl/saveInlineLinksAction", () => ({
 	saveInlineLinksAction: saveInlineLinksMock,
+}));
+
+mock.module("../src/promptQueryCrawl/updateCrawlAction", () => ({
+	updateCrawlAction: updateCrawlMock,
 }));
 
 mock.module("../src/ai/extractBrandIntelligenceAction", () => ({
@@ -102,10 +99,21 @@ function makeInput(
 				loadTimeMs: 5000,
 			},
 			structured: {
-				citations: [
-					{ domain: "example.com", url: "https://example.com", position: 1 },
-					{ domain: "other.com", url: "https://other.com", position: 2 },
+				inlineLinks: [
+					{
+						domain: "example.com",
+						url: "https://example.com",
+						position: 1,
+						title: "Example",
+					},
+					{
+						domain: "other.com",
+						url: "https://other.com",
+						position: 2,
+						title: "Other",
+					},
 				],
+				sourcePanelLinks: [],
 				brandMentions: [],
 				answerFormat: "paragraph",
 			},
@@ -124,8 +132,8 @@ function makeInput(
 describe("intakeCrawlResultAction", () => {
 	beforeEach(() => {
 		saveCrawlResultMock.mockClear();
-		saveStructuredMock.mockClear();
 		saveInlineLinksMock.mockClear();
+		updateCrawlMock.mockClear();
 		extractIntelligenceMock.mockClear();
 		saveIntelligenceMock.mockClear();
 		computeScoreMock.mockClear();
@@ -142,7 +150,8 @@ describe("intakeCrawlResultAction", () => {
 		expect(result.sentimentRetryNeeded).toBe(false);
 
 		expect(saveCrawlResultMock).toHaveBeenCalledTimes(1);
-		expect(saveStructuredMock).toHaveBeenCalledTimes(1);
+		expect(saveInlineLinksMock).toHaveBeenCalledTimes(1);
+		expect(updateCrawlMock).toHaveBeenCalledTimes(1);
 		expect(extractIntelligenceMock).toHaveBeenCalledTimes(1);
 		expect(saveIntelligenceMock).toHaveBeenCalledTimes(1);
 		expect(computeScoreMock).toHaveBeenCalledTimes(1);
@@ -155,7 +164,7 @@ describe("intakeCrawlResultAction", () => {
 			intakeCrawlResultAction({ input: makeInput(), ctx: baseCtx }),
 		).rejects.toThrow("DB connection lost");
 
-		expect(saveStructuredMock).not.toHaveBeenCalled();
+		expect(saveInlineLinksMock).not.toHaveBeenCalled();
 		expect(extractIntelligenceMock).not.toHaveBeenCalled();
 	});
 
@@ -170,7 +179,8 @@ describe("intakeCrawlResultAction", () => {
 		expect(result.success).toBe(false);
 		expect(result.failedSteps).toEqual(["brandIntelligence"]);
 		expect(saveCrawlResultMock).toHaveBeenCalledTimes(1);
-		expect(saveStructuredMock).toHaveBeenCalledTimes(1);
+		expect(saveInlineLinksMock).toHaveBeenCalledTimes(1);
+		expect(updateCrawlMock).toHaveBeenCalledTimes(1);
 		expect(saveIntelligenceMock).not.toHaveBeenCalled();
 		expect(computeScoreMock).not.toHaveBeenCalled();
 	});
@@ -236,7 +246,8 @@ describe("intakeCrawlResultAction", () => {
 
 		expect(result.success).toBe(true);
 		expect(saveCrawlResultMock).toHaveBeenCalledTimes(1);
-		expect(saveStructuredMock).not.toHaveBeenCalled();
+		expect(saveInlineLinksMock).not.toHaveBeenCalled();
+		expect(updateCrawlMock).not.toHaveBeenCalled();
 		expect(extractIntelligenceMock).toHaveBeenCalledTimes(1);
 	});
 
@@ -349,8 +360,6 @@ describe("intakeCrawlResultAction", () => {
 					loadTimeMs: 5000,
 				},
 				structured: {
-					citations: [],
-					brandMentions: [],
 					inlineLinks: [
 						{
 							title: "Acme Article",
@@ -365,6 +374,8 @@ describe("intakeCrawlResultAction", () => {
 							position: 2,
 						},
 					],
+					sourcePanelLinks: [],
+					brandMentions: [],
 				},
 			},
 		});
@@ -392,14 +403,28 @@ describe("intakeCrawlResultAction", () => {
 						position: 2,
 					},
 				],
+				sourcePanelLinks: [],
 			},
 			ctx: baseCtx,
 		});
 	});
 
 	it("does not call saveInlineLinksAction when inlineLinks are absent", async () => {
+		const input = makeInput({
+			result: {
+				provider: "perplexity",
+				content: "MyBrand is the leading platform.",
+				metadata: {
+					url: "https://perplexity.ai/search/abc",
+					title: "Search Result",
+					timestamp: new Date("2026-06-27T12:00:00Z"),
+					loadTimeMs: 5000,
+				},
+			},
+		});
+
 		const result = await intakeCrawlResultAction({
-			input: makeInput(),
+			input,
 			ctx: baseCtx,
 		});
 
@@ -419,9 +444,9 @@ describe("intakeCrawlResultAction", () => {
 					loadTimeMs: 3000,
 				},
 				structured: {
-					citations: [],
-					brandMentions: [],
 					inlineLinks: [],
+					sourcePanelLinks: [],
+					brandMentions: [],
 				},
 			},
 		});

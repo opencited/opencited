@@ -2,8 +2,8 @@ import { z } from "zod";
 import type { Logger } from "@opencited/logger";
 import { baseActionContextSchema } from "../context";
 import { saveCrawlResultAction } from "../promptQueryCrawl/triggerCrawlAction";
-import { saveStructuredCrawlDataAction } from "../promptQueryCrawl/saveStructuredCrawlDataAction";
 import { saveInlineLinksAction } from "../promptQueryCrawl/saveInlineLinksAction";
+import { updateCrawlAction } from "../promptQueryCrawl/updateCrawlAction";
 import { extractBrandIntelligenceAction } from "../ai/extractBrandIntelligenceAction";
 import { saveBrandIntelligenceAction } from "../ai/saveBrandIntelligenceAction";
 import { computeVisibilityScoreAction } from "../aiVisibility/computeVisibilityScoreAction";
@@ -24,15 +24,20 @@ export const intakeCrawlResultInputSchema = z.object({
 		}),
 		structured: z
 			.object({
-				citations: z.array(
+				inlineLinks: z.array(
 					z.object({
-						domain: z.string(),
+						title: z.string(),
 						url: z.string(),
-						title: z.string().optional(),
-						description: z.string().optional(),
+						domain: z.string(),
 						position: z.number(),
-						favicon: z.string().optional(),
-						sourceName: z.string().optional(),
+					}),
+				),
+				sourcePanelLinks: z.array(
+					z.object({
+						title: z.string(),
+						url: z.string(),
+						domain: z.string(),
+						position: z.number(),
 					}),
 				),
 				brandMentions: z.array(
@@ -42,16 +47,6 @@ export const intakeCrawlResultInputSchema = z.object({
 						brandUrl: z.string().optional(),
 					}),
 				),
-				inlineLinks: z
-					.array(
-						z.object({
-							title: z.string(),
-							url: z.string(),
-							domain: z.string(),
-							position: z.number(),
-						}),
-					)
-					.optional(),
 				answerFormat: z.string().optional(),
 			})
 			.optional(),
@@ -128,31 +123,33 @@ export const intakeCrawlResultAction = async (params: {
 	});
 
 	if (result.structured) {
-		await saveStructuredCrawlDataAction({
-			input: {
-				crawlId,
-				promptQueryId,
-				domainProjectId,
-				structured: {
-					citations: result.structured.citations,
-					brandMentions: [],
-					answerFormat: result.structured.answerFormat,
-					wordCount: result.content.split(/\s+/).length,
-				},
-			},
-			ctx,
-		});
+		const allInlineLinks = [
+			...result.structured.inlineLinks,
+			...result.structured.sourcePanelLinks,
+		];
 
-		if (
-			result.structured.inlineLinks &&
-			result.structured.inlineLinks.length > 0
-		) {
+		if (allInlineLinks.length > 0) {
 			await saveInlineLinksAction({
 				input: {
 					crawlId,
 					promptQueryId,
 					domainProjectId,
 					inlineLinks: result.structured.inlineLinks,
+					sourcePanelLinks: result.structured.sourcePanelLinks,
+				},
+				ctx,
+			});
+		}
+
+		const wordCount = result.content.split(/\s+/).length;
+		if (result.structured.answerFormat || wordCount > 0) {
+			await updateCrawlAction({
+				input: {
+					id: crawlId,
+					answerFormat: result.structured.answerFormat,
+					wordCount,
+					sourceCount: allInlineLinks.length,
+					domainProjectId,
 				},
 				ctx,
 			});

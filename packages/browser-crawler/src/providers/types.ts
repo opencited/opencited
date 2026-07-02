@@ -16,22 +16,12 @@ export interface CrawlMetadata {
 }
 
 export interface StructuredCrawlData {
-	citations: CitationSource[];
+	inlineLinks: InlineLink[];
+	sourcePanelLinks: InlineLink[];
 	brandMentions: BrandMention[];
-	inlineLinks?: InlineLink[];
 	relatedQuestions?: string[];
 	answerFormat?: AnswerFormat;
 	headings?: string[];
-}
-
-export interface CitationSource {
-	domain: string;
-	url: string;
-	title?: string;
-	description?: string;
-	position: number;
-	favicon?: string;
-	sourceName?: string;
 }
 
 export interface BrandMention {

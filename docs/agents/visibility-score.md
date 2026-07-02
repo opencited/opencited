@@ -69,6 +69,8 @@ citationScore(a) = 100  if cited(b, a)
                  0     otherwise
 ```
 
+**Implementation note:** `cited(b, a)` checks the `crawl_reference` table for any row where `domain` matches the brand's own domain, regardless of `kind`. Both `inline-link` (prose links) and `source-panel` (panel links) are counted. Each domain is treated as binary (cited or not) — if the same domain appears in both kinds, it still counts as a single citation.
+
 The peer-relative ratio is computed at the per-brand-per-engine layer (see §3).
 
 ### 1.4 sentimentScore (LLM-as-judge, 3-class mapped to 0–100)
