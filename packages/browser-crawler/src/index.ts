@@ -10,6 +10,13 @@ export {
 } from "./browser";
 
 export { captureDebugInfo } from "./debug";
+export {
+	capturePageState,
+	probeSourcesCandidates,
+	waitForSourcesButton,
+	type DebugContext,
+	type SourceCandidate,
+} from "./debug-state";
 
 export {
 	click,
@@ -46,11 +53,14 @@ export {
 } from "./errors";
 
 export { PerplexityProvider } from "./providers/perplexity";
+export { ChatGPTProvider } from "./providers/chatgpt";
+export { createProvider, providerRegistry } from "./providers/factory";
 export type {
 	CrawlerProvider,
 	AuthCredentials,
 	CrawlResult,
 	CrawlMetadata,
+	InlineLink,
 } from "./providers";
 
 export type {

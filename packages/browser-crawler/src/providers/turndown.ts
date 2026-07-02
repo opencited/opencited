@@ -76,10 +76,17 @@ turndown.addRule("table", {
 
 turndown.addRule("link", {
 	filter: "a",
-	replacement(content) {
+	replacement(content, node) {
 		const trimmed = content.trim();
 		if (!trimmed) return "";
 		if (/^\[?\d+\]?$/.test(trimmed)) return "";
+
+		const el = node as HTMLAnchorElement;
+		const href = el.getAttribute("href") ?? "";
+		const isExternal =
+			href.startsWith("http://") || href.startsWith("https://");
+		if (!isExternal) return trimmed;
+
 		return content;
 	},
 });

@@ -20,6 +20,11 @@ import { Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useActiveCrawls } from "@/app/hooks/use-active-crawls";
+import {
+	CRAWL_PROVIDER_OPTIONS,
+	defaultCrawlProvider,
+	type CrawlProviderId,
+} from "./crawl-providers";
 
 interface BatchRunDialogProps {
 	open: boolean;
@@ -46,6 +51,8 @@ export function BatchRunDialog({
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(
 		() => new Set(prompts.map((p) => p.id)),
 	);
+	const [selectedProvider, setSelectedProvider] =
+		useState<CrawlProviderId>(defaultCrawlProvider);
 
 	const { activeCrawls } = useActiveCrawls({
 		domainProjectId,
@@ -114,7 +121,7 @@ export function BatchRunDialog({
 		try {
 			const data = await batchMutation.mutateAsync({
 				promptQueryIds: ids,
-				provider: "perplexity",
+				provider: selectedProvider,
 			});
 			toast.success("Batch crawl started", {
 				description: `Running ${data.count} crawl${data.count === 1 ? "" : "s"} in background...`,
@@ -157,6 +164,29 @@ export function BatchRunDialog({
 						job.
 					</DialogDescription>
 				</DialogHeader>
+
+				<div className="flex items-center gap-3">
+					<label
+						htmlFor="batch-provider"
+						className="text-sm text-muted-foreground"
+					>
+						Provider
+					</label>
+					<select
+						id="batch-provider"
+						value={selectedProvider}
+						onChange={(e) =>
+							setSelectedProvider(e.target.value as CrawlProviderId)
+						}
+						className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+					>
+						{CRAWL_PROVIDER_OPTIONS.map((opt) => (
+							<option key={opt.id} value={opt.id}>
+								{opt.label}
+							</option>
+						))}
+					</select>
+				</div>
 
 				<div className="relative">
 					<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

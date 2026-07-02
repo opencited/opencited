@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
 const saveCrawlResultMock = mock(async () => ({ id: "crawl-1" }));
-const saveStructuredMock = mock(async () => ({
-	sourcesSaved: 2,
-	mentionsSaved: 0,
+const saveInlineLinksMock = mock(async () => ({
+	linksSaved: 2,
 }));
+const updateCrawlMock = mock(async () => ({ id: "crawl-1" }));
 const extractIntelligenceMock = mock(async () => ({
 	brandMentions: [
 		{
@@ -43,8 +43,12 @@ mock.module("../src/promptQueryCrawl/triggerCrawlAction", () => ({
 	saveCrawlResultAction: saveCrawlResultMock,
 }));
 
-mock.module("../src/promptQueryCrawl/saveStructuredCrawlDataAction", () => ({
-	saveStructuredCrawlDataAction: saveStructuredMock,
+mock.module("../src/promptQueryCrawl/saveInlineLinksAction", () => ({
+	saveInlineLinksAction: saveInlineLinksMock,
+}));
+
+mock.module("../src/promptQueryCrawl/updateCrawlAction", () => ({
+	updateCrawlAction: updateCrawlMock,
 }));
 
 mock.module("../src/ai/extractBrandIntelligenceAction", () => ({
@@ -95,10 +99,21 @@ function makeInput(
 				loadTimeMs: 5000,
 			},
 			structured: {
-				citations: [
-					{ domain: "example.com", url: "https://example.com", position: 1 },
-					{ domain: "other.com", url: "https://other.com", position: 2 },
+				inlineLinks: [
+					{
+						domain: "example.com",
+						url: "https://example.com",
+						position: 1,
+						title: "Example",
+					},
+					{
+						domain: "other.com",
+						url: "https://other.com",
+						position: 2,
+						title: "Other",
+					},
 				],
+				sourcePanelLinks: [],
 				brandMentions: [],
 				answerFormat: "paragraph",
 			},
@@ -117,7 +132,8 @@ function makeInput(
 describe("intakeCrawlResultAction", () => {
 	beforeEach(() => {
 		saveCrawlResultMock.mockClear();
-		saveStructuredMock.mockClear();
+		saveInlineLinksMock.mockClear();
+		updateCrawlMock.mockClear();
 		extractIntelligenceMock.mockClear();
 		saveIntelligenceMock.mockClear();
 		computeScoreMock.mockClear();
@@ -134,7 +150,8 @@ describe("intakeCrawlResultAction", () => {
 		expect(result.sentimentRetryNeeded).toBe(false);
 
 		expect(saveCrawlResultMock).toHaveBeenCalledTimes(1);
-		expect(saveStructuredMock).toHaveBeenCalledTimes(1);
+		expect(saveInlineLinksMock).toHaveBeenCalledTimes(1);
+		expect(updateCrawlMock).toHaveBeenCalledTimes(1);
 		expect(extractIntelligenceMock).toHaveBeenCalledTimes(1);
 		expect(saveIntelligenceMock).toHaveBeenCalledTimes(1);
 		expect(computeScoreMock).toHaveBeenCalledTimes(1);
@@ -147,7 +164,7 @@ describe("intakeCrawlResultAction", () => {
 			intakeCrawlResultAction({ input: makeInput(), ctx: baseCtx }),
 		).rejects.toThrow("DB connection lost");
 
-		expect(saveStructuredMock).not.toHaveBeenCalled();
+		expect(saveInlineLinksMock).not.toHaveBeenCalled();
 		expect(extractIntelligenceMock).not.toHaveBeenCalled();
 	});
 
@@ -162,7 +179,8 @@ describe("intakeCrawlResultAction", () => {
 		expect(result.success).toBe(false);
 		expect(result.failedSteps).toEqual(["brandIntelligence"]);
 		expect(saveCrawlResultMock).toHaveBeenCalledTimes(1);
-		expect(saveStructuredMock).toHaveBeenCalledTimes(1);
+		expect(saveInlineLinksMock).toHaveBeenCalledTimes(1);
+		expect(updateCrawlMock).toHaveBeenCalledTimes(1);
 		expect(saveIntelligenceMock).not.toHaveBeenCalled();
 		expect(computeScoreMock).not.toHaveBeenCalled();
 	});
@@ -228,7 +246,8 @@ describe("intakeCrawlResultAction", () => {
 
 		expect(result.success).toBe(true);
 		expect(saveCrawlResultMock).toHaveBeenCalledTimes(1);
-		expect(saveStructuredMock).not.toHaveBeenCalled();
+		expect(saveInlineLinksMock).not.toHaveBeenCalled();
+		expect(updateCrawlMock).not.toHaveBeenCalled();
 		expect(extractIntelligenceMock).toHaveBeenCalledTimes(1);
 	});
 
@@ -271,7 +290,20 @@ describe("intakeCrawlResultAction", () => {
 			ctx: baseCtx,
 		});
 
-		expect(logger.info).toHaveBeenCalledTimes(3);
+		// 6 info logs: [intake] action start, [intake] about to call LLM extraction, [intake] LLM call started, LLM extraction completed, Brand intelligence saved, AI Visibility Score computed
+		expect(logger.info).toHaveBeenCalledTimes(6);
+		expect(logger.info).toHaveBeenCalledWith(
+			"[intake] action start",
+			expect.objectContaining({ crawlId: "crawl-1" }),
+		);
+		expect(logger.info).toHaveBeenCalledWith(
+			"[intake] about to call LLM extraction",
+			expect.objectContaining({ crawlId: "crawl-1" }),
+		);
+		expect(logger.info).toHaveBeenCalledWith(
+			"[intake] LLM call started",
+			expect.objectContaining({ crawlId: "crawl-1" }),
+		);
 		expect(logger.info).toHaveBeenCalledWith(
 			"LLM extraction completed",
 			expect.objectContaining({ crawlId: "crawl-1" }),
@@ -314,5 +346,114 @@ describe("intakeCrawlResultAction", () => {
 			"AI Visibility Score computation failed",
 			expect.objectContaining({ error: "Score failed" }),
 		);
+	});
+
+	it("calls saveInlineLinksAction when inlineLinks are present", async () => {
+		const input = makeInput({
+			result: {
+				provider: "chatgpt",
+				content: "MyBrand is great. Here is a link.",
+				metadata: {
+					url: "https://chatgpt.com/share/abc",
+					title: "ChatGPT Response",
+					timestamp: new Date("2026-06-27T12:00:00Z"),
+					loadTimeMs: 5000,
+				},
+				structured: {
+					inlineLinks: [
+						{
+							title: "Acme Article",
+							url: "https://acme.com/article",
+							domain: "acme.com",
+							position: 1,
+						},
+						{
+							title: "MyBrand Site",
+							url: "https://mybrand.com",
+							domain: "mybrand.com",
+							position: 2,
+						},
+					],
+					sourcePanelLinks: [],
+					brandMentions: [],
+				},
+			},
+		});
+
+		const result = await intakeCrawlResultAction({ input, ctx: baseCtx });
+
+		expect(result.success).toBe(true);
+		expect(saveInlineLinksMock).toHaveBeenCalledTimes(1);
+		expect(saveInlineLinksMock).toHaveBeenCalledWith({
+			input: {
+				crawlId: "crawl-1",
+				promptQueryId: "pq-1",
+				domainProjectId: "dp-1",
+				inlineLinks: [
+					{
+						title: "Acme Article",
+						url: "https://acme.com/article",
+						domain: "acme.com",
+						position: 1,
+					},
+					{
+						title: "MyBrand Site",
+						url: "https://mybrand.com",
+						domain: "mybrand.com",
+						position: 2,
+					},
+				],
+				sourcePanelLinks: [],
+			},
+			ctx: baseCtx,
+		});
+	});
+
+	it("does not call saveInlineLinksAction when inlineLinks are absent", async () => {
+		const input = makeInput({
+			result: {
+				provider: "perplexity",
+				content: "MyBrand is the leading platform.",
+				metadata: {
+					url: "https://perplexity.ai/search/abc",
+					title: "Search Result",
+					timestamp: new Date("2026-06-27T12:00:00Z"),
+					loadTimeMs: 5000,
+				},
+			},
+		});
+
+		const result = await intakeCrawlResultAction({
+			input,
+			ctx: baseCtx,
+		});
+
+		expect(result.success).toBe(true);
+		expect(saveInlineLinksMock).not.toHaveBeenCalled();
+	});
+
+	it("does not call saveInlineLinksAction when inlineLinks are empty", async () => {
+		const input = makeInput({
+			result: {
+				provider: "chatgpt",
+				content: "Some content",
+				metadata: {
+					url: "https://chatgpt.com/share/abc",
+					title: "Response",
+					timestamp: new Date(),
+					loadTimeMs: 3000,
+				},
+				structured: {
+					inlineLinks: [],
+					sourcePanelLinks: [],
+					brandMentions: [],
+				},
+			},
+		});
+
+		const result = await intakeCrawlResultAction({ input, ctx: baseCtx });
+
+		expect(result.success).toBe(true);
+		expect(saveInlineLinksMock).not.toHaveBeenCalled();
 	});
 });

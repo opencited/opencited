@@ -3,7 +3,7 @@ import type { Redis } from "ioredis";
 import type { Logger as CrawlerLogger } from "@opencited/logger";
 import {
 	Crawler,
-	PerplexityProvider,
+	createProvider,
 	AllProxiesFailedError,
 	type LoggerContext,
 } from "@opencited/browser-crawler";
@@ -20,6 +20,7 @@ import {
 	clearStickyProxy,
 	setStickyProxy,
 } from "../lib/proxy-resolution";
+import { rateLimit } from "../lib/rate-limit";
 import { env } from "../env";
 
 function adaptLogger(
@@ -29,13 +30,22 @@ function adaptLogger(
 	return base.withContext(context);
 }
 
-export async function handlePerplexityCrawl(
-	job: Job<JobPayload<"perplexity-crawl">>,
+type CrawlJobPayload = JobPayload<"perplexity-crawl"> & {
+	provider: "perplexity" | "chatgpt";
+};
+
+export async function handleCrawlJob(
+	job: Job<CrawlJobPayload>,
 	logger: CrawlerLogger,
 	redis: Redis,
 ): Promise<void> {
-	const { query, promptQueryId, promptQueryCrawlId, domainProjectId } =
-		job.data;
+	const {
+		query,
+		promptQueryId,
+		promptQueryCrawlId,
+		domainProjectId,
+		provider,
+	} = job.data;
 
 	await withDb(async (db) => {
 		const crawlContext = await getCrawlContextAction({
@@ -43,14 +53,16 @@ export async function handlePerplexityCrawl(
 			ctx: { db, userId: null, isAuthenticated: false },
 		});
 
+		await rateLimit(provider);
+
 		const crawlLogger = adaptLogger(logger, {
 			jobId: job.id ?? undefined,
 			promptQueryCrawlId,
 			promptQueryId,
-			provider: "perplexity",
+			provider,
 		});
 
-		const provider = new PerplexityProvider(crawlLogger);
+		const crawlerProvider = createProvider(provider, crawlLogger);
 		const crawler = new Crawler({ logger: crawlLogger });
 
 		try {
@@ -58,7 +70,7 @@ export async function handlePerplexityCrawl(
 
 			const { proxies, usedSticky } = await resolveProxies({
 				domainProjectId,
-				db,
+				ctx: { db, userId: null, isAuthenticated: false },
 				redis,
 				logger,
 			});
@@ -66,7 +78,7 @@ export async function handlePerplexityCrawl(
 			const result = await crawler
 				.crawl({
 					query,
-					provider,
+					provider: crawlerProvider,
 					browserOptions: {
 						headless: env.HEADLESS,
 						persist: false,
@@ -93,7 +105,7 @@ export async function handlePerplexityCrawl(
 
 						return crawler.crawl({
 							query,
-							provider,
+							provider: crawlerProvider,
 							browserOptions: { headless: true, persist: false },
 							proxies: freshProxies,
 						});
@@ -115,7 +127,8 @@ export async function handlePerplexityCrawl(
 				title: result.metadata.title,
 				contentLength: result.content.length,
 				loadTimeMs: result.metadata.loadTimeMs,
-				citationsCount: result.structured?.citations.length ?? 0,
+				inlineLinksCount: result.structured?.inlineLinks.length ?? 0,
+				sourcePanelLinksCount: result.structured?.sourcePanelLinks.length ?? 0,
 			});
 
 			const intakeResult = await intakeCrawlResultAction({

@@ -1,5 +1,5 @@
 import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
-import { dispatch } from "@opencited/queue";
+import { dispatchCrawlJob } from "@opencited/queue";
 import {
 	listCrawlsHandler,
 	listCrawlsInputSchema,
@@ -36,7 +36,7 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 					ctx,
 				});
 
-			const { jobId } = await dispatch("perplexity-crawl", {
+			const { jobId } = await dispatchCrawlJob(provider, {
 				query,
 				promptQueryId: input.promptQueryId,
 				promptQueryCrawlId: crawlId,
@@ -113,7 +113,7 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 						throw new Error("Prompt query not found");
 					}
 
-					const { jobId } = await dispatch("perplexity-crawl", {
+					const { jobId } = await dispatchCrawlJob(input.provider, {
 						query: promptQuery.query,
 						promptQueryId: promptQuery.id,
 						promptQueryCrawlId: crawlId,

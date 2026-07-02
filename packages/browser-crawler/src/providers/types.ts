@@ -16,21 +16,12 @@ export interface CrawlMetadata {
 }
 
 export interface StructuredCrawlData {
-	citations: CitationSource[];
+	inlineLinks: InlineLink[];
+	sourcePanelLinks: InlineLink[];
 	brandMentions: BrandMention[];
 	relatedQuestions?: string[];
 	answerFormat?: AnswerFormat;
 	headings?: string[];
-}
-
-export interface CitationSource {
-	domain: string;
-	url: string;
-	title?: string;
-	description?: string;
-	position: number;
-	favicon?: string;
-	sourceName?: string;
 }
 
 export interface BrandMention {
@@ -47,3 +38,16 @@ export type AnswerFormat =
 	| "unknown";
 
 export type AuthCredentials = Record<string, string>;
+
+/**
+ * Inline link extracted from a chat-engine response (e.g., ChatGPT's
+ * `<a class="decorated-link">` anchors). Populated in Slice 3.
+ */
+export interface InlineLink {
+	title: string;
+	url: string;
+	domain: string;
+	position: number;
+	/** Surrounding text snippet from the source panel, when available. */
+	citedText?: string;
+}

@@ -101,7 +101,7 @@ const url = env.DATABASE_URL;
 ### Domain Project = Brand
 - **One organization = One domainProject = One brand** (1:1:1 mapping)
 - `domainProject` is the canonical brand entity for the workspace
-- All feature tables (crawls, mentions, citations, competitors) reference `domainProjectId`
+- All feature tables (crawls, mentions, references, competitors) reference `domainProjectId`
 - Do NOT create separate `brand` tables or link feature data to `clerkOrganizationId`
 - `domainProject` fields: `domain` (primary URL), `name` (display name), `aliases` (JSONB array for mention detection), `logoUrl`, `active`
 

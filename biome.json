@@ -22,7 +22,8 @@
 			"!**/*.ejs",
 			"!biome.json",
 			"!turbo.json",
-			"!packages/browser-crawler/scripts"
+			"!packages/browser-crawler/scripts",
+			"!debug"
 		]
 	},
 	"formatter": {

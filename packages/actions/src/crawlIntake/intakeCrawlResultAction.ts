@@ -2,7 +2,8 @@ import { z } from "zod";
 import type { Logger } from "@opencited/logger";
 import { baseActionContextSchema } from "../context";
 import { saveCrawlResultAction } from "../promptQueryCrawl/triggerCrawlAction";
-import { saveStructuredCrawlDataAction } from "../promptQueryCrawl/saveStructuredCrawlDataAction";
+import { saveInlineLinksAction } from "../promptQueryCrawl/saveInlineLinksAction";
+import { updateCrawlAction } from "../promptQueryCrawl/updateCrawlAction";
 import { extractBrandIntelligenceAction } from "../ai/extractBrandIntelligenceAction";
 import { saveBrandIntelligenceAction } from "../ai/saveBrandIntelligenceAction";
 import { computeVisibilityScoreAction } from "../aiVisibility/computeVisibilityScoreAction";
@@ -23,15 +24,20 @@ export const intakeCrawlResultInputSchema = z.object({
 		}),
 		structured: z
 			.object({
-				citations: z.array(
+				inlineLinks: z.array(
 					z.object({
-						domain: z.string(),
+						title: z.string(),
 						url: z.string(),
-						title: z.string().optional(),
-						description: z.string().optional(),
+						domain: z.string(),
 						position: z.number(),
-						favicon: z.string().optional(),
-						sourceName: z.string().optional(),
+					}),
+				),
+				sourcePanelLinks: z.array(
+					z.object({
+						title: z.string(),
+						url: z.string(),
+						domain: z.string(),
+						position: z.number(),
 					}),
 				),
 				brandMentions: z.array(
@@ -91,6 +97,15 @@ export const intakeCrawlResultAction = async (params: {
 		logger,
 	} = input;
 
+	logger?.info("[intake] action start", {
+		crawlId,
+		hasStructured: !!result.structured,
+		hasInlineLinks: !!result.structured?.inlineLinks?.length,
+		hasLogger: !!logger,
+		provider: result.provider,
+		contentLength: result.content.length,
+	});
+
 	const failedSteps: string[] = [];
 
 	await saveCrawlResultAction({
@@ -108,33 +123,74 @@ export const intakeCrawlResultAction = async (params: {
 	});
 
 	if (result.structured) {
-		await saveStructuredCrawlDataAction({
-			input: {
-				crawlId,
-				promptQueryId,
-				domainProjectId,
-				structured: {
-					citations: result.structured.citations,
-					brandMentions: [],
-					answerFormat: result.structured.answerFormat,
-					wordCount: result.content.split(/\s+/).length,
+		const allInlineLinks = [
+			...result.structured.inlineLinks,
+			...result.structured.sourcePanelLinks,
+		];
+
+		if (allInlineLinks.length > 0) {
+			await saveInlineLinksAction({
+				input: {
+					crawlId,
+					promptQueryId,
+					domainProjectId,
+					inlineLinks: result.structured.inlineLinks,
+					sourcePanelLinks: result.structured.sourcePanelLinks,
 				},
-			},
-			ctx,
-		});
+				ctx,
+			});
+		}
+
+		const wordCount = result.content.split(/\s+/).length;
+		if (result.structured.answerFormat || wordCount > 0) {
+			await updateCrawlAction({
+				input: {
+					id: crawlId,
+					answerFormat: result.structured.answerFormat,
+					wordCount,
+					sourceCount: allInlineLinks.length,
+					domainProjectId,
+				},
+				ctx,
+			});
+		}
 	}
 
 	let sentimentRetryNeeded = false;
 
+	logger?.info("[intake] about to call LLM extraction", {
+		crawlId,
+		contentLength: result.content.length,
+		query,
+		hasTargetBrand: !!crawlContext.targetBrand,
+		hasTargetDomain: !!crawlContext.targetDomain,
+	});
+
 	try {
-		const intelligence = await extractBrandIntelligenceAction({
-			content: result.content,
-			query,
-			targetBrand: crawlContext.targetBrand,
-			targetDomain: crawlContext.targetDomain,
-			targetAliases: crawlContext.targetAliases,
-			knownCompetitors: crawlContext.knownCompetitors,
-		});
+		logger?.info("[intake] LLM call started", { crawlId });
+		let intelligence: Awaited<
+			ReturnType<typeof extractBrandIntelligenceAction>
+		>;
+		try {
+			intelligence = await extractBrandIntelligenceAction({
+				content: result.content,
+				query,
+				targetBrand: crawlContext.targetBrand,
+				targetDomain: crawlContext.targetDomain,
+				targetAliases: crawlContext.targetAliases,
+				knownCompetitors: crawlContext.knownCompetitors,
+			});
+		} catch (llmCallError) {
+			logger?.error("[intake] ❌ extractBrandIntelligenceAction THREW", {
+				crawlId,
+				error:
+					llmCallError instanceof Error
+						? llmCallError.message
+						: String(llmCallError),
+				stack: llmCallError instanceof Error ? llmCallError.stack : undefined,
+			});
+			throw llmCallError;
+		}
 
 		logger?.info("LLM extraction completed", {
 			crawlId,

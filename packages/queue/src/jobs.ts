@@ -1,22 +1,33 @@
 import { z } from "zod";
 import type { DefaultJobOptions } from "bullmq";
-
-export const crawlProviderEnum = z.enum(["perplexity"]);
+import { crawlProviderEnum } from "@opencited/db";
 
 export interface JobDefinition<T extends z.ZodType> {
 	payload: T;
 	options: DefaultJobOptions;
 }
 
+const crawlJobPayload = z.object({
+	query: z.string(),
+	promptQueryId: z.string(),
+	promptQueryCrawlId: z.string(),
+	domainProjectId: z.string(),
+	provider: crawlProviderEnum,
+});
+
 export const jobs = {
 	"perplexity-crawl": {
-		payload: z.object({
-			query: z.string(),
-			promptQueryId: z.string(),
-			promptQueryCrawlId: z.string(),
-			domainProjectId: z.string(),
-			provider: crawlProviderEnum,
-		}),
+		payload: crawlJobPayload,
+		options: {
+			attempts: 0,
+			backoff: {
+				type: "exponential",
+				delay: 1000,
+			},
+		},
+	},
+	"chatgpt-crawl": {
+		payload: crawlJobPayload,
 		options: {
 			attempts: 0,
 			backoff: {

@@ -19,6 +19,11 @@ export const updateCrawlInputSchema = z.object({
 	error: z.string().optional(),
 	startedAt: z.date().optional(),
 	completedAt: z.date().optional(),
+	answerFormat: z.string().optional(),
+	wordCount: z.number().int().nonnegative().optional(),
+	sourceCount: z.number().int().nonnegative().optional(),
+	brandMentionCount: z.number().int().nonnegative().optional(),
+	domainProjectId: z.string().optional(),
 });
 
 export const updateCrawlOutputSchema = promptQueryCrawlSelectSchema;

@@ -24,6 +24,7 @@ export * from "./schema/promptQuery";
 export * from "./schema/promptQueryCrawl";
 export * from "./schema/competitor";
 export * from "./schema/crawlSource";
+export * from "./schema/crawlReference";
 export * from "./schema/crawlBrandMention";
 export * from "./schema/crawlVisibilityScore";
 export * from "./schema/proxyConfig";

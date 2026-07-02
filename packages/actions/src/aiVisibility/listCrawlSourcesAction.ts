@@ -1,13 +1,14 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
-import { crawlSourceTable, crawlSourceSelectSchema } from "@opencited/db";
+import { crawlReferenceTable, crawlReferenceSelectSchema } from "@opencited/db";
 
 export const listCrawlSourcesInputSchema = z.object({
 	crawlId: z.string().min(1),
+	kind: z.enum(["citation", "inline-link"]).optional(),
 });
 
-export const listCrawlSourcesOutputSchema = z.array(crawlSourceSelectSchema);
+export const listCrawlSourcesOutputSchema = z.array(crawlReferenceSelectSchema);
 
 export const listCrawlSourcesContextSchema = baseActionContextSchema;
 
@@ -17,11 +18,16 @@ export const listCrawlSourcesAction = async (params: {
 }) => {
 	const { input, ctx } = params;
 
+	const conditions = [eq(crawlReferenceTable.crawlId, input.crawlId)];
+	if (input.kind) {
+		conditions.push(eq(crawlReferenceTable.kind, input.kind));
+	}
+
 	const result = await ctx.db
 		.select()
-		.from(crawlSourceTable)
-		.where(eq(crawlSourceTable.crawlId, input.crawlId))
-		.orderBy(crawlSourceTable.position);
+		.from(crawlReferenceTable)
+		.where(and(...conditions))
+		.orderBy(crawlReferenceTable.position);
 
 	return result;
 };

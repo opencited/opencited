@@ -5,7 +5,7 @@ import {
 	promptQueryCrawlTable,
 	crawlVisibilityScoreTable,
 	crawlBrandMentionTable,
-	crawlSourceTable,
+	crawlReferenceTable,
 	competitorTable,
 } from "@opencited/db";
 import {
@@ -46,7 +46,7 @@ export const getVisibilityAggregateContextSchema = baseActionContextSchema;
 type CrawlRow = typeof promptQueryCrawlTable.$inferSelect;
 type ScoreRow = typeof crawlVisibilityScoreTable.$inferSelect;
 type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
-type SourceRow = typeof crawlSourceTable.$inferSelect;
+type SourceRow = typeof crawlReferenceTable.$inferSelect;
 type CompetitorRow = typeof competitorTable.$inferSelect;
 
 function computeCompetitorSubScores(
@@ -152,8 +152,13 @@ export const getVisibilityAggregateAction = async (params: {
 			.where(inArray(crawlBrandMentionTable.crawlId, crawlIds)),
 		ctx.db
 			.select()
-			.from(crawlSourceTable)
-			.where(inArray(crawlSourceTable.crawlId, crawlIds)),
+			.from(crawlReferenceTable)
+			.where(
+				and(
+					inArray(crawlReferenceTable.crawlId, crawlIds),
+					eq(crawlReferenceTable.kind, "citation"),
+				),
+			),
 		ctx.db
 			.select()
 			.from(competitorTable)

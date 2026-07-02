@@ -19,7 +19,7 @@ import type {
 import { baseActionContextSchema } from "../context";
 import {
 	crawlBrandMentionTable,
-	crawlSourceTable,
+	crawlReferenceTable,
 	crawlVisibilityScoreTable,
 	domainProjectTable,
 	promptQueryCrawlTable,
@@ -53,7 +53,7 @@ export const computeVisibilityScoreContextSchema = baseActionContextSchema;
 type CrawlRow = typeof promptQueryCrawlTable.$inferSelect;
 type DomainProjectRow = typeof domainProjectTable.$inferSelect;
 type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
-type SourceRow = typeof crawlSourceTable.$inferSelect;
+type SourceRow = typeof crawlReferenceTable.$inferSelect;
 
 function parseAliases(value: unknown): string[] {
 	if (Array.isArray(value)) {
@@ -147,16 +147,21 @@ export const computeVisibilityScoreInternal = async (
 
 	const sourceRows: SourceRow[] = await ctx.db
 		.select()
-		.from(crawlSourceTable)
-		.where(eq(crawlSourceTable.crawlId, input.crawlId));
+		.from(crawlReferenceTable)
+		.where(eq(crawlReferenceTable.crawlId, input.crawlId));
 
-	const crawlCitations: CrawlCitation[] = sourceRows.map((s: SourceRow) => ({
-		domain: s.domain,
-		url: s.url,
-		position: s.position ?? undefined,
-		isOwnDomain: s.isOwnDomain ?? undefined,
-		isCompetitorDomain: s.isCompetitorDomain ?? undefined,
-	}));
+	const crawlCitations: CrawlCitation[] = sourceRows
+		.filter(
+			(row, index, self) =>
+				self.findIndex((r) => r.domain === row.domain) === index,
+		)
+		.map((s: SourceRow) => ({
+			domain: s.domain,
+			url: s.url,
+			position: s.position ?? undefined,
+			isOwnDomain: s.isOwnDomain ?? undefined,
+			isCompetitorDomain: s.isCompetitorDomain ?? undefined,
+		}));
 
 	const sentimentResult = await callSentimentJudge(
 		{

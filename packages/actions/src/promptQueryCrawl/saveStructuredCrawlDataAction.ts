@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
 import {
-	crawlSourceTable,
+	crawlReferenceTable,
 	crawlBrandMentionTable,
 	promptQueryCrawlTable,
 	promptQueryTable,
@@ -96,6 +96,7 @@ export const saveStructuredCrawlDataAction = async (params: {
 
 	const sourcesToInsert = structured.citations.map((citation) => ({
 		crawlId,
+		kind: "citation" as const,
 		domain: citation.domain,
 		url: citation.url,
 		title: citation.title,
@@ -117,7 +118,7 @@ export const saveStructuredCrawlDataAction = async (params: {
 	}));
 
 	if (sourcesToInsert.length > 0) {
-		await ctx.db.insert(crawlSourceTable).values(sourcesToInsert);
+		await ctx.db.insert(crawlReferenceTable).values(sourcesToInsert);
 	}
 
 	const mentionsToInsert = structured.brandMentions.map((mention) => ({
