@@ -279,7 +279,20 @@ describe("intakeCrawlResultAction", () => {
 			ctx: baseCtx,
 		});
 
-		expect(logger.info).toHaveBeenCalledTimes(3);
+		// 6 info logs: [intake] action start, [intake] about to call LLM extraction, [intake] LLM call started, LLM extraction completed, Brand intelligence saved, AI Visibility Score computed
+		expect(logger.info).toHaveBeenCalledTimes(6);
+		expect(logger.info).toHaveBeenCalledWith(
+			"[intake] action start",
+			expect.objectContaining({ crawlId: "crawl-1" }),
+		);
+		expect(logger.info).toHaveBeenCalledWith(
+			"[intake] about to call LLM extraction",
+			expect.objectContaining({ crawlId: "crawl-1" }),
+		);
+		expect(logger.info).toHaveBeenCalledWith(
+			"[intake] LLM call started",
+			expect.objectContaining({ crawlId: "crawl-1" }),
+		);
 		expect(logger.info).toHaveBeenCalledWith(
 			"LLM extraction completed",
 			expect.objectContaining({ crawlId: "crawl-1" }),

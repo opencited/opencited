@@ -10,6 +10,13 @@ export {
 } from "./browser";
 
 export { captureDebugInfo } from "./debug";
+export {
+	capturePageState,
+	probeSourcesCandidates,
+	waitForSourcesButton,
+	type DebugContext,
+	type SourceCandidate,
+} from "./debug-state";
 
 export {
 	click,

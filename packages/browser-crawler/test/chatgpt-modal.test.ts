@@ -3,13 +3,15 @@ import { ChatGPTProvider } from "../src/providers/chatgpt";
 import type { BrowserSession } from "../src/types";
 
 function createMockSession(
-	options: { dialogPresent?: boolean; buttonFound?: boolean } = {},
+	options: { dialogPresent?: boolean } = {},
 ): BrowserSession {
-	const { dialogPresent = false, buttonFound = true } = options;
+	const { dialogPresent = false } = options;
 
 	const evaluateCalls: Array<{ fn: string; args: unknown }> = [];
-	let timeoutMs = 0;
+	const waitForTimeoutCalls: number[] = [];
+	const pressCalls: string[] = [];
 
+	let dialogVisible = dialogPresent;
 	let gotoUrl: string | undefined;
 
 	const fakePage = {
@@ -19,18 +21,31 @@ function createMockSession(
 			gotoUrl = url;
 			return Promise.resolve();
 		}),
-		waitForTimeout: (ms: number) => {
-			timeoutMs = ms;
+		waitForTimeout: mock((ms: number) => {
+			waitForTimeoutCalls.push(ms);
 			return Promise.resolve();
+		}),
+		keyboard: {
+			press: mock((key: string) => {
+				pressCalls.push(key);
+				if (key === "Escape") {
+					dialogVisible = false;
+				}
+				return Promise.resolve();
+			}),
 		},
+		press: mock((key: string) => {
+			pressCalls.push(key);
+			if (key === "Escape") {
+				dialogVisible = false;
+			}
+			return Promise.resolve();
+		}),
 		evaluate: mock((fnOrFn: Function | string, args?: unknown) => {
 			const fnStr = typeof fnOrFn === "function" ? fnOrFn.toString() : fnOrFn;
 			evaluateCalls.push({ fn: fnStr, args });
-			if (fnStr.includes("dialog")) {
-				return Promise.resolve(dialogPresent);
-			}
-			if (fnStr.includes("button")) {
-				return Promise.resolve(buttonFound);
+			if (fnStr.includes("querySelectorAll")) {
+				return Promise.resolve(dialogVisible);
 			}
 			return Promise.resolve(false);
 		}),
@@ -42,86 +57,114 @@ function createMockSession(
 		page: fakePage as never,
 		_getState: () => ({
 			evaluateCalls,
-			timeoutMs,
+			waitForTimeoutCalls,
+			pressCalls,
 			gotoUrl,
 		}),
 	} as unknown as BrowserSession & {
 		_getState: () => {
 			evaluateCalls: typeof evaluateCalls;
-			timeoutMs: number;
+			waitForTimeoutCalls: number[];
+			pressCalls: string[];
 			gotoUrl: string | undefined;
 		};
 	};
 }
 
 describe("ChatGPTProvider.modal dismissal", () => {
-	it("clicks 'Stay logged out' when auth modal is present", async () => {
+	it("dismisses auth modal via Escape (no button click) when present", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
 			dialogPresent: true,
-			buttonFound: true,
-		}) as BrowserSession & { _getState: () => { timeoutMs: number } };
+		}) as BrowserSession & {
+			_getState: () => { pressCalls: string[]; waitForTimeoutCalls: number[] };
+		};
 
 		await provider.beforePrompt(session, "test query");
 
 		const state = session._getState();
-		expect(state.timeoutMs).toBe(500);
+		expect(state.pressCalls).toContain("Escape");
+		expect(state.waitForTimeoutCalls[0]).toBe(500);
 	});
 
 	it("is a no-op when no auth modal is present", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
 			dialogPresent: false,
-		}) as BrowserSession & { _getState: () => { timeoutMs: number } };
+		}) as BrowserSession & {
+			_getState: () => { pressCalls: string[]; waitForTimeoutCalls: number[] };
+		};
 
 		await provider.beforePrompt(session, "test query");
 
 		const state = session._getState();
-		expect(state.timeoutMs).toBe(0);
+		expect(state.pressCalls).not.toContain("Escape");
+		expect(state.waitForTimeoutCalls).toHaveLength(0);
 	});
 
-	it("beforePrompt uses 500ms timeout", async () => {
+	it("beforePrompt uses 500ms initial wait", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
 			dialogPresent: true,
-			buttonFound: true,
-		}) as BrowserSession & { _getState: () => { timeoutMs: number } };
+		}) as BrowserSession & {
+			_getState: () => { waitForTimeoutCalls: number[] };
+		};
 
 		await provider.beforePrompt(session, "query");
-		expect(session._getState().timeoutMs).toBe(500);
+		expect(session._getState().waitForTimeoutCalls[0]).toBe(500);
 	});
 
-	it("afterTyping uses 1500ms timeout", async () => {
+	it("afterTyping uses 1500ms initial wait", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
 			dialogPresent: true,
-			buttonFound: true,
-		}) as BrowserSession & { _getState: () => { timeoutMs: number } };
+		}) as BrowserSession & {
+			_getState: () => { waitForTimeoutCalls: number[] };
+		};
 
 		await provider.afterTyping(session, "query");
-		expect(session._getState().timeoutMs).toBe(1500);
+		expect(session._getState().waitForTimeoutCalls[0]).toBe(1500);
 	});
 
-	it("beforeSubmit uses 1500ms timeout", async () => {
+	it("beforeSubmit uses 1500ms initial wait", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
 			dialogPresent: true,
-			buttonFound: true,
-		}) as BrowserSession & { _getState: () => { timeoutMs: number } };
+		}) as BrowserSession & {
+			_getState: () => { waitForTimeoutCalls: number[] };
+		};
 
 		await provider.beforeSubmit(session, "query");
-		expect(session._getState().timeoutMs).toBe(1500);
+		expect(session._getState().waitForTimeoutCalls[0]).toBe(1500);
 	});
 
-	it("afterSubmit uses 1500ms timeout", async () => {
+	it("afterSubmit uses 1500ms initial wait", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
 			dialogPresent: true,
-			buttonFound: true,
-		}) as BrowserSession & { _getState: () => { timeoutMs: number } };
+		}) as BrowserSession & {
+			_getState: () => { waitForTimeoutCalls: number[] };
+		};
 
 		await provider.afterSubmit(session, "query");
-		expect(session._getState().timeoutMs).toBe(1500);
+		expect(session._getState().waitForTimeoutCalls[0]).toBe(1500);
+	});
+
+	it("does not click the 'Stay logged out' button (clicking it submits the form)", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			dialogPresent: true,
+		}) as BrowserSession & {
+			_getState: () => { evaluateCalls: Array<{ fn: string }> };
+		};
+
+		await provider.beforePrompt(session, "query");
+
+		const state = session._getState();
+		const clickedButton = state.evaluateCalls.some((c) =>
+			c.fn.includes("(btn as HTMLElement).click()"),
+		);
+		expect(clickedButton).toBe(false);
 	});
 });
 

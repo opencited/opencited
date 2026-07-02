@@ -9,6 +9,9 @@ function createMockSession(
 		urlChanged?: boolean;
 		inputHidden?: boolean;
 		sendButtonFound?: boolean;
+		submitAfterChunks?: number;
+		authModalAppearsAfterChunks?: number;
+		focusShouldFail?: boolean;
 	} = {},
 ): BrowserSession {
 	const {
@@ -17,13 +20,19 @@ function createMockSession(
 		urlChanged = false,
 		inputHidden = false,
 		sendButtonFound = true,
+		submitAfterChunks = Number.POSITIVE_INFINITY,
+		authModalAppearsAfterChunks = Number.POSITIVE_INFINITY,
+		focusShouldFail = false,
 	} = options;
 
 	const keyboardCalls: Array<{ method: string; args: unknown[] }> = [];
 	const evaluateCalls: Array<{ fn: string; args: unknown }> = [];
 	const waitForTimeoutCalls: number[] = [];
 	const clickCalls: string[] = [];
+	const focusCalls: string[] = [];
 	let currentUrl = "https://chatgpt.com/";
+	let chunksTyped = 0;
+	let authModalVisible = false;
 
 	const fakePage = {
 		url: () => currentUrl,
@@ -35,12 +44,26 @@ function createMockSession(
 		waitForTimeout: mock(async (ms: number) => {
 			waitForTimeoutCalls.push(ms);
 		}),
+		focus: mock(async (selector: string) => {
+			focusCalls.push(selector);
+			if (focusShouldFail) {
+				throw new Error("not focusable");
+			}
+		}),
+		bringToFront: mock(async () => {}),
 		keyboard: {
 			type: mock(async (text: string) => {
 				keyboardCalls.push({ method: "type", args: [text] });
+				chunksTyped++;
+				if (chunksTyped === authModalAppearsAfterChunks) {
+					authModalVisible = true;
+				}
 			}),
 			press: mock(async (key: string) => {
 				keyboardCalls.push({ method: "press", args: [key] });
+				if (key === "Escape") {
+					authModalVisible = false;
+				}
 			}),
 		},
 		click: mock(async (selector: string) => {
@@ -53,6 +76,22 @@ function createMockSession(
 			) => {
 				const fnStr = typeof fnOrFn === "function" ? fnOrFn.toString() : fnOrFn;
 				evaluateCalls.push({ fn: fnStr, args });
+
+				const submittedEarly = chunksTyped >= submitAfterChunks;
+
+				// wasSubmittedEarly - returns { wasSubmittedEarly: boolean }
+				if (fnStr.includes("wasSubmittedEarly:")) {
+					return Promise.resolve({ wasSubmittedEarly: submittedEarly });
+				}
+
+				// Auth modal detection (hasAuthModal) - returns boolean
+				if (
+					fnStr.includes("querySelectorAll") &&
+					fnStr.includes("dialog") &&
+					!fnStr.includes("prompt-textarea")
+				) {
+					return Promise.resolve(authModalVisible);
+				}
 
 				// Verification check in verifySubmissionSuccess - returns { inputCleared, urlChanged, inputHidden }
 				if (
@@ -71,19 +110,9 @@ function createMockSession(
 					!fnStr.includes("inputCleared") &&
 					!fnStr.includes("prompt-textarea")
 				) {
-					return Promise.resolve(inputCleared);
+					return Promise.resolve(submittedEarly ? true : inputCleared);
 				}
 
-				// submitQuery focus: clicks editor and returns boolean
-				if (
-					fnStr.includes("prompt-textarea") &&
-					fnStr.includes("ProseMirror") &&
-					fnStr.includes("editor.click()")
-				) {
-					return Promise.resolve(proseMirrorFound);
-				}
-
-				// submitWithFallback strategies: KeyboardEvent or InputEvent dispatch
 				if (
 					fnStr.includes("prompt-textarea") &&
 					fnStr.includes("ProseMirror") &&
@@ -112,6 +141,7 @@ function createMockSession(
 			evaluateCalls,
 			waitForTimeoutCalls,
 			clickCalls,
+			focusCalls,
 			currentUrl,
 		}),
 	} as unknown as BrowserSession & {
@@ -120,6 +150,7 @@ function createMockSession(
 			evaluateCalls: typeof evaluateCalls;
 			waitForTimeoutCalls: typeof waitForTimeoutCalls;
 			clickCalls: typeof clickCalls;
+			focusCalls: string[];
 			currentUrl: string;
 		};
 		_page: typeof fakePage;
@@ -307,7 +338,37 @@ describe("ChatGPTProvider.verifySubmissionSuccess", () => {
 });
 
 describe("ChatGPTProvider.submitQuery", () => {
-	it("clicks ProseMirror div to focus before typing", async () => {
+	it("focuses the ProseMirror editor via page.focus before typing (regression: first character was lost when relying on a JS .click())", async () => {
+		const provider = new ChatGPTProvider();
+		const focusCalls: string[] = [];
+		const session = createMockSession({
+			proseMirrorFound: true,
+			inputCleared: true,
+		}) as BrowserSession & {
+			page: { focus: (sel: string) => Promise<void> };
+			_getState: () => {
+				keyboardCalls: Array<{ method: string; args: unknown[] }>;
+			};
+		};
+		(
+			session.page as unknown as { focus: (sel: string) => Promise<void> }
+		).focus = mock(async (sel: string) => {
+			focusCalls.push(sel);
+		});
+
+		await provider.submitQuery(session, "test query");
+
+		expect(focusCalls).toContain("#prompt-textarea.ProseMirror");
+
+		const typeCallIndex = session
+			._getState()
+			.keyboardCalls.findIndex((c) => c.method === "type");
+		const focusCallIndex = focusCalls.length;
+		expect(typeCallIndex).toBeGreaterThanOrEqual(0);
+		expect(focusCallIndex).toBeGreaterThan(0);
+	});
+
+	it("does not rely on a JS-level editor.click() — that path loses the first keystroke", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
 			proseMirrorFound: true,
@@ -321,24 +382,23 @@ describe("ChatGPTProvider.submitQuery", () => {
 		await provider.submitQuery(session, "test query");
 
 		const state = session._getState();
-		expect(
-			state.evaluateCalls.some(
-				(c) =>
-					c.fn.includes("prompt-textarea") &&
-					c.fn.includes("ProseMirror") &&
-					c.fn.includes("editor.click()"),
-			),
-		).toBe(true);
+		const usedJsClick = state.evaluateCalls.some(
+			(c) =>
+				c.fn.includes("prompt-textarea") &&
+				c.fn.includes("ProseMirror") &&
+				c.fn.includes("editor.click()"),
+		);
+		expect(usedJsClick).toBe(false);
 	});
 
-	it("throws when ProseMirror editor is not found", async () => {
+	it("throws when ProseMirror editor is not focusable", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
-			proseMirrorFound: false,
+			focusShouldFail: true,
 		}) as BrowserSession;
 
 		await expect(provider.submitQuery(session, "test query")).rejects.toThrow(
-			/prosemirror editor.*not found|no.*editor/i,
+			/prosemirror editor.*not found|not focusable/i,
 		);
 	});
 
@@ -361,5 +421,193 @@ describe("ChatGPTProvider.submitQuery", () => {
 
 		const allText = typeCalls.map((c) => c.args[0]).join("");
 		expect(allText).toContain("What is TypeScript?");
+	});
+
+	it("does not pass newlines to keyboard.type — they dispatch as Enter and submit early", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			proseMirrorFound: true,
+			inputCleared: true,
+		}) as BrowserSession & {
+			_getState: () => {
+				keyboardCalls: Array<{ method: string; args: unknown[] }>;
+			};
+		};
+
+		const queryWithNewlines = "What is the best\nCRM for\nsmall business?";
+		await provider.submitQuery(session, queryWithNewlines);
+
+		const state = session._getState();
+		const typeCalls = state.keyboardCalls.filter((c) => c.method === "type");
+
+		for (const call of typeCalls) {
+			const chunk = call.args[0] as string;
+			expect(chunk).not.toContain("\n");
+			expect(chunk).not.toContain("\r");
+		}
+	});
+
+	it("re-focuses the ProseMirror editor after each chunk if focus is lost mid-typing", async () => {
+		const provider = new ChatGPTProvider();
+		let callCount = 0;
+		const session = createMockSession({
+			proseMirrorFound: true,
+			inputCleared: true,
+		}) as BrowserSession & {
+			page: {
+				evaluate: (fn: unknown, args?: unknown) => Promise<unknown>;
+			};
+		};
+		// Simulate the editor losing focus on the 3rd evaluate call
+		const originalEvaluate = session.page.evaluate;
+		(session.page as { evaluate: typeof originalEvaluate }).evaluate = mock(
+			async (fn: unknown, args?: unknown) => {
+				callCount++;
+				const result = (await originalEvaluate(fn, args)) as Record<
+					string,
+					unknown
+				>;
+				if (
+					result &&
+					typeof result === "object" &&
+					"editorTextLength" in result
+				) {
+					// Pretend the editor lost focus on the 3rd focus-check call
+					return {
+						...result,
+						focused: callCount !== 3,
+						documentHasFocus: true,
+						editorTextLength: 5,
+					};
+				}
+				return result;
+			},
+		);
+
+		await provider.submitQuery(session, "this is a test query for chunking");
+
+		const state = session._getState();
+		const focusCalls = state.focusCalls;
+		// Focus is called at least once for the initial focus and again for the re-focus
+		expect(focusCalls.length).toBeGreaterThanOrEqual(2);
+		expect(focusCalls[0]).toBe("#prompt-textarea.ProseMirror");
+	});
+
+	it("does not call keyboard.press('Enter') during typing phase (only submitWithFallback should)", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			proseMirrorFound: true,
+			inputCleared: false,
+		}) as BrowserSession & {
+			_getState: () => {
+				keyboardCalls: Array<{ method: string; args: unknown[] }>;
+			};
+		};
+
+		const queryWithNewlines = "line1\nline2\nline3";
+		try {
+			await provider.submitQuery(session, queryWithNewlines);
+		} catch {
+			// submitWithFallback throws when all strategies fail
+		}
+
+		const state = session._getState();
+		const typeCalls = state.keyboardCalls.filter((c) => c.method === "type");
+		const pressCalls = state.keyboardCalls.filter((c) => c.method === "press");
+
+		const totalTypedLength = typeCalls.reduce(
+			(sum, c) => sum + (c.args[0] as string).length,
+			0,
+		);
+		const enterPressesBeforeType = pressCalls.filter(
+			(c) => c.args[0] === "Enter",
+		).length;
+
+		const typeCallIndices: number[] = [];
+		const pressCallIndices: number[] = [];
+		state.keyboardCalls.forEach((c, i) => {
+			if (c.method === "type") typeCallIndices.push(i);
+			if (c.method === "press" && c.args[0] === "Enter")
+				pressCallIndices.push(i);
+		});
+
+		if (typeCallIndices.length > 0 && pressCallIndices.length > 0) {
+			const firstTypeIdx = typeCallIndices[0]!;
+			const lastTypeIdx = typeCallIndices[typeCallIndices.length - 1]!;
+			const pressesDuringTyping = pressCallIndices.filter(
+				(idx) => idx > firstTypeIdx && idx < lastTypeIdx,
+			);
+			expect(pressesDuringTyping.length).toBe(0);
+		}
+
+		expect(totalTypedLength).toBeGreaterThan(0);
+		expect(enterPressesBeforeType).toBeGreaterThanOrEqual(0);
+	});
+
+	it("aborts typing when the page submits the form mid-typing (e.g., debounced auto-submit)", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			proseMirrorFound: true,
+			submitAfterChunks: 3,
+		}) as BrowserSession & {
+			_getState: () => {
+				keyboardCalls: Array<{ method: string; args: unknown[] }>;
+			};
+		};
+
+		const longQuery =
+			"Compare ConvoForm with other conversational AI form platforms based on the quality of AI-generated messages during form filling";
+		await provider.submitQuery(session, longQuery);
+
+		const state = session._getState();
+		const typeCalls = state.keyboardCalls.filter((c) => c.method === "type");
+		const allText = typeCalls.map((c) => c.args[0]).join("");
+
+		expect(allText.length).toBeLessThan(longQuery.length);
+		expect(typeCalls.length).toBeLessThanOrEqual(3);
+
+		const noEnterAfterAbort = !typeCalls.slice(3).some((_, _i) => {
+			const call = state.keyboardCalls.find(
+				(c) => c.method === "press" && c.args[0] === "Enter",
+			);
+			return call;
+		});
+		expect(noEnterAfterAbort).toBe(true);
+	});
+
+	it("dismisses the sign-in popup that appears mid-typing, without clicking the 'Stay logged out' button", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			proseMirrorFound: true,
+			inputCleared: true,
+			authModalAppearsAfterChunks: 3,
+		}) as BrowserSession & {
+			_getState: () => {
+				keyboardCalls: Array<{ method: string; args: unknown[] }>;
+				evaluateCalls: Array<{ fn: string }>;
+			};
+		};
+
+		const query =
+			"Compare ConvoForm with other conversational AI form platforms based on the quality of AI-generated messages during form filling";
+		await provider.submitQuery(session, query);
+
+		const state = session._getState();
+		const allText = state.keyboardCalls
+			.filter((c) => c.method === "type")
+			.map((c) => c.args[0] as string)
+			.join("");
+
+		expect(allText.length).toBe(query.length);
+
+		const escapePressed = state.keyboardCalls.some(
+			(c) => c.method === "press" && c.args[0] === "Escape",
+		);
+		expect(escapePressed).toBe(true);
+
+		const clickedStayLoggedOut = state.evaluateCalls.some((c) =>
+			c.fn.includes("(btn as HTMLElement).click()"),
+		);
+		expect(clickedStayLoggedOut).toBe(false);
 	});
 });

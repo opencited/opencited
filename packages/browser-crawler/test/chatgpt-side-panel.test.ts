@@ -7,7 +7,9 @@ function createMockSession(
 		candidates?: Array<{
 			text?: string;
 			ariaLabel?: string;
+			className?: string;
 			insideResponse?: boolean;
+			isBelowResponse?: boolean;
 		}>;
 		panelLinks?: Array<{
 			title: string;
@@ -35,28 +37,56 @@ function createMockSession(
 				const fnStr = typeof fnOrFn === "function" ? fnOrFn.toString() : fnOrFn;
 				evaluateCalls.push({ fn: fnStr, args });
 
-				// findSourcesButton: scoring algorithm
+				// findSourcesButton / clickSourcesButton: scoring algorithm.
+				// Real provider scores on (text 120 / aria 90 / footnote 50 /
+				// belowResponse 50), accepts ≥ 140. The "must be inside response"
+				// hard gate is gone — ChatGPT's "Sources" button is a footnote
+				// that lives at the bottom of the page, OUTSIDE the assistant
+				// message element. The sidebar toggle (which IS outside and has
+				// no footnote class) is correctly rejected because it scores 0
+				// on both new signals.
 				if (
 					fnStr.includes("\\bsources?\\b") ||
 					fnStr.includes("sourcesButton")
 				) {
 					let bestScore = 0;
+					let bestTag = "";
+					let bestText = "";
+					let bestAria = "";
 					for (const c of candidates) {
+						const text = c.text ?? "";
+						const ariaLabel = c.ariaLabel ?? "";
+						const className = c.className ?? "";
+						const isFootnote = className.toLowerCase().includes("footnote");
+						const isBelowResponse = c.isBelowResponse ?? false;
 						let score = 0;
 						const TEXT_RE = /\b\d+\s*sources?\b/i;
 						const ARIA_RE = /\bsources?\b/i;
-						if (c.text && TEXT_RE.test(c.text)) score += 120;
-						if (c.ariaLabel && ARIA_RE.test(c.ariaLabel)) score += 90;
-						if (c.insideResponse) score += 60;
-						if (score > bestScore) bestScore = score;
+						if (text && TEXT_RE.test(text)) score += 120;
+						if (ariaLabel && ARIA_RE.test(ariaLabel)) score += 90;
+						if (isFootnote) score += 50;
+						if (isBelowResponse) score += 50;
+						if (score > bestScore) {
+							bestScore = score;
+							bestTag = c.tag ?? "";
+							bestText = text;
+							bestAria = ariaLabel;
+						}
 					}
-					if (bestScore >= 60) {
-						return Promise.resolve({ found: true, score: bestScore });
+					if (bestScore >= 140) {
+						return Promise.resolve({
+							found: true,
+							score: bestScore,
+							tag: bestTag,
+							text: bestText,
+							ariaLabel: bestAria,
+						});
 					}
 					return Promise.resolve({ found: false });
 				}
 
-				// extractPanelLinks
+				// extractPanelLinks — real function now returns
+				// { panelFound, anchorCount, links } from the evaluate callback
 				if (fnStr.includes("ul li > a")) {
 					const links = panelLinks
 						.filter((l) => l.hasHref !== false)
@@ -68,7 +98,11 @@ function createMockSession(
 							citedText: l.citedText,
 							position: i + 1,
 						}));
-					return Promise.resolve(links);
+					return Promise.resolve({
+						panelFound: true,
+						anchorCount: links.length,
+						links,
+					});
 				}
 
 				// Panel dialog check
@@ -95,66 +129,139 @@ function createMockSession(
 }
 
 describe("ChatGPTProvider.findSourcesButton scoring", () => {
-	it("scores text match '3 sources' at 120", async () => {
-		const provider = new ChatGPTProvider();
-		const session = createMockSession({
-			candidates: [{ text: "3 sources" }],
-		}) as BrowserSession;
-
-		const result = await (provider as any).findSourcesButton(session);
-		expect(result).toEqual({ found: true, score: 120 });
-	});
-
-	it("scores '1 source' (singular) at 120", async () => {
-		const provider = new ChatGPTProvider();
-		const session = createMockSession({
-			candidates: [{ text: "1 source" }],
-		}) as BrowserSession;
-
-		const result = await (provider as any).findSourcesButton(session);
-		expect(result).toEqual({ found: true, score: 120 });
-	});
-
-	it("adds 90 for aria-label containing 'sources'", async () => {
-		const provider = new ChatGPTProvider();
-		const session = createMockSession({
-			candidates: [{ text: "3 sources", ariaLabel: "View sources" }],
-		}) as BrowserSession;
-
-		const result = await (provider as any).findSourcesButton(session);
-		expect(result).toEqual({ found: true, score: 210 });
-	});
-
-	it("adds 60 when button is inside an assistant response element", async () => {
-		const provider = new ChatGPTProvider();
-		const session = createMockSession({
-			candidates: [{ text: "3 sources", insideResponse: true }],
-		}) as BrowserSession;
-
-		const result = await (provider as any).findSourcesButton(session);
-		expect(result).toEqual({ found: true, score: 180 });
-	});
-
-	it("combines all three scores (text + aria-label + inside response)", async () => {
+	it("ACCEPTS the real ChatGPT Sources button — aria 'Sources' + footnote class + below response (90+50+50 = 190)", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
 			candidates: [
-				{ text: "5 sources", ariaLabel: "Open sources", insideResponse: true },
+				{
+					tag: "button",
+					ariaLabel: "Sources",
+					text: "Sources",
+					className:
+						"group/footnote bg-transparent hover:bg-token-surface-hover flex w-fit items-center gap-1.5 rounded-lg py-1.5 ps-3 pe-3",
+					insideResponse: false,
+					isBelowResponse: true,
+				},
 			],
 		}) as BrowserSession;
 
 		const result = await (provider as any).findSourcesButton(session);
-		expect(result).toEqual({ found: true, score: 270 });
+		expect(result.found).toBe(true);
+		expect(result.score).toBe(190);
+		expect(result.ariaLabel).toBe("Sources");
 	});
 
-	it("returns not-found when score is below threshold (60)", async () => {
+	it("accepts the old 'N sources' text button (text 120 + aria 90 + footnote 50 + below 50 = 310)", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
-			candidates: [{ text: "some text", ariaLabel: "unrelated" }],
+			candidates: [
+				{
+					tag: "button",
+					text: "5 sources",
+					ariaLabel: "Sources",
+					className: "group/footnote",
+					insideResponse: false,
+					isBelowResponse: true,
+				},
+			],
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result.found).toBe(true);
+		expect(result.score).toBe(310);
+	});
+
+	it("REJECTS the chat-history sidebar 'Sources' toggle (aria only = 90, no footnote, no below-response — both new signals = 0)", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			candidates: [
+				{
+					tag: "button",
+					text: "Sources",
+					ariaLabel: "Sources",
+					insideResponse: false,
+					isBelowResponse: false, // sidebar is at the top
+				},
+			],
 		}) as BrowserSession;
 
 		const result = await (provider as any).findSourcesButton(session);
 		expect(result).toEqual({ found: false });
+	});
+
+	it("REJECTS an in-response inline link 'ConvoForm' (no aria, no footnote, not below — score 0)", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			candidates: [{ tag: "a", text: "ConvoForm", insideResponse: true }],
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result).toEqual({ found: false });
+	});
+
+	it("REJECTS a 'Copy table' button (inside response but no sources signal)", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			candidates: [
+				{ tag: "button", ariaLabel: "Copy table", insideResponse: true },
+			],
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result).toEqual({ found: false });
+	});
+
+	it("accepts when only the below-response signal is present (defensive — class might change)", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			candidates: [
+				{ ariaLabel: "Sources", insideResponse: false, isBelowResponse: true },
+			],
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result.found).toBe(true);
+		expect(result.score).toBe(140);
+	});
+
+	it("accepts when only the footnote class signal is present (defensive — position might change)", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			candidates: [
+				{
+					ariaLabel: "Sources",
+					className: "group/footnote",
+					insideResponse: false,
+					isBelowResponse: false,
+				},
+			],
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result.found).toBe(true);
+		expect(result.score).toBe(140);
+	});
+
+	it("picks the highest-scoring candidate", async () => {
+		const provider = new ChatGPTProvider();
+		const session = createMockSession({
+			candidates: [
+				// Sidebar (low score)
+				{ ariaLabel: "Sources", insideResponse: false, isBelowResponse: false },
+				// Real footnote (highest)
+				{
+					text: "5 sources",
+					ariaLabel: "Sources",
+					className: "group/footnote",
+					insideResponse: false,
+					isBelowResponse: true,
+				},
+			],
+		}) as BrowserSession;
+
+		const result = await (provider as any).findSourcesButton(session);
+		expect(result.found).toBe(true);
+		expect(result.score).toBe(310);
 	});
 
 	it("returns not-found when no candidates exist", async () => {
@@ -165,19 +272,6 @@ describe("ChatGPTProvider.findSourcesButton scoring", () => {
 
 		const result = await (provider as any).findSourcesButton(session);
 		expect(result).toEqual({ found: false });
-	});
-
-	it("picks the highest-scoring candidate", async () => {
-		const provider = new ChatGPTProvider();
-		const session = createMockSession({
-			candidates: [
-				{ text: "Sources", insideResponse: true }, // 60
-				{ text: "3 sources", ariaLabel: "View sources" }, // 210
-			],
-		}) as BrowserSession;
-
-		const result = await (provider as any).findSourcesButton(session);
-		expect(result).toEqual({ found: true, score: 210 });
 	});
 });
 
@@ -281,7 +375,15 @@ describe("ChatGPTProvider side-panel fallback to inline links", () => {
 	it("extractFromSourcesPanel returns empty when button found but panel has no links", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
-			candidates: [{ text: "3 sources" }],
+			candidates: [
+				{
+					text: "3 sources",
+					ariaLabel: "Sources",
+					className: "group/footnote",
+					insideResponse: false,
+					isBelowResponse: true,
+				},
+			],
 			panelLinks: [],
 		}) as BrowserSession;
 
@@ -292,7 +394,15 @@ describe("ChatGPTProvider side-panel fallback to inline links", () => {
 	it("extractFromSourcesPanel extracts links when button and panel present", async () => {
 		const provider = new ChatGPTProvider();
 		const session = createMockSession({
-			candidates: [{ text: "3 sources" }],
+			candidates: [
+				{
+					text: "3 sources",
+					ariaLabel: "Sources",
+					className: "group/footnote",
+					insideResponse: false,
+					isBelowResponse: true,
+				},
+			],
 			panelLinks: [
 				{
 					title: "Source Link",
@@ -354,15 +464,19 @@ describe("ChatGPTProvider side-panel fallback to inline links", () => {
 
 						// extractPanelLinks
 						if (fnStr.includes("ul li > a")) {
-							return [
-								{
-									title: "Panel Source",
-									url: "https://panel.com",
-									domain: "panel.com",
-									citedText: "From panel",
-									position: 1,
-								},
-							];
+							return {
+								panelFound: true,
+								anchorCount: 1,
+								links: [
+									{
+										title: "Panel Source",
+										url: "https://panel.com",
+										domain: "panel.com",
+										citedText: "From panel",
+										position: 1,
+									},
+								],
+							};
 						}
 
 						// Panel click/close

@@ -193,3 +193,49 @@ points with growing wait windows).
 ## Logging
 
 Uses `@opencited/logger` for structured logging with pluggable transports. See the [logger package docs](../logger/AGENTS.md).
+
+## Debugging
+
+When a crawl misbehaves (wrong selector, page structure changed, race with the page's own UI), use the debug harness:
+
+```sh
+# In the worker environment (with cookies / auth state) — has display
+bun run packages/browser-crawler/scripts/chatgpt-debug.ts
+
+# In a fresh sandbox (no auth) — submission will fail but the page-state dumps
+# are still useful as a baseline
+HEADLESS=true bun run packages/browser-crawler/scripts/chatgpt-debug.ts
+```
+
+The script writes a timestamped directory per run:
+
+```
+debug/chatgpt-<ts>/
+  01-post-navigate/             {page.png, page.html, last-response.html, sources-candidates.json}
+  02-post-beforePrompt/
+  03-post-submit/               (or 03-post-submit-FAILED/)
+  04-post-afterTyping/
+  05-post-beforeSubmit/
+  06-post-stream/               (right after waitForResponse returns)
+  07-after-5s-extra-wait/       (sources button may appear late)
+  08-post-extract/              (or 08-post-extract-FAILED/)
+  result.json
+```
+
+`sources-candidates.json` is the key file — it lists every button/anchor that
+matches the sources heuristic, with its score breakdown (text / aria /
+inside-response / total), the closest `data-message-author-role` ancestor,
+and a bounding rect. When a future ChatGPT UI change breaks the
+extraction, share this file with the agent to diagnose.
+
+Programmatic helpers (exported from `@opencited/browser-crawler`):
+
+| Export | Purpose |
+|--------|---------|
+| `capturePageState(ctx, label)` | Capture screenshot + page.html + last-response.html + sources-candidates.json into `ctx.outputDir/<label>/` |
+| `probeSourcesCandidates(ctx)` | Just the candidates probe — returns the JSON array |
+| `waitForSourcesButton(ctx, timeoutMs?, pollMs?)` | Poll until a real in-response sources button (score ≥ 150) appears, with a parent in `[data-message-author-role="assistant"]` |
+
+When the page has changed and the extraction is broken, run the debug
+harness and share the `sources-candidates.json` — the agent can usually
+diagnose the change from that file alone.

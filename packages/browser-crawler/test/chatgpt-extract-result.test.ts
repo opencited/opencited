@@ -103,7 +103,11 @@ function createMockSession(
 						citedText: l.citedText,
 						position: i + 1,
 					}));
-					return Promise.resolve(links);
+					return Promise.resolve({
+						panelFound: true,
+						anchorCount: links.length,
+						links,
+					});
 				}
 
 				// Panel click/close
