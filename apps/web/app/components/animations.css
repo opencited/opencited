@@ -51,6 +51,7 @@
 .animate-fade-up {
 	animation: fade-up 500ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1))
 		both;
+	animation-delay: calc(var(--i, 0) * 75ms);
 }
 
 .animate-fade-in {
@@ -77,6 +78,7 @@
 	.animate-fade-in,
 	.animate-scale-in {
 		animation-duration: 200ms;
+		animation-delay: 0ms;
 		animation-fill-mode: both;
 	}
 

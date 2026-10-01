@@ -19,6 +19,7 @@
 		"@opencited/crawler": "workspace:*",
 		"@opencited/db": "workspace:*",
 		"@opencited/logger": "workspace:*",
+		"@opencited/scanner": "workspace:*",
 		"@opencited/score-actions": "workspace:*",
 		"@trpc/server": "catalog:",
 		"workflow": "catalog:",

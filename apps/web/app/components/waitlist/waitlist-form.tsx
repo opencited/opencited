@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { joinWaitlist } from "@/app/actions/waitlist";
-import { Input, Button, Spinner } from "@opencited/ui";
+import { Input, Button, Label, Spinner } from "@opencited/ui";
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -70,9 +70,14 @@ export function WaitlistForm() {
 	return (
 		<div className="flex flex-col gap-2 max-w-sm mx-auto">
 			{status === "error" && error && (
-				<p className="text-xs text-destructive animate-fade-up">{error}</p>
+				<p role="alert" className="text-xs text-destructive animate-fade-up">
+					{error}
+				</p>
 			)}
 			<form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
+				<Label htmlFor="email" className="sr-only">
+					Email address
+				</Label>
 				<Input
 					type="email"
 					id="email"
@@ -82,7 +87,7 @@ export function WaitlistForm() {
 					autoComplete="email"
 					required
 					disabled={status === "loading"}
-					className="flex-1"
+					className="sm:flex-1"
 				/>
 				<Button
 					type="submit"
