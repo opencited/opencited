@@ -129,6 +129,10 @@ const url = env.DATABASE_URL;
 
 ## Agent skills
 
+### Cursor
+
+Primary editor setup: `.cursor/mcp.json`, `.cursor/hooks.json`, and `.cursor/skills/`. See `docs/agents/cursor.md`. Impeccable hooks: `.agents/skills/impeccable/scripts/impeccable hooks on` once per clone.
+
 ### Issue tracker
 
 Issues tracked via GitHub Issues + GitHub Projects board (`orgs/opencited/projects/1`). Drafts live on the board; public issues are created when ready. Skills use the `gh` CLI. See `docs/agents/issue-tracker.md`.

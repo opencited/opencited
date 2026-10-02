@@ -115,9 +115,9 @@ points with growing wait windows).
 
 ## Adding a New Provider
 
-1. **Explore the target site.** Write a throwaway script in
-   `/var/folders/.../opencode/<provider>-explorer.ts` (or a similar scratch
-   location) that opens the site in Camoufox, submits a test query, and dumps
+1. **Explore the target site.** Write a throwaway script in a local scratch
+   path (e.g. `packages/browser-crawler/scripts/<provider>-explorer.ts`) that
+   opens the site in Camoufox, submits a test query, and dumps
    the DOM structure. Capture:
    - The actual input element (textarea vs ProseMirror vs other)
    - The response container selector

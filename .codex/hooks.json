@@ -7,8 +7,8 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "[ ! -f \".agents/skills/impeccable/scripts/impeccable\" ] || \".agents/skills/impeccable/scripts/impeccable\" hook",
-						"commandWindows": "if exist \".agents/skills/impeccable/scripts/impeccable.cmd\" (\".agents/skills/impeccable/scripts/impeccable.cmd\" hook & exit /b)",
+						"command": "\".agents/skills/impeccable/scripts/impeccable\" hook",
+						"commandWindows": "\".agents/skills/impeccable/scripts/impeccable.cmd\" hook",
 						"timeout": 5,
 						"statusMessage": "Checking UI changes"
 					}
@@ -20,8 +20,8 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "[ ! -f \".agents/skills/impeccable/scripts/impeccable\" ] || \".agents/skills/impeccable/scripts/impeccable\" hook",
-						"commandWindows": "if exist \".agents/skills/impeccable/scripts/impeccable.cmd\" (\".agents/skills/impeccable/scripts/impeccable.cmd\" hook & exit /b)",
+						"command": "\".agents/skills/impeccable/scripts/impeccable\" hook",
+						"commandWindows": "\".agents/skills/impeccable/scripts/impeccable.cmd\" hook",
 						"timeout": 30,
 						"statusMessage": "Design deep pass"
 					}
