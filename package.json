@@ -19,6 +19,7 @@
 		"redis": "docker compose up redis -d",
 		"setup:browser-crawler": "cd packages/browser-crawler && bunx camoufox-js fetch",
 		"setup:worker": "bun install && bun run build --filter=@opencited/worker... && bun run setup:browser-crawler && docker compose up redis -d",
+		"dev:email": "turbo run dev --filter=@opencited/transactional-email",
 		"dev:worker": "dotenv -e .env.local -- turbo run dev --filter=@opencited/worker",
 		"start:worker": "dotenv -e .env.local -- turbo run start --filter=@opencited/worker",
 		"deploy:worker": "./scripts/deploy-worker.sh deploy",
@@ -113,7 +114,11 @@
 			"@types/turndown": "5.0.6",
 			"@autoform/react": "^4.0.0",
 			"@autoform/zod": "^5.0.0",
-			"resend": "6.4.0"
+			"resend": "6.4.0",
+			"react-email": "6.11.0",
+			"@react-email/ui": "6.11.0",
+			"@react-email/components": "1.0.12",
+			"@react-email/render": "2.1.0"
 		}
 	},
 	"config": {

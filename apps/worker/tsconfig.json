@@ -4,6 +4,7 @@
 	"compilerOptions": {
 		"moduleResolution": "bundler",
 		"module": "ESNext",
+		"jsx": "react-jsx",
 		"noEmit": true,
 		"rootDir": ".",
 		"types": ["node"],

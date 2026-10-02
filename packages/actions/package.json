@@ -20,6 +20,7 @@
 		"@opencited/db": "workspace:*",
 		"@opencited/logger": "workspace:*",
 		"@opencited/scanner": "workspace:*",
+		"@opencited/transactional-email": "workspace:*",
 		"@opencited/score-actions": "workspace:*",
 		"@trpc/server": "catalog:",
 		"workflow": "catalog:",
