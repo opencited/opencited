@@ -29,5 +29,7 @@ export * from "./schema/crawlBrandMention";
 export * from "./schema/crawlVisibilityScore";
 export * from "./schema/proxyConfig";
 export * from "./schema/promptTemplate";
+export * from "./schema/publicScan";
+export * from "./schema/scanLead";
 export * from "./prompt-templates";
 export * from "drizzle-orm";

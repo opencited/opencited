@@ -112,7 +112,8 @@
 			"turndown": "7.2.2",
 			"@types/turndown": "5.0.6",
 			"@autoform/react": "^4.0.0",
-			"@autoform/zod": "^5.0.0"
+			"@autoform/zod": "^5.0.0",
+			"resend": "6.4.0"
 		}
 	},
 	"config": {

@@ -28,7 +28,8 @@
 		"ai": "catalog:",
 		"@ai-sdk/openai": "catalog:",
 		"@ai-sdk/groq": "catalog:",
-		"@t3-oss/env-core": "catalog:"
+		"@t3-oss/env-core": "catalog:",
+		"resend": "catalog:"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",

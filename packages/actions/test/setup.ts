@@ -5,6 +5,9 @@ process.env.LLM_PROVIDER ??= "openai";
 process.env.LLM_MODEL ??= "test-model";
 process.env.LLM_API_KEY ??= "test-key";
 process.env.REDIS_URL ??= "redis://localhost:6379";
+process.env.RESEND_API_KEY ??= "re_test_key";
+process.env.SCAN_FROM_EMAIL ??= "onboarding@resend.dev";
+process.env.SCAN_CODE_SECRET ??= "test-scan-code-secret-16";
 
 // drizzle-orm pulls in @opentelemetry/api, which has ESM subpath-import
 // problems under some test runners. We don't need otel in these tests, so

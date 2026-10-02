@@ -1,4 +1,7 @@
+"use client";
+
 import type { inferRouterOutputs } from "@trpc/server";
+import { useState } from "react";
 import type { AppRouter } from "@opencited/trpc";
 import { Badge, Card, CardContent } from "@opencited/ui";
 import {
@@ -6,17 +9,22 @@ import {
 	READINESS_STROKE_CLASSES,
 	formatScanDuration,
 } from "@/app/lib/scan-display";
-import { WaitlistForm } from "../waitlist/waitlist-form";
 import { ScoreGauge } from "./score-gauge";
+import { ScanReportGate } from "./scan-report-gate";
 
 type ScanResultData = inferRouterOutputs<AppRouter>["scan"]["run"];
+type FullReportData = inferRouterOutputs<AppRouter>["scan"]["verifyReport"];
 
 interface ScanResultProps {
 	result: ScanResultData;
 }
 
 export function ScanResult({ result }: ScanResultProps) {
-	const hiddenCount = result.issueCount - result.issues.length;
+	const [fullReport, setFullReport] = useState<FullReportData | null>(null);
+	const issues = fullReport?.issues ?? result.issues;
+	const issueCount = fullReport?.issueCount ?? result.issueCount;
+	const hiddenCount = issueCount - result.issues.length;
+	const isUnlocked = fullReport !== null;
 
 	return (
 		<div className="space-y-4 animate-fade-in">
@@ -44,21 +52,21 @@ export function ScanResult({ result }: ScanResultProps) {
 
 					<div className="space-y-3">
 						<div className="flex items-baseline justify-between gap-2">
-							<h3 className="text-sm font-semibold">Top issues</h3>
+							<h3 className="text-sm font-semibold">
+								{isUnlocked ? "All issues" : "Top issues"}
+							</h3>
 							<p className="text-xs text-muted-foreground">
-								{result.issueCount === 0
-									? "All checks passed"
-									: `${result.issueCount} found`}
+								{issueCount === 0 ? "All checks passed" : `${issueCount} found`}
 							</p>
 						</div>
-						{result.issues.length === 0 ? (
+						{issues.length === 0 ? (
 							<p className="text-sm text-muted-foreground">
 								No issues found — robots.txt, sitemap, HTTPS, structured data,
 								and AI crawler access all check out.
 							</p>
 						) : (
 							<ul className="space-y-4">
-								{result.issues.map((issue) => (
+								{issues.map((issue) => (
 									<li
 										key={`${issue.check}-${issue.issue}`}
 										className="space-y-1.5"
@@ -74,7 +82,7 @@ export function ScanResult({ result }: ScanResultProps) {
 								))}
 							</ul>
 						)}
-						{hiddenCount > 0 && (
+						{!isUnlocked && hiddenCount > 0 && (
 							<p className="text-xs text-muted-foreground">
 								+{hiddenCount} more {hiddenCount === 1 ? "issue" : "issues"} in
 								the full report.
@@ -87,21 +95,25 @@ export function ScanResult({ result }: ScanResultProps) {
 			<Card variant="dashed">
 				<CardContent className="space-y-3 text-center">
 					<h3 className="text-base font-semibold">
-						Get the full report + AI visibility check
+						Get the full technical report
 					</h3>
 					<p className="mx-auto max-w-[52ch] text-sm text-muted-foreground">
-						{hiddenCount > 0 && (
+						{!isUnlocked && hiddenCount > 0 && (
 							<>
-								You&apos;re seeing {result.issues.length} of {result.issueCount}{" "}
+								You&apos;re seeing {result.issues.length} of {issueCount}{" "}
 								issues.{" "}
 							</>
 						)}
-						Enter your email to get the full report with step-by-step fixes,
-						plus an AI visibility check of what AI engines say about your brand.
-						This joins the OpenCited waitlist — we&apos;ll email you when we
-						launch.
+						Verify your email to unlock every issue with step-by-step fixes and
+						get a copy by email.
 					</p>
-					<WaitlistForm />
+					<ScanReportGate
+						scanId={result.scanId}
+						domain={result.domain}
+						issueCount={issueCount}
+						freeIssueCount={result.issues.length}
+						onUnlocked={setFullReport}
+					/>
 				</CardContent>
 			</Card>
 		</div>

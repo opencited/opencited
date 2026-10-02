@@ -11,6 +11,10 @@ export const env = createEnv({
 		LLM_API_KEY: z.string().min(1).optional(),
 		GROQ_API_KEY: z.string().min(1).optional(),
 		OPENAI_API_KEY: z.string().min(1).optional(),
+		RESEND_API_KEY: z.string().min(1),
+		SCAN_FROM_EMAIL: z.string().email(),
+		SCAN_CODE_SECRET: z.string().min(16),
+		CLERK_SECRET_KEY: z.string().min(1).optional(),
 	},
 	runtimeEnv: process.env,
 });
