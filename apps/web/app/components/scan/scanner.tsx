@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Badge, Button, Checkbox, Input, Label, Spinner } from "@opencited/ui";
 import { useTRPC } from "@/app/_trpc/client";
 import { QueryCell } from "@/app/components/query-cell";
@@ -45,6 +45,11 @@ export function Scanner({ onSuccess, onScanStart, onScanIdle }: ScannerProps) {
 		retry: false,
 		refetchOnWindowFocus: false,
 	});
+
+	const reportViewedMutation = useMutation(
+		trpc.scan.recordReportViewed.mutationOptions(),
+	);
+	const reportViewedForScanId = useRef<string | null>(null);
 
 	const gate = useScanReportGate({
 		scanId: activeScanId,
@@ -118,6 +123,7 @@ export function Scanner({ onSuccess, onScanStart, onScanIdle }: ScannerProps) {
 		setSubmittedDomain(null);
 		setDomainInput("");
 		setActiveScanId("");
+		reportViewedForScanId.current = null;
 		setUnlock(null);
 		setFieldPhase("domain");
 		setEmailLocal("");
@@ -145,6 +151,18 @@ export function Scanner({ onSuccess, onScanStart, onScanIdle }: ScannerProps) {
 	}
 
 	const isReportUnlocked = unlock?.scanId === activeScanId;
+
+	useEffect(() => {
+		if (!isReportUnlocked || !activeScanId) {
+			return;
+		}
+		if (reportViewedForScanId.current === activeScanId) {
+			return;
+		}
+		reportViewedForScanId.current = activeScanId;
+		reportViewedMutation.mutate({ scanId: activeScanId });
+	}, [isReportUnlocked, activeScanId, reportViewedMutation.mutate]);
+
 	const showEmailField =
 		fieldPhase === "email" && scanQuery.data && !isReportUnlocked;
 	const showCodeField =

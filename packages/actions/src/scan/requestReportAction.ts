@@ -149,6 +149,11 @@ export const requestReportAction = async (params: {
 			},
 		});
 
+		await repo.recordFunnelEventIfAbsent({
+			event: "email_verified",
+			publicScanId: scan.id,
+		});
+
 		return {
 			ok: true as const,
 			verificationRequired: false as const,
@@ -183,6 +188,11 @@ export const requestReportAction = async (params: {
 		domain: scan.domain,
 		code,
 		resultUrl: publicScanResultLink(scan.id),
+	});
+
+	await repo.recordFunnelEventIfAbsent({
+		event: "email_submitted",
+		publicScanId: scan.id,
 	});
 
 	return {

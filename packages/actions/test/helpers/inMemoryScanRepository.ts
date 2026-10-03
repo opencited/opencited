@@ -1,12 +1,21 @@
+import type { PublicScanFunnelEvent } from "../../src/scan/publicScanFunnelEvents";
 import type {
 	ScanRepository,
 	StoredPublicScan,
 	StoredScanLead,
 } from "../../src/scan/scanRepository";
 
+type StoredFunnelEvent = {
+	id: string;
+	publicScanId: string | null;
+	event: PublicScanFunnelEvent;
+	createdAt: Date;
+};
+
 export function createInMemoryScanRepository(): ScanRepository {
 	const publicScans: StoredPublicScan[] = [];
 	const scanLeads: StoredScanLead[] = [];
+	const funnelEvents: StoredFunnelEvent[] = [];
 
 	return {
 		async countScansByIpSince(ip, since) {
@@ -169,6 +178,66 @@ export function createInMemoryScanRepository(): ScanRepository {
 			};
 			scanLeads[index] = updated;
 			return updated;
+		},
+
+		async insertFunnelEvent(params) {
+			const row: StoredFunnelEvent = {
+				id: crypto.randomUUID(),
+				publicScanId: params.publicScanId ?? null,
+				event: params.event,
+				createdAt: new Date(),
+			};
+			funnelEvents.push(row);
+			return { id: row.id };
+		},
+
+		async linkFunnelEventToScan(eventId, publicScanId) {
+			const event = funnelEvents.find((row) => row.id === eventId);
+			if (!event) {
+				throw new Error("Funnel event not found");
+			}
+			event.publicScanId = publicScanId;
+		},
+
+		async recordFunnelEventIfAbsent(params) {
+			const exists = funnelEvents.some(
+				(row) =>
+					row.publicScanId === params.publicScanId &&
+					row.event === params.event,
+			);
+			if (!exists) {
+				funnelEvents.push({
+					id: crypto.randomUUID(),
+					publicScanId: params.publicScanId,
+					event: params.event,
+					createdAt: new Date(),
+				});
+			}
+		},
+
+		async hasVerifiedLeadForScan(publicScanId) {
+			return scanLeads.some(
+				(lead) =>
+					lead.publicScanId === publicScanId && lead.verifiedAt !== null,
+			);
+		},
+
+		async listFunnelEventsForScan(publicScanId) {
+			return funnelEvents
+				.filter((row) => row.publicScanId === publicScanId)
+				.map((row) => ({ event: row.event }));
+		},
+
+		async countFunnelEvents(params) {
+			return funnelEvents.filter((row) => {
+				if (row.event !== params.event) {
+					return false;
+				}
+				if (params.publicScanId === undefined) {
+					return true;
+				}
+				return row.publicScanId === params.publicScanId;
+			}).length;
 		},
 	};
 }

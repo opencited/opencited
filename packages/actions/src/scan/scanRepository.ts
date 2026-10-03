@@ -1,6 +1,7 @@
 import { and, count, desc, eq, gte, isNotNull, isNull } from "drizzle-orm";
 import type { Db } from "@opencited/db";
 import {
+	publicScanEventTable,
 	publicScanTable,
 	scanLeadTable,
 	type aiMentionProbeSchema,
@@ -8,6 +9,7 @@ import {
 	type publicScanIssueSchema,
 } from "@opencited/db";
 import type { z } from "zod";
+import type { PublicScanFunnelEvent } from "./publicScanFunnelEvents";
 
 export type StoredPublicScan = {
 	id: string;
@@ -97,6 +99,23 @@ export interface ScanRepository {
 			probeReportSentAt: Date;
 		}>,
 	): Promise<StoredScanLead>;
+	insertFunnelEvent(params: {
+		event: PublicScanFunnelEvent;
+		publicScanId?: string | null;
+	}): Promise<{ id: string }>;
+	linkFunnelEventToScan(eventId: string, publicScanId: string): Promise<void>;
+	recordFunnelEventIfAbsent(params: {
+		event: PublicScanFunnelEvent;
+		publicScanId: string;
+	}): Promise<void>;
+	hasVerifiedLeadForScan(publicScanId: string): Promise<boolean>;
+	listFunnelEventsForScan(
+		publicScanId: string,
+	): Promise<Array<{ event: PublicScanFunnelEvent }>>;
+	countFunnelEvents(params: {
+		event: PublicScanFunnelEvent;
+		publicScanId?: string | null;
+	}): Promise<number>;
 }
 
 function mapPublicScan(
@@ -313,6 +332,81 @@ export function createDrizzleScanRepository(db: Db): ScanRepository {
 				throw new Error("Failed to update scan lead");
 			}
 			return mapScanLead(row);
+		},
+
+		async insertFunnelEvent(params) {
+			const [row] = await db
+				.insert(publicScanEventTable)
+				.values({
+					event: params.event,
+					publicScanId: params.publicScanId ?? null,
+				})
+				.returning({ id: publicScanEventTable.id });
+			if (!row) {
+				throw new Error("Failed to store funnel event");
+			}
+			return { id: row.id };
+		},
+
+		async linkFunnelEventToScan(eventId, publicScanId) {
+			await db
+				.update(publicScanEventTable)
+				.set({ publicScanId })
+				.where(eq(publicScanEventTable.id, eventId));
+		},
+
+		async recordFunnelEventIfAbsent(params) {
+			await db
+				.insert(publicScanEventTable)
+				.values({
+					event: params.event,
+					publicScanId: params.publicScanId,
+				})
+				.onConflictDoNothing({
+					target: [
+						publicScanEventTable.publicScanId,
+						publicScanEventTable.event,
+					],
+				});
+		},
+
+		async hasVerifiedLeadForScan(publicScanId) {
+			const [row] = await db
+				.select({ value: count() })
+				.from(scanLeadTable)
+				.where(
+					and(
+						eq(scanLeadTable.publicScanId, publicScanId),
+						isNotNull(scanLeadTable.verifiedAt),
+					),
+				);
+			return (row?.value ?? 0) > 0;
+		},
+
+		async listFunnelEventsForScan(publicScanId) {
+			const rows = await db
+				.select({ event: publicScanEventTable.event })
+				.from(publicScanEventTable)
+				.where(eq(publicScanEventTable.publicScanId, publicScanId));
+			return rows.map((row) => ({
+				event: row.event as PublicScanFunnelEvent,
+			}));
+		},
+
+		async countFunnelEvents(params) {
+			const conditions = [eq(publicScanEventTable.event, params.event)];
+			if (params.publicScanId !== undefined) {
+				conditions.push(
+					params.publicScanId === null
+						? isNull(publicScanEventTable.publicScanId)
+						: eq(publicScanEventTable.publicScanId, params.publicScanId),
+				);
+			}
+			const [row] = await db
+				.select({ value: count() })
+				.from(publicScanEventTable)
+				.where(and(...conditions));
+			return row?.value ?? 0;
 		},
 	};
 }

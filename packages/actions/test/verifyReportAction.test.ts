@@ -120,6 +120,8 @@ describe("verifyReportAction", () => {
 		);
 		expect(lead?.verifiedAt).not.toBeNull();
 		expect(lead?.reportSentAt).not.toBeNull();
+		const events = await repo.listFunnelEventsForScan(scan.scanId);
+		expect(events.map((row) => row.event)).toContain("email_verified");
 	});
 
 	it("dispatches a browser probe and returns pending when queries survive", async () => {

@@ -4,6 +4,7 @@ export * from "./requestReportAction";
 export * from "./verifyReportAction";
 export * from "./getMentionProbeAction";
 export * from "./getPublicScanResultAction";
+export * from "./recordReportViewedAction";
 export * from "./publicScanResultUrl";
 export * from "./appOrigin";
 export * from "./sendMentionProbeReportEmails";

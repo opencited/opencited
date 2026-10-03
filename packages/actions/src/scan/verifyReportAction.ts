@@ -107,7 +107,7 @@ export const verifyReportAction = async (params: {
 		throw new ScanReportError("Incorrect verification code.");
 	}
 
-	return unlockScanReport({
+	const report = await unlockScanReport({
 		scan,
 		lead,
 		email,
@@ -120,6 +120,13 @@ export const verifyReportAction = async (params: {
 			joinWaitlist: true,
 		},
 	});
+
+	await repo.recordFunnelEventIfAbsent({
+		event: "email_verified",
+		publicScanId: scan.id,
+	});
+
+	return report;
 };
 
 export const verifyReportHandler = async (params: {

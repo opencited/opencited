@@ -44,6 +44,11 @@ export const runPublicScanAction = async (params: {
 		}
 	}
 
+	const started = await repo.insertFunnelEvent({
+		event: "scan_started",
+		publicScanId: null,
+	});
+
 	const technical = await runTechnicalScan(params.input.domain, params.options);
 
 	const stored = await repo.insertPublicScan({
@@ -55,6 +60,12 @@ export const runPublicScanAction = async (params: {
 		durationMs: technical.durationMs,
 		clientIp,
 		homepageSnapshot: technical.homepageSnapshot,
+	});
+
+	await repo.linkFunnelEventToScan(started.id, stored.id);
+	await repo.recordFunnelEventIfAbsent({
+		event: "score_shown",
+		publicScanId: stored.id,
 	});
 
 	return {

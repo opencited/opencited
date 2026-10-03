@@ -83,4 +83,64 @@ describe("runPublicScanAction", () => {
 		const since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 		expect(await repo.countScansByIpSince(clientIp, since)).toBe(10);
 	});
+
+	it("records scan_started and score_shown when the scan succeeds", async () => {
+		const repo = createInMemoryScanRepository();
+
+		const result = await runPublicScanAction({
+			input: { domain: "example.com" },
+			ctx: {
+				userId: null,
+				isAuthenticated: false,
+				db: null as never,
+				scanRepo: repo,
+			},
+			options: {
+				fetcher: mockFetcher(cleanSiteRoutes()),
+				lookup: publicLookup,
+			},
+			now: () => new Date("2026-10-02T12:00:00.000Z"),
+		});
+
+		const events = await repo.listFunnelEventsForScan(result.scanId);
+		expect(events.map((row) => row.event).sort()).toEqual([
+			"scan_started",
+			"score_shown",
+		]);
+		expect(
+			await repo.countFunnelEvents({
+				event: "scan_started",
+				publicScanId: null,
+			}),
+		).toBe(0);
+	});
+
+	it("records scan_started without score_shown when the technical scan fails", async () => {
+		const repo = createInMemoryScanRepository();
+
+		await expect(
+			runPublicScanAction({
+				input: { domain: "localhost" },
+				ctx: {
+					userId: null,
+					isAuthenticated: false,
+					db: null as never,
+					scanRepo: repo,
+				},
+				options: {
+					fetcher: mockFetcher(cleanSiteRoutes()),
+					lookup: publicLookup,
+				},
+				now: () => new Date("2026-10-02T12:00:00.000Z"),
+			}),
+		).rejects.toThrow();
+
+		expect(
+			await repo.countFunnelEvents({
+				event: "scan_started",
+				publicScanId: null,
+			}),
+		).toBe(1);
+		expect(await repo.countFunnelEvents({ event: "score_shown" })).toBe(0);
+	});
 });

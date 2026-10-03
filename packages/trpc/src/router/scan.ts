@@ -14,6 +14,9 @@ import {
 	getPublicScanResultHandler,
 	getPublicScanResultInputSchema,
 	getPublicScanResultOutputSchema,
+	recordReportViewedHandler,
+	recordReportViewedInputSchema,
+	recordReportViewedOutputSchema,
 	ScanReportError,
 	runScanInputSchema,
 } from "@opencited/actions";
@@ -103,6 +106,16 @@ export const scanRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			try {
 				return await getPublicScanResultHandler({ input, ctx });
+			} catch (error) {
+				mapScanError(error);
+			}
+		}),
+	recordReportViewed: scanProcedure
+		.input(recordReportViewedInputSchema)
+		.output(recordReportViewedOutputSchema)
+		.mutation(async ({ ctx, input }) => {
+			try {
+				return await recordReportViewedHandler({ input, ctx });
 			} catch (error) {
 				mapScanError(error);
 			}

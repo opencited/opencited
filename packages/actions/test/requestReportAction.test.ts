@@ -73,6 +73,8 @@ describe("requestReportAction", () => {
 		);
 		expect(lead?.consentToOnChangeUpdates).toBe(true);
 		expect(lead?.verifiedAt).toBeNull();
+		const events = await repo.listFunnelEventsForScan(scan.scanId);
+		expect(events.map((row) => row.event)).toContain("email_submitted");
 	});
 
 	it("rejects report requests when the email domain does not match the scan", async () => {
@@ -322,6 +324,8 @@ describe("requestReportAction", () => {
 		);
 		expect(lead?.verifiedAt).not.toBeNull();
 		expect(lead?.reportSentAt).not.toBeNull();
+		const trustedEvents = await repo.listFunnelEventsForScan(secondScan.scanId);
+		expect(trustedEvents.map((row) => row.event)).toContain("email_verified");
 	});
 
 	it("allows trusted unlock past the daily report cap for the same email and domain", async () => {
