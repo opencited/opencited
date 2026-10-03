@@ -2,24 +2,24 @@
 
 import type { inferRouterOutputs } from "@trpc/server";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import type { AppRouter } from "@opencited/trpc";
-import { Badge, Card, CardContent } from "@opencited/ui";
+import { Badge } from "@opencited/ui";
 import { useTRPC } from "@/app/_trpc/client";
 import {
+	READINESS_BADGE_VARIANTS,
 	READINESS_LABELS,
-	READINESS_STROKE_CLASSES,
 	formatScanDuration,
 } from "@/app/lib/scan-display";
-import { readScanUnlock, writeScanUnlock } from "@/app/lib/scan-unlock-storage";
-import { ScoreGauge } from "./score-gauge";
 import { AiMentionProbeSection } from "./ai-mention-probe-section";
-import { ScanReportGate } from "./scan-report-gate";
+import type { useScanReportGate } from "./use-scan-report-gate";
 
 type ScanResultData = inferRouterOutputs<AppRouter>["scan"]["run"];
 type FullReportData = inferRouterOutputs<AppRouter>["scan"]["verifyReport"];
+type Gate = ReturnType<typeof useScanReportGate>;
+type Probe = FullReportData["probe"];
 
-type UnlockState = {
+export type UnlockState = {
 	scanId: string;
 	report: FullReportData;
 	email: string;
@@ -27,13 +27,94 @@ type UnlockState = {
 
 interface ScanResultProps {
 	result: ScanResultData;
+	unlock: UnlockState | null;
+	gate: Gate;
 }
 
-export function ScanResult({ result }: ScanResultProps) {
-	const trpc = useTRPC();
-	const [unlock, setUnlock] = useState<UnlockState | null>(
-		() => readScanUnlock(result.scanId) ?? null,
+function isProbeSettled(probe: Probe | undefined): boolean {
+	return probe?.status === "ok" || probe?.status === "unavailable";
+}
+
+function useScrollToVisibilityWhenReady(
+	probe: Probe | undefined,
+	enabled: boolean,
+) {
+	const sectionRef = useRef<HTMLElement>(null);
+	const lastScrolledStatus = useRef<string | null>(null);
+
+	useEffect(() => {
+		if (!enabled || !probe || !isProbeSettled(probe)) {
+			return;
+		}
+		const statusKey = `${probe.status}`;
+		if (lastScrolledStatus.current === statusKey) {
+			return;
+		}
+		lastScrolledStatus.current = statusKey;
+
+		const node = sectionRef.current;
+		if (!node) {
+			return;
+		}
+
+		const rect = node.getBoundingClientRect();
+		const visibleHeight =
+			Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+		const inView = visibleHeight > Math.min(rect.height * 0.25, 120);
+		if (inView) {
+			return;
+		}
+
+		const reducedMotion = window.matchMedia(
+			"(prefers-reduced-motion: reduce)",
+		).matches;
+		node.scrollIntoView({
+			behavior: reducedMotion ? "auto" : "smooth",
+			block: "start",
+		});
+	}, [enabled, probe]);
+
+	return sectionRef;
+}
+
+function TechnicalScoreSummary({
+	score,
+	readiness,
+	durationMs,
+}: {
+	score: number;
+	readiness: ScanResultData["readiness"];
+	durationMs: number;
+}) {
+	return (
+		<div className="space-y-1">
+			<div className="flex flex-wrap items-center gap-2 text-sm">
+				<span className="font-mono font-medium tabular-nums">{score}/100</span>
+				<Badge variant={READINESS_BADGE_VARIANTS[readiness]}>
+					{READINESS_LABELS[readiness]}
+				</Badge>
+				<span className="text-muted-foreground">
+					Finished in {formatScanDuration(durationMs)}
+				</span>
+			</div>
+			<p className="text-xs text-muted-foreground">
+				Crawl checklist only. This score does not measure citations in AI
+				answers.
+			</p>
+		</div>
 	);
+}
+
+function IssueFixText({ text }: { text: string }) {
+	return (
+		<p className="rounded-md border border-border/60 bg-muted/40 p-3 text-sm leading-relaxed text-muted-foreground">
+			{text}
+		</p>
+	);
+}
+
+export function ScanResult({ result, unlock, gate }: ScanResultProps) {
+	const trpc = useTRPC();
 	const unlockedForThisScan = unlock?.scanId === result.scanId;
 
 	const mentionProbeQuery = useQuery({
@@ -61,116 +142,87 @@ export function ScanResult({ result }: ScanResultProps) {
 		? unlock?.report.issueCount
 		: result.issueCount;
 	const hiddenCount = issueCount - result.issues.length;
-	const isUnlocked = unlockedForThisScan;
+	const isUnlocked = unlockedForThisScan || gate.step === "unlocked";
+	const showVisibility = isUnlocked && Boolean(probe);
+
+	const visibilityRef = useScrollToVisibilityWhenReady(probe, showVisibility);
 
 	return (
-		<div className="space-y-4 animate-fade-in">
-			<Card>
-				<CardContent className="space-y-6">
-					<div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
-						<ScoreGauge
-							value={result.score}
-							strokeClassName={READINESS_STROKE_CLASSES[result.readiness]}
-							label={`Score ${result.score} out of 100, ${READINESS_LABELS[result.readiness]}`}
-						/>
-						<div className="space-y-1 text-center sm:text-left">
-							<p className="font-mono text-sm break-words text-muted-foreground">
-								{result.domain}
-							</p>
-							<p className="text-xl font-semibold">
-								{READINESS_LABELS[result.readiness]}
-							</p>
-							<p className="text-sm text-muted-foreground">
-								Technical readiness · checked in{" "}
-								{formatScanDuration(result.durationMs)}
-							</p>
-						</div>
+		<div className="animate-fade-in space-y-8 border-t border-border/60 pt-6">
+			{showVisibility && probe ? (
+				<section
+					ref={visibilityRef}
+					id="ai-answer-visibility"
+					className="scroll-mt-28 space-y-3"
+					aria-labelledby="ai-answer-visibility-heading"
+				>
+					<div className="flex items-baseline justify-between gap-2">
+						<h3
+							id="ai-answer-visibility-heading"
+							className="text-sm font-semibold"
+						>
+							Answer engine visibility
+						</h3>
+						<p className="text-xs text-muted-foreground">
+							3 live Perplexity queries
+						</p>
 					</div>
+					<AiMentionProbeSection probe={probe} />
+				</section>
+			) : null}
 
-					<div className="space-y-3">
-						<div className="flex items-baseline justify-between gap-2">
-							<h3 className="text-sm font-semibold">
-								{isUnlocked ? "All issues" : "Top issues"}
-							</h3>
-							<p className="text-xs text-muted-foreground">
-								{issueCount === 0 ? "All checks passed" : `${issueCount} found`}
-							</p>
-						</div>
-						{issues.length === 0 ? (
-							<p className="text-sm text-muted-foreground">
-								No issues found — robots.txt, sitemap, HTTPS, structured data,
-								and AI crawler access all check out.
-							</p>
-						) : (
-							<ul className="space-y-4">
-								{issues.map((issue) => (
-									<li
-										key={`${issue.check}-${issue.issue}`}
-										className="space-y-1.5"
-									>
-										<Badge variant="outline" className="font-mono text-xs">
-											{issue.check}
-										</Badge>
-										<p className="text-sm font-medium">{issue.issue}</p>
-										<p className="text-sm text-muted-foreground">
-											{issue.howToFix}
-										</p>
-									</li>
-								))}
-							</ul>
-						)}
-						{!isUnlocked && hiddenCount > 0 && (
-							<p className="text-xs text-muted-foreground">
-								+{hiddenCount} more {hiddenCount === 1 ? "issue" : "issues"} in
-								the full report.
-							</p>
-						)}
-					</div>
+			<div
+				className={`space-y-3 border-b border-border/60 pb-6 ${
+					showVisibility && probe ? "border-t border-border/60 pt-6" : ""
+				}`}
+			>
+				<h3 className="text-sm font-semibold">Technical checklist</h3>
+				<TechnicalScoreSummary
+					score={result.score}
+					readiness={result.readiness}
+					durationMs={result.durationMs}
+				/>
+			</div>
 
-					{isUnlocked && probe ? (
-						<div className="space-y-3 border-t pt-6">
-							<div className="flex items-baseline justify-between gap-2">
-								<h3 className="text-sm font-semibold">AI answer visibility</h3>
-								<p className="text-xs text-muted-foreground">
-									Live Perplexity check
-								</p>
-							</div>
-							<AiMentionProbeSection probe={probe} />
-						</div>
-					) : null}
-				</CardContent>
-			</Card>
-
-			<Card variant="dashed">
-				<CardContent className="space-y-3 text-center">
-					<h3 className="text-base font-semibold">
-						Get the full technical report
+			<div className="space-y-3">
+				<div className="flex items-baseline justify-between gap-2">
+					<h3 className="text-sm font-semibold">
+						{isUnlocked ? "All issues" : "Top issues"}
 					</h3>
-					<p className="mx-auto max-w-[52ch] text-sm text-muted-foreground">
-						{!isUnlocked && hiddenCount > 0 && (
-							<>
-								You&apos;re seeing {result.issues.length} of {issueCount}{" "}
-								issues.{" "}
-							</>
-						)}
-						Verify your email to unlock every issue, see how AI answers mention
-						your brand, and get a copy by email.
+					{issueCount === 0 ? (
+						<Badge variant="success">All checks passed</Badge>
+					) : (
+						<Badge variant="warning">
+							{issueCount} {issueCount === 1 ? "issue" : "issues"}
+						</Badge>
+					)}
+				</div>
+				{issues.length === 0 ? (
+					<p className="text-sm text-muted-foreground">
+						No issues found. Robots.txt, sitemap, HTTPS, structured data, and AI
+						crawler access look good.
 					</p>
-					<ScanReportGate
-						key={result.scanId}
-						scanId={result.scanId}
-						domain={result.domain}
-						issueCount={issueCount}
-						freeIssueCount={result.issues.length}
-						reportUnlocked={isUnlocked}
-						onUnlocked={(report, email) => {
-							const next = { scanId: result.scanId, report, email };
-							writeScanUnlock(next);
-							setUnlock(next);
-						}}
-					/>
-				</CardContent>
-			</Card>
+				) : (
+					<ul className="space-y-4">
+						{issues.map((issue) => (
+							<li key={`${issue.check}-${issue.issue}`} className="space-y-1.5">
+								<Badge variant="secondary" className="font-mono text-xs">
+									{issue.check}
+								</Badge>
+								<p className="text-sm font-medium">{issue.issue}</p>
+								<IssueFixText text={issue.howToFix} />
+							</li>
+						))}
+					</ul>
+				)}
+				{!isUnlocked ? (
+					<p className="text-xs text-muted-foreground">
+						{hiddenCount > 0
+							? `Showing ${result.issues.length} of ${issueCount} issues. Verify a work email on this domain to run the Perplexity check and see the rest.`
+							: "Verify a work email on this domain to run the Perplexity check and email yourself the full report."}
+					</p>
+				) : null}
+			</div>
 		</div>
 	);
 }

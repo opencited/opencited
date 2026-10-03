@@ -1,9 +1,20 @@
 export type ScanReadiness = "ready" | "needs-work" | "not-ready";
 
+export type ScanStatusBadgeVariant = "success" | "warning" | "outline";
+
 export const READINESS_LABELS: Record<ScanReadiness, string> = {
-	ready: "Ready",
-	"needs-work": "Needs work",
-	"not-ready": "Not ready",
+	ready: "Passes checklist",
+	"needs-work": "Checklist has gaps",
+	"not-ready": "Checklist needs fixes",
+};
+
+export const READINESS_BADGE_VARIANTS: Record<
+	ScanReadiness,
+	ScanStatusBadgeVariant
+> = {
+	ready: "success",
+	"needs-work": "warning",
+	"not-ready": "warning",
 };
 
 export const READINESS_STROKE_CLASSES: Record<ScanReadiness, string> = {

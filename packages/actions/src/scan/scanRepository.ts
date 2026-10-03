@@ -72,6 +72,10 @@ export interface ScanRepository {
 		publicScanId: string,
 		email: string,
 	): Promise<StoredScanLead | null>;
+	hasVerifiedLeadForEmailAndDomain(
+		email: string,
+		domain: string,
+	): Promise<boolean>;
 	listLeadsNeedingProbeReport(publicScanId: string): Promise<StoredScanLead[]>;
 	insertLead(data: {
 		email: string;
@@ -250,6 +254,20 @@ export function createDrizzleScanRepository(db: Db): ScanRepository {
 				)
 				.limit(1);
 			return row ? mapScanLead(row) : null;
+		},
+
+		async hasVerifiedLeadForEmailAndDomain(email, domain) {
+			const [row] = await db
+				.select({ value: count() })
+				.from(scanLeadTable)
+				.where(
+					and(
+						eq(scanLeadTable.email, email),
+						eq(scanLeadTable.domain, domain),
+						isNotNull(scanLeadTable.verifiedAt),
+					),
+				);
+			return (row?.value ?? 0) > 0;
 		},
 
 		async listLeadsNeedingProbeReport(publicScanId) {

@@ -27,6 +27,9 @@ function createRecordingMailer(): ScanMailer & {
 
 const unavailableProbeDeps = {
 	deriveQueries: async () => [] as string[],
+	dispatchScanMentionProbe: async () => {
+		throw new Error("probe dispatch disabled in test");
+	},
 };
 
 async function setupVerifiedFlow() {
@@ -148,7 +151,10 @@ describe("verifyReportAction", () => {
 			},
 		});
 
-		expect(result.probe).toEqual({ status: "pending" });
+		expect(result.probe).toEqual({
+			status: "pending",
+			queries: ["best project tools"],
+		});
 		expect(dispatches).toHaveLength(1);
 		expect(mailer.reports).toHaveLength(1);
 	});

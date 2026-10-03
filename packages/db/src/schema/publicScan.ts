@@ -46,6 +46,7 @@ export const aiMentionProbeSchema = z.discriminatedUnion("status", [
 	}),
 	z.object({
 		status: z.literal("pending"),
+		queries: z.array(z.string()).max(3).optional(),
 	}),
 ]);
 

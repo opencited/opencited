@@ -1,9 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useState } from "react";
 import { BrandNameLink } from "./components/brand-name";
-import { WaitlistForm } from "./components/waitlist/waitlist-form";
 import { TRPCReactProvider } from "./_trpc/client";
 import "./components/animations.css";
 
@@ -11,65 +11,64 @@ const Scanner = dynamic(() =>
 	import("./components/scan/scanner").then((module) => module.Scanner),
 );
 
+const REPO_URL = "https://github.com/opencited/opencited";
+
 export default function Home() {
-	const [scanCompleted, setScanCompleted] = useState(false);
+	const [heroCompact, setHeroCompact] = useState(false);
 
 	return (
-		<div className="min-h-screen flex flex-col">
+		<div className="min-h-screen flex flex-col overflow-x-clip">
 			<TRPCReactProvider devtools={false}>
-				<main className="flex-1 flex flex-col items-center justify-center gap-10 px-6 py-12">
-					<div className="max-w-xl text-center space-y-4">
+				<header className="flex justify-center px-6 pt-10">
+					<BrandNameLink className="text-lg font-semibold" />
+				</header>
+
+				<main
+					className={`scan-hero-shell flex-1 flex flex-col items-center justify-center px-6 py-10 ${
+						heroCompact ? "gap-5" : "gap-8"
+					}`}
+				>
+					<div
+						className="scan-hero-copy max-w-xl text-center space-y-3"
+						data-compact={heroCompact ? "true" : "false"}
+					>
 						<h1
-							className="animate-fade-up"
+							className="scan-hero-headline text-2xl font-semibold tracking-tight lg:text-3xl animate-fade-up"
 							style={{ "--i": 0 } as React.CSSProperties}
 						>
-							<BrandNameLink className="text-2xl lg:text-4xl" />
+							See if answer engines cite your site
 						</h1>
 						<p
-							className="text-base text-muted-foreground leading-relaxed max-w-[800px] mx-auto animate-fade-up"
+							className="scan-hero-subcopy text-sm text-muted-foreground leading-relaxed max-w-[36rem] mx-auto animate-fade-up"
 							style={{ "--i": 1 } as React.CSSProperties}
 						>
-							Open source Answer Engine Optimization (AEO) tool to analyze and
-							optimize your website&apos;s visibility in AI answer engines
+							Free checklist score and top issues here. Verify a work email on
+							your domain for three live Perplexity queries and the full report
+							by email.
 						</p>
 					</div>
 
-					<section
-						className="w-full max-w-xl space-y-4 animate-fade-up"
-						style={{ "--i": 2 } as React.CSSProperties}
-					>
-						<div className="text-center space-y-1">
-							<h2 className="text-lg font-semibold">
-								Check your site&apos;s AI readiness
-							</h2>
-							<p className="text-sm text-muted-foreground">
-								Free technical scan — score, readiness level, and top 3 issues.
-								No signup.
-							</p>
-						</div>
-						<Scanner onSuccess={() => setScanCompleted(true)} />
+					<section className="w-full max-w-xl" aria-label="Domain scanner">
+						<Scanner
+							onScanStart={() => setHeroCompact(true)}
+							onScanIdle={() => setHeroCompact(false)}
+							onSuccess={() => setHeroCompact(true)}
+						/>
 					</section>
-
-					{!scanCompleted && (
-						<section
-							className="w-full max-w-xl text-center space-y-3 animate-fade-up"
-							style={{ "--i": 3 } as React.CSSProperties}
-						>
-							<h2 className="text-base font-semibold">Join the waitlist</h2>
-							<p className="text-sm text-muted-foreground">
-								Be first to use OpenCited when it launches — we&apos;ll email
-								you when it&apos;s out.
-							</p>
-							<WaitlistForm />
-						</section>
-					)}
 				</main>
 
-				<footer
-					className="py-6 text-center text-xs text-muted-foreground animate-fade-up"
-					style={{ "--i": 4 } as React.CSSProperties}
-				>
-					<p>OpenCited — Built for developers</p>
+				<footer className="py-6 text-center text-xs text-muted-foreground space-y-1">
+					<p>OpenCited — MIT · Built for developers</p>
+					<p>
+						<Link
+							href={REPO_URL}
+							className="underline-offset-4 hover:underline"
+							target="_blank"
+							rel="noreferrer"
+						>
+							View source on GitHub
+						</Link>
+					</p>
 				</footer>
 			</TRPCReactProvider>
 		</div>

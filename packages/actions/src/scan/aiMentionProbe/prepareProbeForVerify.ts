@@ -17,7 +17,9 @@ export type ScanMentionProbeDispatcher = (payload: {
 }) => Promise<void>;
 
 const unavailableProbe = { status: "unavailable" as const };
-const pendingProbe = { status: "pending" as const };
+function pendingProbeWithQueries(queries: string[]) {
+	return { status: "pending" as const, queries };
+}
 
 function isFinalProbe(
 	probe: z.infer<typeof aiMentionProbeSchema> | null,
@@ -56,7 +58,7 @@ export async function prepareProbeForVerify(params: {
 	}
 
 	if (params.scan.aiMentionProbe?.status === "pending") {
-		return pendingProbe;
+		return params.scan.aiMentionProbe;
 	}
 
 	const since = new Date(params.now().getTime() - PROBE_CACHE_MS);
@@ -111,6 +113,7 @@ export async function prepareProbeForVerify(params: {
 		return unavailableProbe;
 	}
 
+	const pendingProbe = pendingProbeWithQueries(queries);
 	await params.repo.setPublicScanProbePending(params.scan.id, pendingProbe);
 	try {
 		await dispatch({

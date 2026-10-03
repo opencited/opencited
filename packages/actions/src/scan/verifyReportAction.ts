@@ -6,7 +6,6 @@ import { ScanReportError } from "./scanErrors";
 import type { ScanMailer } from "./mailer";
 import { env } from "../env";
 import { createResendScanMailer } from "./reportEmails";
-import { joinClerkWaitlist } from "./joinWaitlist";
 import {
 	hashVerificationCode,
 	MAX_VERIFICATION_ATTEMPTS,
@@ -14,10 +13,11 @@ import {
 import { aiMentionProbeSchema } from "@opencited/db";
 import {
 	prepareProbeForVerify,
-	type ScanMentionProbeDispatcher,
 	type CategoryQueryDeriver,
+	type ScanMentionProbeDispatcher,
 } from "./aiMentionProbe";
 import { scanIssueSchema } from "./runScanAction";
+import { buildVerifyPayload, unlockScanReport } from "./unlockScanReport";
 
 export const verifyReportInputSchema = z.object({
 	scanId: z.string().uuid(),
@@ -45,39 +45,6 @@ export const verifyReportContextSchema = baseActionContextSchema.extend({
 
 function normalizeEmail(email: string): string {
 	return email.trim().toLowerCase();
-}
-
-async function resolveProbe(
-	scan: NonNullable<Awaited<ReturnType<ScanRepository["getPublicScanById"]>>>,
-	repo: ScanRepository,
-	probeDeps: {
-		deriveQueries?: CategoryQueryDeriver;
-		dispatchScanMentionProbe?: ScanMentionProbeDispatcher;
-	},
-	now: () => Date,
-) {
-	return prepareProbeForVerify({
-		scan,
-		repo,
-		now,
-		deps: probeDeps,
-	});
-}
-
-function buildVerifyPayload(
-	scan: NonNullable<Awaited<ReturnType<ScanRepository["getPublicScanById"]>>>,
-	probe: z.infer<typeof aiMentionProbeSchema>,
-) {
-	return {
-		domain: scan.domain,
-		finalUrl: scan.finalUrl,
-		score: scan.score,
-		readiness: scan.readiness as "ready" | "needs-work" | "not-ready",
-		issues: scan.issues,
-		issueCount: scan.issues.length,
-		durationMs: scan.durationMs,
-		probe,
-	};
 }
 
 export const verifyReportAction = async (params: {
@@ -114,7 +81,12 @@ export const verifyReportAction = async (params: {
 	}
 
 	if (lead.verifiedAt) {
-		const probe = await resolveProbe(scan, repo, probeDeps, () => now);
+		const probe = await prepareProbeForVerify({
+			scan,
+			repo,
+			now: () => now,
+			deps: probeDeps,
+		});
 		return buildVerifyPayload(scan, probe);
 	}
 
@@ -135,29 +107,19 @@ export const verifyReportAction = async (params: {
 		throw new ScanReportError("Incorrect verification code.");
 	}
 
-	await repo.updateLead(lead.id, {
-		verifiedAt: now,
-		consentToOnChangeUpdates: lead.consentToOnChangeUpdates,
+	return unlockScanReport({
+		scan,
+		lead,
+		email,
+		repo,
+		now,
+		mailer,
+		probeDeps,
+		options: {
+			sendFullReportEmail: true,
+			joinWaitlist: true,
+		},
 	});
-
-	const probe = await resolveProbe(scan, repo, probeDeps, () => now);
-
-	await mailer.sendFullReport({
-		to: email,
-		domain: scan.domain,
-		score: scan.score,
-		readiness: scan.readiness,
-		issues: scan.issues,
-		probe,
-	});
-
-	await repo.updateLead(lead.id, {
-		reportSentAt: now,
-		...(probe.status !== "pending" ? { probeReportSentAt: now } : {}),
-	});
-	await joinClerkWaitlist(email);
-
-	return buildVerifyPayload(scan, probe);
 };
 
 export const verifyReportHandler = async (params: {

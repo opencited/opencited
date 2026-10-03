@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+	READINESS_BADGE_VARIANTS,
 	READINESS_LABELS,
 	READINESS_STROKE_CLASSES,
 	formatScanDuration,
@@ -13,6 +14,12 @@ describe("readiness display maps", () => {
 			expect(READINESS_LABELS[level]).toBeTruthy();
 			expect(READINESS_STROKE_CLASSES[level]).toContain("stroke-");
 		}
+	});
+
+	it("maps readiness to semantic badge variants", () => {
+		expect(READINESS_BADGE_VARIANTS.ready).toBe("success");
+		expect(READINESS_BADGE_VARIANTS["needs-work"]).toBe("warning");
+		expect(READINESS_BADGE_VARIANTS["not-ready"]).toBe("warning");
 	});
 
 	it("uses stroke colors that meet 3:1 non-text contrast in both themes", () => {

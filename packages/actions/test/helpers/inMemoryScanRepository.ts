@@ -101,6 +101,15 @@ export function createInMemoryScanRepository(): ScanRepository {
 			);
 		},
 
+		async hasVerifiedLeadForEmailAndDomain(email, domain) {
+			return scanLeads.some(
+				(lead) =>
+					lead.email === email &&
+					lead.domain === domain &&
+					lead.verifiedAt !== null,
+			);
+		},
+
 		async listLeadsNeedingProbeReport(publicScanId) {
 			return scanLeads.filter(
 				(lead) =>

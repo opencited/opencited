@@ -11,6 +11,16 @@ import {
 	hashVerificationCode,
 	verificationCodeExpiresAt,
 } from "./verificationCode";
+import {
+	emailMatchesScanDomain,
+	emailHostForScanDomain,
+} from "./reportEmailDomain";
+import { verifyReportOutputSchema } from "./verifyReportAction";
+import { unlockScanReport } from "./unlockScanReport";
+import type {
+	CategoryQueryDeriver,
+	ScanMentionProbeDispatcher,
+} from "./aiMentionProbe";
 
 export const MAX_REPORTS_PER_EMAIL_PER_DAY = 3;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -21,9 +31,20 @@ export const requestReportInputSchema = z.object({
 	consentToOnChangeUpdates: z.boolean(),
 });
 
-export const requestReportOutputSchema = z.object({
-	ok: z.literal(true),
-});
+export const requestReportOutputSchema = z.discriminatedUnion(
+	"verificationRequired",
+	[
+		z.object({
+			ok: z.literal(true),
+			verificationRequired: z.literal(true),
+		}),
+		z.object({
+			ok: z.literal(true),
+			verificationRequired: z.literal(false),
+			report: verifyReportOutputSchema,
+		}),
+	],
+);
 
 export const requestReportContextSchema = baseActionContextSchema.extend({
 	scanRepo: z.custom<ScanRepository>().optional(),
@@ -40,6 +61,10 @@ export const requestReportAction = async (params: {
 		now?: () => Date;
 		mailer?: ScanMailer;
 		codeSecret?: string;
+		probe?: {
+			deriveQueries?: CategoryQueryDeriver;
+			dispatchScanMentionProbe?: ScanMentionProbeDispatcher;
+		};
 	};
 }) => {
 	const repo =
@@ -47,6 +72,7 @@ export const requestReportAction = async (params: {
 	const now = params.deps?.now?.() ?? new Date();
 	const mailer = params.deps?.mailer ?? createResendScanMailer();
 	const codeSecret = params.deps?.codeSecret ?? env.SCAN_CODE_SECRET;
+	const probeDeps = params.deps?.probe ?? {};
 
 	const email = normalizeEmail(params.input.email);
 	const scan = await repo.getPublicScanById(params.input.scanId);
@@ -54,13 +80,25 @@ export const requestReportAction = async (params: {
 		throw new ScanReportError("Scan not found. Run a new scan and try again.");
 	}
 
+	if (!emailMatchesScanDomain(email, scan.domain)) {
+		const requiredHost = emailHostForScanDomain(scan.domain);
+		throw new ScanReportError(
+			`Use a work email at ${requiredHost} to unlock this report.`,
+		);
+	}
+
 	const scanAgeMs = now.getTime() - scan.createdAt.getTime();
 	if (scanAgeMs > DAY_MS) {
 		throw new ScanReportError("This scan has expired. Run a new scan.");
 	}
 
-	const existingLead = await repo.getLeadByScanAndEmail(scan.id, email);
-	if (!existingLead) {
+	let existingLead = await repo.getLeadByScanAndEmail(scan.id, email);
+
+	const trustedUnlock =
+		Boolean(existingLead?.verifiedAt) ||
+		(await repo.hasVerifiedLeadForEmailAndDomain(email, scan.domain));
+
+	if (!existingLead && !trustedUnlock) {
 		const since = new Date(now.getTime() - DAY_MS);
 		const leadCount = await repo.countLeadsByEmailSince(email, since);
 		if (leadCount >= MAX_REPORTS_PER_EMAIL_PER_DAY) {
@@ -68,6 +106,53 @@ export const requestReportAction = async (params: {
 				"Too many full reports for this email today. Please try again tomorrow.",
 			);
 		}
+	}
+
+	if (trustedUnlock) {
+		const code = generateVerificationCode();
+		const codeHash = hashVerificationCode(code, codeSecret);
+		const codeExpiresAt = verificationCodeExpiresAt(now);
+
+		if (existingLead) {
+			await repo.updateLead(existingLead.id, {
+				consentToOnChangeUpdates: params.input.consentToOnChangeUpdates,
+			});
+		} else {
+			existingLead = await repo.insertLead({
+				email,
+				domain: scan.domain,
+				publicScanId: scan.id,
+				consentToOnChangeUpdates: params.input.consentToOnChangeUpdates,
+				codeHash,
+				codeExpiresAt,
+			});
+		}
+
+		if (!existingLead) {
+			throw new ScanReportError(
+				"Scan not found. Run a new scan and try again.",
+			);
+		}
+
+		const report = await unlockScanReport({
+			scan,
+			lead: existingLead,
+			email,
+			repo,
+			now,
+			mailer,
+			probeDeps,
+			options: {
+				sendFullReportEmail: false,
+				joinWaitlist: false,
+			},
+		});
+
+		return {
+			ok: true as const,
+			verificationRequired: false as const,
+			report,
+		};
 	}
 
 	const code = generateVerificationCode();
@@ -98,7 +183,10 @@ export const requestReportAction = async (params: {
 		code,
 	});
 
-	return { ok: true as const };
+	return {
+		ok: true as const,
+		verificationRequired: true as const,
+	};
 };
 
 export const requestReportHandler = async (params: {

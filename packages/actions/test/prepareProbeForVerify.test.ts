@@ -40,10 +40,13 @@ describe("prepareProbeForVerify", () => {
 			},
 		});
 
-		expect(probe).toEqual({ status: "pending" });
+		expect(probe.status).toBe("pending");
+		if (probe.status === "pending") {
+			expect(probe.queries?.length).toBeGreaterThan(0);
+		}
 		expect(dispatches).toHaveLength(1);
 		const stored = await repo.getPublicScanById(scan.id);
-		expect(stored?.aiMentionProbe).toEqual({ status: "pending" });
+		expect(stored?.aiMentionProbe).toEqual(probe);
 		expect(stored?.probeCompletedAt).toBeNull();
 	});
 
@@ -112,7 +115,10 @@ describe("prepareProbeForVerify", () => {
 			},
 		});
 
-		expect(probe).toEqual({ status: "pending" });
+		expect(probe.status).toBe("pending");
+		if (probe.status === "pending") {
+			expect(probe.queries?.length).toBeGreaterThan(0);
+		}
 		expect(dispatches).toHaveLength(1);
 	});
 });
