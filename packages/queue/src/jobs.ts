@@ -36,6 +36,17 @@ export const jobs = {
 			},
 		},
 	},
+	"scan-mention-probe": {
+		payload: z.object({
+			publicScanId: z.string().uuid(),
+			domain: z.string().min(1),
+			brandName: z.string().nullable(),
+			queries: z.array(z.string().min(1)).min(1).max(3),
+		}),
+		options: {
+			attempts: 1,
+		},
+	},
 	"sentiment-retry": {
 		// Single-attempt re-score of the sentiment sub-score for a crawl where
 		// the original LLM call fell back to neutral. The handler re-runs only

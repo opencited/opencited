@@ -1,8 +1,10 @@
-import { and, count, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNotNull, isNull } from "drizzle-orm";
 import type { Db } from "@opencited/db";
 import {
 	publicScanTable,
 	scanLeadTable,
+	type aiMentionProbeSchema,
+	type publicScanHomepageSnapshotSchema,
 	type publicScanIssueSchema,
 } from "@opencited/db";
 import type { z } from "zod";
@@ -16,6 +18,9 @@ export type StoredPublicScan = {
 	issues: z.infer<typeof publicScanIssueSchema>[];
 	durationMs: number;
 	clientIp: string | null;
+	homepageSnapshot: z.infer<typeof publicScanHomepageSnapshotSchema> | null;
+	aiMentionProbe: z.infer<typeof aiMentionProbeSchema> | null;
+	probeCompletedAt: Date | null;
 	createdAt: Date;
 };
 
@@ -30,6 +35,7 @@ export type StoredScanLead = {
 	attemptCount: number;
 	verifiedAt: Date | null;
 	reportSentAt: Date | null;
+	probeReportSentAt: Date | null;
 	createdAt: Date;
 };
 
@@ -43,13 +49,30 @@ export interface ScanRepository {
 		issues: z.infer<typeof publicScanIssueSchema>[];
 		durationMs: number;
 		clientIp?: string;
+		homepageSnapshot?: z.infer<typeof publicScanHomepageSnapshotSchema>;
 	}): Promise<StoredPublicScan>;
 	getPublicScanById(id: string): Promise<StoredPublicScan | null>;
+	findFreshProbeForDomain(
+		domain: string,
+		since: Date,
+	): Promise<z.infer<typeof aiMentionProbeSchema> | null>;
+	updatePublicScanProbe(
+		id: string,
+		data: {
+			aiMentionProbe: z.infer<typeof aiMentionProbeSchema>;
+			probeCompletedAt: Date;
+		},
+	): Promise<StoredPublicScan>;
+	setPublicScanProbePending(
+		id: string,
+		probe: Extract<z.infer<typeof aiMentionProbeSchema>, { status: "pending" }>,
+	): Promise<StoredPublicScan>;
 	countLeadsByEmailSince(email: string, since: Date): Promise<number>;
 	getLeadByScanAndEmail(
 		publicScanId: string,
 		email: string,
 	): Promise<StoredScanLead | null>;
+	listLeadsNeedingProbeReport(publicScanId: string): Promise<StoredScanLead[]>;
 	insertLead(data: {
 		email: string;
 		domain: string;
@@ -67,6 +90,7 @@ export interface ScanRepository {
 			attemptCount: number;
 			verifiedAt: Date;
 			reportSentAt: Date;
+			probeReportSentAt: Date;
 		}>,
 	): Promise<StoredScanLead>;
 }
@@ -83,6 +107,9 @@ function mapPublicScan(
 		issues: row.issues,
 		durationMs: row.durationMs,
 		clientIp: row.clientIp,
+		homepageSnapshot: row.homepageSnapshot ?? null,
+		aiMentionProbe: row.aiMentionProbe ?? null,
+		probeCompletedAt: row.probeCompletedAt ?? null,
 		createdAt: row.createdAt,
 	};
 }
@@ -99,6 +126,7 @@ function mapScanLead(row: typeof scanLeadTable.$inferSelect): StoredScanLead {
 		attemptCount: row.attemptCount,
 		verifiedAt: row.verifiedAt,
 		reportSentAt: row.reportSentAt,
+		probeReportSentAt: row.probeReportSentAt ?? null,
 		createdAt: row.createdAt,
 	};
 }
@@ -129,6 +157,7 @@ export function createDrizzleScanRepository(db: Db): ScanRepository {
 					issues: data.issues,
 					durationMs: data.durationMs,
 					clientIp: data.clientIp,
+					homepageSnapshot: data.homepageSnapshot,
 				})
 				.returning();
 			if (!row) {
@@ -144,6 +173,56 @@ export function createDrizzleScanRepository(db: Db): ScanRepository {
 				.where(eq(publicScanTable.id, id))
 				.limit(1);
 			return row ? mapPublicScan(row) : null;
+		},
+
+		async findFreshProbeForDomain(domain, since) {
+			const [row] = await db
+				.select({ probe: publicScanTable.aiMentionProbe })
+				.from(publicScanTable)
+				.where(
+					and(
+						eq(publicScanTable.domain, domain),
+						gte(publicScanTable.probeCompletedAt, since),
+						isNotNull(publicScanTable.aiMentionProbe),
+					),
+				)
+				.orderBy(desc(publicScanTable.probeCompletedAt))
+				.limit(1);
+			const probe = row?.probe;
+			if (!probe || probe.status !== "ok") {
+				return null;
+			}
+			return probe;
+		},
+
+		async updatePublicScanProbe(id, data) {
+			const [row] = await db
+				.update(publicScanTable)
+				.set({
+					aiMentionProbe: data.aiMentionProbe,
+					probeCompletedAt: data.probeCompletedAt,
+				})
+				.where(eq(publicScanTable.id, id))
+				.returning();
+			if (!row) {
+				throw new Error("Failed to update public scan probe");
+			}
+			return mapPublicScan(row);
+		},
+
+		async setPublicScanProbePending(id, probe) {
+			const [row] = await db
+				.update(publicScanTable)
+				.set({
+					aiMentionProbe: probe,
+					probeCompletedAt: null,
+				})
+				.where(eq(publicScanTable.id, id))
+				.returning();
+			if (!row) {
+				throw new Error("Failed to set public scan probe pending");
+			}
+			return mapPublicScan(row);
 		},
 
 		async countLeadsByEmailSince(email, since) {
@@ -171,6 +250,21 @@ export function createDrizzleScanRepository(db: Db): ScanRepository {
 				)
 				.limit(1);
 			return row ? mapScanLead(row) : null;
+		},
+
+		async listLeadsNeedingProbeReport(publicScanId) {
+			const rows = await db
+				.select()
+				.from(scanLeadTable)
+				.where(
+					and(
+						eq(scanLeadTable.publicScanId, publicScanId),
+						isNotNull(scanLeadTable.verifiedAt),
+						isNotNull(scanLeadTable.reportSentAt),
+						isNull(scanLeadTable.probeReportSentAt),
+					),
+				);
+			return rows.map(mapScanLead);
 		},
 
 		async insertLead(data) {

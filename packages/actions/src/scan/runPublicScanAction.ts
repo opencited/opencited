@@ -54,6 +54,7 @@ export const runPublicScanAction = async (params: {
 		issues: technical.issues,
 		durationMs: technical.durationMs,
 		clientIp,
+		homepageSnapshot: technical.homepageSnapshot,
 	});
 
 	return {

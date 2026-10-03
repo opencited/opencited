@@ -16,6 +16,7 @@ export const sampleScanReport = {
 				"Add an /llms.txt file in markdown that summarises your key pages, products, and docs so language models can understand what you offer.",
 		},
 	],
+	probe: { status: "unavailable" as const },
 };
 
 export const sampleVerification = {

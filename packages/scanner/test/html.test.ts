@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+	extractHomepageSnapshot,
 	extractHtmlCanonical,
 	extractJsonLd,
 	extractLinkHeaderCanonical,
@@ -63,6 +64,34 @@ describe("extractHtmlCanonical", () => {
 	it("returns null when absent", () => {
 		expect(extractHtmlCanonical("<html></html>")).toBeNull();
 		expect(extractHtmlCanonical("")).toBeNull();
+	});
+});
+
+describe("extractHomepageSnapshot", () => {
+	it("extracts title, description, h1, brand, and visible text", () => {
+		const html = `<!DOCTYPE html><html><head>
+<title>Acme Tools</title>
+<meta name="description" content="We sell widgets." />
+<meta property="og:site_name" content="Acme" />
+<script type="application/ld+json">{"@type":"Organization","name":"Acme Inc"}</script>
+</head><body><h1>Welcome</h1><p>Hello world</p><script>ignore()</script></body></html>`;
+		const snapshot = extractHomepageSnapshot(html);
+		expect(snapshot.title).toBe("Acme Tools");
+		expect(snapshot.metaDescription).toBe("We sell widgets.");
+		expect(snapshot.h1).toBe("Welcome");
+		expect(snapshot.brandName).toBe("Acme Inc");
+		expect(snapshot.textExcerpt).toContain("Hello world");
+		expect(snapshot.textExcerpt).not.toContain("ignore");
+	});
+
+	it("returns empty snapshot for blank html", () => {
+		expect(extractHomepageSnapshot("")).toEqual({
+			title: null,
+			metaDescription: null,
+			h1: null,
+			brandName: null,
+			textExcerpt: "",
+		});
 	});
 });
 

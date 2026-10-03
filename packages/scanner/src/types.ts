@@ -16,6 +16,14 @@ export interface ScanIssue {
 	weight: number;
 }
 
+export interface HomepageSnapshot {
+	title: string | null;
+	metaDescription: string | null;
+	h1: string | null;
+	brandName: string | null;
+	textExcerpt: string;
+}
+
 export interface ScanResult {
 	domain: string;
 	finalUrl: string;
@@ -23,6 +31,7 @@ export interface ScanResult {
 	issues: ScanIssue[];
 	durationMs: number;
 	fetchedAt: string;
+	homepageSnapshot: HomepageSnapshot;
 }
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;

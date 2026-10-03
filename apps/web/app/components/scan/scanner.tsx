@@ -30,6 +30,7 @@ export function Scanner({ onSuccess }: ScannerProps) {
 		...trpc.scan.run.queryOptions({ domain: submittedDomain ?? "" }),
 		enabled: submittedDomain !== null,
 		retry: false,
+		refetchOnWindowFocus: false,
 	});
 
 	useEffect(() => {

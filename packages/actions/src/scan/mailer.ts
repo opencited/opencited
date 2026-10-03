@@ -1,3 +1,6 @@
+import type { aiMentionProbeSchema } from "@opencited/db";
+import type { z } from "zod";
+
 export interface ScanMailer {
 	sendVerificationCode(params: {
 		to: string;
@@ -14,5 +17,8 @@ export interface ScanMailer {
 			issue: string;
 			howToFix: string;
 		}>;
+		probe: z.infer<typeof aiMentionProbeSchema>;
+		/** Second email after live Perplexity probe finishes (subject line differs). */
+		visibilityUpdate?: boolean;
 	}): Promise<void>;
 }

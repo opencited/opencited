@@ -43,12 +43,22 @@ export function createResendScanMailer(): ScanMailer {
 			});
 			assertResendSent(result);
 		},
-		async sendFullReport({ to, domain, score, readiness, issues }) {
+		async sendFullReport({
+			to,
+			domain,
+			score,
+			readiness,
+			issues,
+			probe,
+			visibilityUpdate,
+		}) {
 			const email = await buildFullReportEmail({
 				domain,
 				score,
 				readiness,
 				issues,
+				probe,
+				visibilityUpdate,
 			});
 			const result = await resend.emails.send({
 				from: env.SCAN_FROM_EMAIL,

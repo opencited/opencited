@@ -15,6 +15,7 @@ export {
 	selectSitemapCandidates,
 } from "./checks/sitemap";
 export {
+	extractHomepageSnapshot,
 	extractHtmlCanonical,
 	extractJsonLd,
 	extractLinkHeaderCanonical,
@@ -27,6 +28,7 @@ export type {
 	CheckId,
 	FetchLike,
 	LookupFn,
+	HomepageSnapshot,
 	ScanIssue,
 	ScanOptions,
 	ScanResult,

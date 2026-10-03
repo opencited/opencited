@@ -74,9 +74,9 @@ const result = await crawler.crawl({
 - **URL:** `https://www.perplexity.ai/`
 - **Auth:** `requiresAuth: false`
 - **Input:** `<textarea id="ask-input">`, Enter to submit
-- **Response container:** `.prose` inside `div[id^="markdown-content-"]`
+- **Response container:** `.prose` inside `div[id^="markdown-content-"]`, with fallbacks under `main` when markup changes
 - **Inline links:** Extracts `<a>` elements from the answer prose. Each link has a URL, title (anchor text), domain. Extracted into `InlineLink[]` and saved with `kind = 'inline-link'`.
-- **Streaming:** Detect via the stop button visibility + content stability for 2s
+- **Streaming:** Stop-generating button (visible + enabled) plus content/copy-button stability; dismiss cookie/sign-in overlays with Escape
 - **Cloudflare:** May show a challenge. `waitForCloudflareChallenge()` polls up to 15s.
 
 ### ChatGPT

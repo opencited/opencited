@@ -34,15 +34,31 @@ export async function buildFullReportEmail(params: {
 		issue: string;
 		howToFix: string;
 	}>;
+	probe:
+		| { status: "unavailable" }
+		| { status: "pending" }
+		| {
+				status: "ok";
+				queries: Array<{
+					query: string;
+					visibility: "visible" | "not-visible";
+					excerpt: string;
+					citationUrls: string[];
+				}>;
+		  };
+	visibilityUpdate?: boolean;
 }): Promise<{ subject: string; text: string; html: string }> {
 	const _readiness = readinessStyle(params.readiness);
-	const subject = `Your OpenCited scan report for ${params.domain}`;
+	const subject = params.visibilityUpdate
+		? `AI visibility results for ${params.domain}`
+		: `Your OpenCited scan report for ${params.domain}`;
 	const html = await render(
 		ScanFullReportEmail({
 			domain: params.domain,
 			score: params.score,
 			readiness: params.readiness,
 			issues: params.issues,
+			probe: params.probe,
 		}),
 	);
 	return {

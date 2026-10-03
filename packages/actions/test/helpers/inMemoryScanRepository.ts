@@ -25,6 +25,9 @@ export function createInMemoryScanRepository(): ScanRepository {
 				issues: data.issues,
 				durationMs: data.durationMs,
 				clientIp: data.clientIp ?? null,
+				homepageSnapshot: data.homepageSnapshot ?? null,
+				aiMentionProbe: null,
+				probeCompletedAt: null,
 				createdAt: new Date(),
 			};
 			publicScans.push(row);
@@ -33,6 +36,55 @@ export function createInMemoryScanRepository(): ScanRepository {
 
 		async getPublicScanById(id) {
 			return publicScans.find((scan) => scan.id === id) ?? null;
+		},
+
+		async findFreshProbeForDomain(domain, since) {
+			const match = publicScans
+				.filter(
+					(scan) =>
+						scan.domain === domain &&
+						scan.probeCompletedAt &&
+						scan.probeCompletedAt >= since &&
+						scan.aiMentionProbe?.status === "ok",
+				)
+				.sort(
+					(a, b) =>
+						(b.probeCompletedAt?.getTime() ?? 0) -
+						(a.probeCompletedAt?.getTime() ?? 0),
+				)[0];
+			return match?.aiMentionProbe?.status === "ok"
+				? match.aiMentionProbe
+				: null;
+		},
+
+		async setPublicScanProbePending(id, probe) {
+			const index = publicScans.findIndex((scan) => scan.id === id);
+			const current = publicScans[index];
+			if (!current) {
+				throw new Error("Failed to set public scan probe pending");
+			}
+			const updated: StoredPublicScan = {
+				...current,
+				aiMentionProbe: probe,
+				probeCompletedAt: null,
+			};
+			publicScans[index] = updated;
+			return updated;
+		},
+
+		async updatePublicScanProbe(id, data) {
+			const index = publicScans.findIndex((scan) => scan.id === id);
+			const current = publicScans[index];
+			if (!current) {
+				throw new Error("Failed to update public scan probe");
+			}
+			const updated: StoredPublicScan = {
+				...current,
+				aiMentionProbe: data.aiMentionProbe,
+				probeCompletedAt: data.probeCompletedAt,
+			};
+			publicScans[index] = updated;
+			return updated;
 		},
 
 		async countLeadsByEmailSince(email, since) {
@@ -49,6 +101,16 @@ export function createInMemoryScanRepository(): ScanRepository {
 			);
 		},
 
+		async listLeadsNeedingProbeReport(publicScanId) {
+			return scanLeads.filter(
+				(lead) =>
+					lead.publicScanId === publicScanId &&
+					lead.verifiedAt !== null &&
+					lead.reportSentAt !== null &&
+					lead.probeReportSentAt === null,
+			);
+		},
+
 		async insertLead(data) {
 			const row: StoredScanLead = {
 				id: crypto.randomUUID(),
@@ -61,6 +123,7 @@ export function createInMemoryScanRepository(): ScanRepository {
 				attemptCount: 0,
 				verifiedAt: null,
 				reportSentAt: null,
+				probeReportSentAt: null,
 				createdAt: new Date(),
 			};
 			scanLeads.push(row);
@@ -90,6 +153,10 @@ export function createInMemoryScanRepository(): ScanRepository {
 					data.reportSentAt === undefined
 						? current.reportSentAt
 						: data.reportSentAt,
+				probeReportSentAt:
+					data.probeReportSentAt === undefined
+						? current.probeReportSentAt
+						: data.probeReportSentAt,
 			};
 			scanLeads[index] = updated;
 			return updated;

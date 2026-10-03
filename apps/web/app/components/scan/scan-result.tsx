@@ -1,30 +1,67 @@
 "use client";
 
 import type { inferRouterOutputs } from "@trpc/server";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { AppRouter } from "@opencited/trpc";
 import { Badge, Card, CardContent } from "@opencited/ui";
+import { useTRPC } from "@/app/_trpc/client";
 import {
 	READINESS_LABELS,
 	READINESS_STROKE_CLASSES,
 	formatScanDuration,
 } from "@/app/lib/scan-display";
+import { readScanUnlock, writeScanUnlock } from "@/app/lib/scan-unlock-storage";
 import { ScoreGauge } from "./score-gauge";
+import { AiMentionProbeSection } from "./ai-mention-probe-section";
 import { ScanReportGate } from "./scan-report-gate";
 
 type ScanResultData = inferRouterOutputs<AppRouter>["scan"]["run"];
 type FullReportData = inferRouterOutputs<AppRouter>["scan"]["verifyReport"];
+
+type UnlockState = {
+	scanId: string;
+	report: FullReportData;
+	email: string;
+};
 
 interface ScanResultProps {
 	result: ScanResultData;
 }
 
 export function ScanResult({ result }: ScanResultProps) {
-	const [fullReport, setFullReport] = useState<FullReportData | null>(null);
-	const issues = fullReport?.issues ?? result.issues;
-	const issueCount = fullReport?.issueCount ?? result.issueCount;
+	const trpc = useTRPC();
+	const [unlock, setUnlock] = useState<UnlockState | null>(
+		() => readScanUnlock(result.scanId) ?? null,
+	);
+	const unlockedForThisScan = unlock?.scanId === result.scanId;
+
+	const mentionProbeQuery = useQuery({
+		...trpc.scan.mentionProbe.queryOptions({
+			scanId: result.scanId,
+			email: unlock?.email ?? "",
+		}),
+		enabled: unlockedForThisScan && Boolean(unlock?.email),
+		refetchInterval: (query) => {
+			const status =
+				query.state.data?.probe.status ?? unlock?.report.probe.status;
+			return status === "pending" ? 3000 : false;
+		},
+		refetchOnWindowFocus: (query) =>
+			(query.state.data?.probe.status ?? unlock?.report.probe.status) ===
+			"pending",
+	});
+
+	const probe =
+		(unlockedForThisScan ? mentionProbeQuery.data?.probe : undefined) ??
+		(unlockedForThisScan ? unlock?.report.probe : undefined);
+
+	const issues = unlockedForThisScan ? unlock?.report.issues : result.issues;
+	const issueCount = unlockedForThisScan
+		? unlock?.report.issueCount
+		: result.issueCount;
 	const hiddenCount = issueCount - result.issues.length;
-	const isUnlocked = fullReport !== null;
+	const isUnlocked = unlockedForThisScan;
 
 	return (
 		<div className="space-y-4 animate-fade-in">
@@ -89,6 +126,18 @@ export function ScanResult({ result }: ScanResultProps) {
 							</p>
 						)}
 					</div>
+
+					{isUnlocked && probe ? (
+						<div className="space-y-3 border-t pt-6">
+							<div className="flex items-baseline justify-between gap-2">
+								<h3 className="text-sm font-semibold">AI answer visibility</h3>
+								<p className="text-xs text-muted-foreground">
+									Live Perplexity check
+								</p>
+							</div>
+							<AiMentionProbeSection probe={probe} />
+						</div>
+					) : null}
 				</CardContent>
 			</Card>
 
@@ -104,15 +153,21 @@ export function ScanResult({ result }: ScanResultProps) {
 								issues.{" "}
 							</>
 						)}
-						Verify your email to unlock every issue with step-by-step fixes and
-						get a copy by email.
+						Verify your email to unlock every issue, see how AI answers mention
+						your brand, and get a copy by email.
 					</p>
 					<ScanReportGate
+						key={result.scanId}
 						scanId={result.scanId}
 						domain={result.domain}
 						issueCount={issueCount}
 						freeIssueCount={result.issues.length}
-						onUnlocked={setFullReport}
+						reportUnlocked={isUnlocked}
+						onUnlocked={(report, email) => {
+							const next = { scanId: result.scanId, report, email };
+							writeScanUnlock(next);
+							setUnlock(next);
+						}}
 					/>
 				</CardContent>
 			</Card>

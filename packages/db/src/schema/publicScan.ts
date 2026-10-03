@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, text } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import {
 	createInsertSchema,
@@ -21,6 +21,34 @@ export const publicScanIssueSchema = z.object({
 	weight: z.number(),
 });
 
+export const publicScanHomepageSnapshotSchema = z.object({
+	title: z.string().nullable(),
+	metaDescription: z.string().nullable(),
+	h1: z.string().nullable(),
+	brandName: z.string().nullable(),
+	textExcerpt: z.string(),
+});
+
+export const aiMentionProbeQueryResultSchema = z.object({
+	query: z.string(),
+	visibility: z.enum(["visible", "not-visible"]),
+	excerpt: z.string(),
+	citationUrls: z.array(z.string().url()).max(3),
+});
+
+export const aiMentionProbeSchema = z.discriminatedUnion("status", [
+	z.object({
+		status: z.literal("ok"),
+		queries: z.array(aiMentionProbeQueryResultSchema),
+	}),
+	z.object({
+		status: z.literal("unavailable"),
+	}),
+	z.object({
+		status: z.literal("pending"),
+	}),
+]);
+
 export const publicScanTable = pgTable("public_scan", {
 	id: id,
 	domain: text("domain").notNull(),
@@ -32,6 +60,13 @@ export const publicScanTable = pgTable("public_scan", {
 		.notNull(),
 	durationMs: integer("duration_ms").notNull(),
 	clientIp: text("client_ip"),
+	homepageSnapshot:
+		jsonb("homepage_snapshot").$type<
+			z.infer<typeof publicScanHomepageSnapshotSchema>
+		>(),
+	aiMentionProbe:
+		jsonb("ai_mention_probe").$type<z.infer<typeof aiMentionProbeSchema>>(),
+	probeCompletedAt: timestamp("probe_completed_at", { withTimezone: true }),
 	createdAt: createdAt,
 	updatedAt: updatedAt,
 });
@@ -46,5 +81,8 @@ export const publicScanInsertSchema = publicScanBaseInsertSchema.extend({
 	issues: z.array(publicScanIssueSchema),
 	durationMs: z.number().int().min(0),
 	clientIp: z.string().optional(),
+	homepageSnapshot: publicScanHomepageSnapshotSchema.optional(),
+	aiMentionProbe: aiMentionProbeSchema.optional(),
+	probeCompletedAt: z.date().optional(),
 });
 export const publicScanUpdateSchema = createUpdateSchema(publicScanTable);

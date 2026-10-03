@@ -11,6 +11,12 @@ import {
 	hashVerificationCode,
 	MAX_VERIFICATION_ATTEMPTS,
 } from "./verificationCode";
+import { aiMentionProbeSchema } from "@opencited/db";
+import {
+	prepareProbeForVerify,
+	type ScanMentionProbeDispatcher,
+	type CategoryQueryDeriver,
+} from "./aiMentionProbe";
 import { scanIssueSchema } from "./runScanAction";
 
 export const verifyReportInputSchema = z.object({
@@ -30,6 +36,7 @@ export const verifyReportOutputSchema = z.object({
 	issues: z.array(scanIssueSchema),
 	issueCount: z.number().int().min(0),
 	durationMs: z.number().int().min(0),
+	probe: aiMentionProbeSchema,
 });
 
 export const verifyReportContextSchema = baseActionContextSchema.extend({
@@ -40,6 +47,39 @@ function normalizeEmail(email: string): string {
 	return email.trim().toLowerCase();
 }
 
+async function resolveProbe(
+	scan: NonNullable<Awaited<ReturnType<ScanRepository["getPublicScanById"]>>>,
+	repo: ScanRepository,
+	probeDeps: {
+		deriveQueries?: CategoryQueryDeriver;
+		dispatchScanMentionProbe?: ScanMentionProbeDispatcher;
+	},
+	now: () => Date,
+) {
+	return prepareProbeForVerify({
+		scan,
+		repo,
+		now,
+		deps: probeDeps,
+	});
+}
+
+function buildVerifyPayload(
+	scan: NonNullable<Awaited<ReturnType<ScanRepository["getPublicScanById"]>>>,
+	probe: z.infer<typeof aiMentionProbeSchema>,
+) {
+	return {
+		domain: scan.domain,
+		finalUrl: scan.finalUrl,
+		score: scan.score,
+		readiness: scan.readiness as "ready" | "needs-work" | "not-ready",
+		issues: scan.issues,
+		issueCount: scan.issues.length,
+		durationMs: scan.durationMs,
+		probe,
+	};
+}
+
 export const verifyReportAction = async (params: {
 	input: z.infer<typeof verifyReportInputSchema>;
 	ctx: z.infer<typeof verifyReportContextSchema>;
@@ -47,6 +87,10 @@ export const verifyReportAction = async (params: {
 		now?: () => Date;
 		mailer?: ScanMailer;
 		codeSecret?: string;
+		probe?: {
+			deriveQueries?: CategoryQueryDeriver;
+			dispatchScanMentionProbe?: ScanMentionProbeDispatcher;
+		};
 	};
 }) => {
 	const repo =
@@ -54,6 +98,7 @@ export const verifyReportAction = async (params: {
 	const now = params.deps?.now?.() ?? new Date();
 	const mailer = params.deps?.mailer ?? createResendScanMailer();
 	const codeSecret = params.deps?.codeSecret ?? env.SCAN_CODE_SECRET;
+	const probeDeps = params.deps?.probe ?? {};
 
 	const email = normalizeEmail(params.input.email);
 	const scan = await repo.getPublicScanById(params.input.scanId);
@@ -69,15 +114,8 @@ export const verifyReportAction = async (params: {
 	}
 
 	if (lead.verifiedAt) {
-		return {
-			domain: scan.domain,
-			finalUrl: scan.finalUrl,
-			score: scan.score,
-			readiness: scan.readiness as "ready" | "needs-work" | "not-ready",
-			issues: scan.issues,
-			issueCount: scan.issues.length,
-			durationMs: scan.durationMs,
-		};
+		const probe = await resolveProbe(scan, repo, probeDeps, () => now);
+		return buildVerifyPayload(scan, probe);
 	}
 
 	if (lead.attemptCount >= MAX_VERIFICATION_ATTEMPTS) {
@@ -102,26 +140,24 @@ export const verifyReportAction = async (params: {
 		consentToOnChangeUpdates: lead.consentToOnChangeUpdates,
 	});
 
+	const probe = await resolveProbe(scan, repo, probeDeps, () => now);
+
 	await mailer.sendFullReport({
 		to: email,
 		domain: scan.domain,
 		score: scan.score,
 		readiness: scan.readiness,
 		issues: scan.issues,
+		probe,
 	});
 
-	await repo.updateLead(lead.id, { reportSentAt: now });
+	await repo.updateLead(lead.id, {
+		reportSentAt: now,
+		...(probe.status !== "pending" ? { probeReportSentAt: now } : {}),
+	});
 	await joinClerkWaitlist(email);
 
-	return {
-		domain: scan.domain,
-		finalUrl: scan.finalUrl,
-		score: scan.score,
-		readiness: scan.readiness as "ready" | "needs-work" | "not-ready",
-		issues: scan.issues,
-		issueCount: scan.issues.length,
-		durationMs: scan.durationMs,
-	};
+	return buildVerifyPayload(scan, probe);
 };
 
 export const verifyReportHandler = async (params: {

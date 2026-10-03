@@ -34,6 +34,10 @@ export const scanLeadTable = pgTable(
 		attemptCount: integer("attempt_count").notNull().default(0),
 		verifiedAt: timestamp("verified_at", { withTimezone: true }),
 		reportSentAt: timestamp("report_sent_at", { withTimezone: true }),
+		/** Set when the full report email already includes final AI visibility (ok/unavailable). */
+		probeReportSentAt: timestamp("probe_report_sent_at", {
+			withTimezone: true,
+		}),
 		createdAt: createdAt,
 		updatedAt: updatedAt,
 	},

@@ -25,6 +25,10 @@ function createRecordingMailer(): ScanMailer & {
 	};
 }
 
+const unavailableProbeDeps = {
+	deriveQueries: async () => [] as string[],
+};
+
 async function setupVerifiedFlow() {
 	const repo = createInMemoryScanRepository();
 	const now = new Date("2026-10-02T12:00:00.000Z");
@@ -99,9 +103,11 @@ describe("verifyReportAction", () => {
 				now: () => now,
 				mailer,
 				codeSecret: "test-secret",
+				probe: unavailableProbeDeps,
 			},
 		});
 
+		expect(result.probe).toEqual({ status: "unavailable" });
 		expect(result.issues.length).toBeGreaterThan(3);
 		expect(result.issueCount).toBe(result.issues.length);
 		expect(mailer.reports).toHaveLength(1);
@@ -111,6 +117,40 @@ describe("verifyReportAction", () => {
 		);
 		expect(lead?.verifiedAt).not.toBeNull();
 		expect(lead?.reportSentAt).not.toBeNull();
+	});
+
+	it("dispatches a browser probe and returns pending when queries survive", async () => {
+		const { repo, now, mailer, scan, code } = await setupVerifiedFlow();
+		const dispatches: unknown[] = [];
+
+		const result = await verifyReportAction({
+			input: {
+				scanId: scan.scanId,
+				email: "reader@example.com",
+				code,
+			},
+			ctx: {
+				userId: null,
+				isAuthenticated: false,
+				db: null as never,
+				scanRepo: repo,
+			},
+			deps: {
+				now: () => now,
+				mailer,
+				codeSecret: "test-secret",
+				probe: {
+					deriveQueries: async () => ["best project tools"],
+					dispatchScanMentionProbe: async (payload) => {
+						dispatches.push(payload);
+					},
+				},
+			},
+		});
+
+		expect(result.probe).toEqual({ status: "pending" });
+		expect(dispatches).toHaveLength(1);
+		expect(mailer.reports).toHaveLength(1);
 	});
 
 	it("rejects expired and incorrect codes without returning issues", async () => {
@@ -133,6 +173,7 @@ describe("verifyReportAction", () => {
 					now: () => now,
 					mailer,
 					codeSecret: "test-secret",
+					probe: unavailableProbeDeps,
 				},
 			}),
 		).rejects.toBeInstanceOf(ScanReportError);
@@ -155,6 +196,7 @@ describe("verifyReportAction", () => {
 					now: () => expiredAt,
 					mailer,
 					codeSecret: "test-secret",
+					probe: unavailableProbeDeps,
 				},
 			}),
 		).rejects.toBeInstanceOf(ScanReportError);

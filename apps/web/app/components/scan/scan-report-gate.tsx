@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Checkbox, Input, Label, Spinner } from "@opencited/ui";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@opencited/trpc";
@@ -15,7 +15,9 @@ interface ScanReportGateProps {
 	domain: string;
 	issueCount: number;
 	freeIssueCount: number;
-	onUnlocked: (report: FullReportData) => void;
+	/** Parent already has a verified unlock (e.g. restored from session). */
+	reportUnlocked?: boolean;
+	onUnlocked: (report: FullReportData, email: string) => void;
 }
 
 export function ScanReportGate({
@@ -23,10 +25,18 @@ export function ScanReportGate({
 	domain,
 	issueCount,
 	freeIssueCount,
+	reportUnlocked = false,
 	onUnlocked,
 }: ScanReportGateProps) {
 	const trpc = useTRPC();
-	const [step, setStep] = useState<GateStep>("email");
+	const [step, setStep] = useState<GateStep>(
+		reportUnlocked ? "unlocked" : "email",
+	);
+	useEffect(() => {
+		if (reportUnlocked) {
+			setStep("unlocked");
+		}
+	}, [reportUnlocked]);
 	const [email, setEmail] = useState("");
 	const [consent, setConsent] = useState(true);
 	const [code, setCode] = useState("");
@@ -49,7 +59,7 @@ export function ScanReportGate({
 			onSuccess: (data) => {
 				setError("");
 				setStep("unlocked");
-				onUnlocked(data);
+				onUnlocked(data, email);
 			},
 			onError: (err) => {
 				setError(err.message);

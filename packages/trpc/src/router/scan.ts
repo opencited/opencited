@@ -8,6 +8,9 @@ import {
 	verifyReportHandler,
 	verifyReportInputSchema,
 	verifyReportOutputSchema,
+	getMentionProbeHandler,
+	getMentionProbeInputSchema,
+	getMentionProbeOutputSchema,
 	ScanReportError,
 	runScanInputSchema,
 } from "@opencited/actions";
@@ -72,6 +75,16 @@ export const scanRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			try {
 				return await verifyReportHandler({ input, ctx });
+			} catch (error) {
+				mapScanError(error);
+			}
+		}),
+	mentionProbe: scanProcedure
+		.input(getMentionProbeInputSchema)
+		.output(getMentionProbeOutputSchema)
+		.query(async ({ ctx, input }) => {
+			try {
+				return await getMentionProbeHandler({ input, ctx });
 			} catch (error) {
 				mapScanError(error);
 			}

@@ -29,6 +29,7 @@
 		"ai": "catalog:",
 		"@ai-sdk/openai": "catalog:",
 		"@ai-sdk/groq": "catalog:",
+		"@opencited/queue": "workspace:*",
 		"@t3-oss/env-core": "catalog:",
 		"resend": "catalog:"
 	},

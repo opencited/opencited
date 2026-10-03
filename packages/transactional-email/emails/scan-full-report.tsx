@@ -9,11 +9,24 @@ export interface ScanIssue {
 	howToFix: string;
 }
 
+export interface AiMentionProbeQueryRow {
+	query: string;
+	visibility: "visible" | "not-visible";
+	excerpt: string;
+	citationUrls: string[];
+}
+
+export type ScanAiMentionProbe =
+	| { status: "unavailable" }
+	| { status: "pending" }
+	| { status: "ok"; queries: AiMentionProbeQueryRow[] };
+
 export interface ScanFullReportEmailProps {
 	domain: string;
 	score: number;
 	readiness: string;
 	issues: ScanIssue[];
+	probe: ScanAiMentionProbe;
 }
 
 function siteUrl(domain: string) {
@@ -124,6 +137,7 @@ export function ScanFullReportEmail({
 	score,
 	readiness,
 	issues,
+	probe,
 }: ScanFullReportEmailProps) {
 	const readinessMeta = readinessStyle(readiness);
 	const url = siteUrl(domain);
@@ -179,6 +193,37 @@ export function ScanFullReportEmail({
 					</tbody>
 				</table>
 			</Section>
+
+			<Heading as="h2" style={sectionTitle}>
+				AI answer visibility
+			</Heading>
+			{probe.status === "pending" ? (
+				<Text style={intro}>
+					We&apos;re running a live Perplexity check for category queries about
+					your brand. Open your scan page to see Visible / Not visible results
+					when it finishes. Your technical report below is complete.
+				</Text>
+			) : probe.status === "unavailable" ? (
+				<Text style={intro}>
+					AI mention probe could not be completed for this scan. Your technical
+					report below is still complete.
+				</Text>
+			) : (
+				probe.queries.map((row) => (
+					<Section key={row.query} style={issueCard}>
+						<Text style={scoreLabel}>
+							{row.visibility === "visible" ? "Visible" : "Not visible"} ·{" "}
+							{row.query}
+						</Text>
+						<Text style={issueFix}>{row.excerpt}</Text>
+						{row.citationUrls.length > 0 ? (
+							<Text style={issueFix}>
+								Sources: {row.citationUrls.join(", ")}
+							</Text>
+						) : null}
+					</Section>
+				))
+			)}
 
 			<Heading as="h2" style={sectionTitle}>
 				{issues.length === 0 ? "Summary" : `Issues (${issues.length})`}

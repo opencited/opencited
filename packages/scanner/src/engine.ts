@@ -1,5 +1,6 @@
 import { isIP } from "node:net";
 import {
+	extractHomepageSnapshot,
 	extractHtmlCanonical,
 	extractJsonLd,
 	extractLinkHeaderCanonical,
@@ -233,5 +234,6 @@ export async function runTechnicalScan(
 		issues,
 		durationMs: Math.round(performance.now() - startedAt),
 		fetchedAt: new Date().toISOString(),
+		homepageSnapshot: extractHomepageSnapshot(homepageHtml),
 	};
 }
