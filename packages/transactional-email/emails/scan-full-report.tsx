@@ -27,6 +27,7 @@ export interface ScanFullReportEmailProps {
 	readiness: string;
 	issues: ScanIssue[];
 	probe: ScanAiMentionProbe;
+	resultUrl?: string;
 }
 
 function siteUrl(domain: string) {
@@ -138,6 +139,7 @@ export function ScanFullReportEmail({
 	readiness,
 	issues,
 	probe,
+	resultUrl,
 }: ScanFullReportEmailProps) {
 	const readinessMeta = readinessStyle(readiness);
 	const url = siteUrl(domain);
@@ -246,6 +248,19 @@ export function ScanFullReportEmail({
 					</Section>
 				))
 			)}
+
+			{resultUrl ? (
+				<Text style={intro}>
+					Share your free result (top issues only):{" "}
+					<Link
+						href={resultUrl}
+						style={{ color: "#18181b", fontWeight: "600" }}
+					>
+						{resultUrl}
+					</Link>
+					. This link does not include the full report below.
+				</Text>
+			) : null}
 
 			<Text style={outro}>
 				Run another scan anytime on the homepage to track changes over time.

@@ -1,10 +1,11 @@
-import { Heading, Section, Text } from "@react-email/components";
+import { Heading, Link, Section, Text } from "@react-email/components";
 import { EmailLayout } from "./_components/email-layout";
 import { sampleVerification } from "../src/sample-data";
 
 export interface ScanVerificationCodeEmailProps {
 	domain: string;
 	code: string;
+	resultUrl?: string;
 }
 
 const intro = {
@@ -52,6 +53,7 @@ const hint = {
 export function ScanVerificationCodeEmail({
 	domain,
 	code,
+	resultUrl,
 }: ScanVerificationCodeEmailProps) {
 	return (
 		<EmailLayout preview={`Your code is ${code}`} title="Verify your email">
@@ -65,6 +67,14 @@ export function ScanVerificationCodeEmail({
 					{code}
 				</Heading>
 			</Section>
+			{resultUrl ? (
+				<Text style={intro}>
+					Share your free result (top issues only):{" "}
+					<Link href={resultUrl} style={{ color: "#18181b" }}>
+						{resultUrl}
+					</Link>
+				</Text>
+			) : null}
 			<Text style={hint}>Expires in 10 minutes. Do not share this code.</Text>
 		</EmailLayout>
 	);

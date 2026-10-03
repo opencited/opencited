@@ -5,6 +5,7 @@ import {
 	type CategoryQueryDeriver,
 	type ScanMentionProbeDispatcher,
 } from "./aiMentionProbe";
+import { publicScanResultLink } from "./appOrigin";
 import { joinClerkWaitlist } from "./joinWaitlist";
 import type { ScanMailer } from "./mailer";
 import type {
@@ -67,6 +68,7 @@ export async function unlockScanReport(params: {
 			readiness: params.scan.readiness,
 			issues: params.scan.issues,
 			probe,
+			resultUrl: publicScanResultLink(params.scan.id),
 		});
 		await params.repo.updateLead(params.lead.id, {
 			reportSentAt: params.now,

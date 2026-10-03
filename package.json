@@ -23,7 +23,8 @@
 		"dev:worker": "dotenv -e .env.local -- turbo run dev --filter=@opencited/worker",
 		"start:worker": "dotenv -e .env.local -- turbo run start --filter=@opencited/worker",
 		"deploy:worker": "./scripts/deploy-worker.sh deploy",
-		"sync:templates": "dotenv -e .env.local -- turbo run sync:templates --filter=@opencited/db"
+		"sync:templates": "dotenv -e .env.local -- turbo run sync:templates --filter=@opencited/db",
+		"clean:redis": "docker compose exec redis valkey-cli -a changeme FLUSHDB"
 	},
 	"engines": {
 		"node": "24.14.1",

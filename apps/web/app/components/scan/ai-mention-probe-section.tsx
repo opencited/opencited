@@ -127,7 +127,7 @@ function ProbeQueryRow({ query, excerpt }: { query: string; excerpt: string }) {
 	const { preview, isTruncated } = formatProbeExcerpt(excerpt, expanded);
 
 	return (
-		<li className="space-y-2 border-t border-border/60 py-4 first:border-t-0 first:pt-0">
+		<li className="space-y-2.5 border-t border-border/60 py-5 first:border-t-0 first:pt-0">
 			<p className="text-sm font-medium">{query}</p>
 			<p className="text-sm text-muted-foreground">{preview}</p>
 			{isTruncated ? (

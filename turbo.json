@@ -26,7 +26,9 @@
 		"AXIOM_TRANSPORT_ENABLED",
 		"RESEND_API_KEY",
 		"SCAN_FROM_EMAIL",
-		"SCAN_CODE_SECRET"
+		"SCAN_CODE_SECRET",
+		"PUBLIC_APP_URL",
+		"VERCEL_URL"
 	],
 	"tasks": {
 		"build": {

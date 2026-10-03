@@ -14,6 +14,8 @@ export const env = createEnv({
 		RESEND_API_KEY: z.string().min(1),
 		SCAN_FROM_EMAIL: z.string().email(),
 		SCAN_CODE_SECRET: z.string().min(16),
+		PUBLIC_APP_URL: z.string().url().optional(),
+		VERCEL_URL: z.string().optional(),
 		CLERK_SECRET_KEY: z.string().min(1).optional(),
 	},
 	runtimeEnv: process.env,

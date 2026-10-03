@@ -16,6 +16,7 @@ import {
 	emailHostForScanDomain,
 } from "./reportEmailDomain";
 import { verifyReportOutputSchema } from "./verifyReportAction";
+import { publicScanResultLink } from "./appOrigin";
 import { unlockScanReport } from "./unlockScanReport";
 import type {
 	CategoryQueryDeriver,
@@ -181,6 +182,7 @@ export const requestReportAction = async (params: {
 		to: email,
 		domain: scan.domain,
 		code,
+		resultUrl: publicScanResultLink(scan.id),
 	});
 
 	return {

@@ -15,6 +15,7 @@ import { readScanUnlock, writeScanUnlock } from "@/app/lib/scan-unlock-storage";
 import { SCAN_LOADING_LINES } from "@/app/lib/scan-loading-copy";
 import { ScanDomainForm } from "./scan-domain-form";
 import { ScanResult, type UnlockState } from "./scan-result";
+import { ScanShareLink } from "./scan-share-link";
 import { ScanUnlockMark } from "./scan-unlock-mark";
 import { useRotatingLine } from "./use-rotating-line";
 import { useScanReportGate } from "./use-scan-report-gate";
@@ -157,37 +158,35 @@ export function Scanner({ onSuccess, onScanStart, onScanIdle }: ScannerProps) {
 
 	const showDomainForm = fieldPhase === "domain" && !isReportUnlocked;
 
+	const showWorkbench = submittedDomain !== null;
+
 	return (
-		<div className="space-y-4">
+		<div className={showWorkbench ? "scan-workbench space-y-6" : "space-y-4"}>
 			{isReportUnlocked && scanQuery.data ? (
-				<div className="animate-fade-in flex flex-col gap-3 text-center sm:text-left">
-					<div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm sm:justify-start">
+				<div className="animate-fade-in space-y-4">
+					<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
 						<ScanUnlockMark />
-						<span>
-							<span className="font-mono font-medium text-foreground">
-								{scanQuery.data.domain}
-							</span>
-							<span className="text-muted-foreground"> · Verified as </span>
+						<span className="text-muted-foreground">
+							Verified as{" "}
 							<span className="font-mono text-foreground">{unlock?.email}</span>
 						</span>
 					</div>
-					<div className="flex flex-col items-center gap-3 sm:items-start">
-						<Badge
-							variant="success"
-							className="w-fit max-w-full whitespace-normal"
-						>
-							Full report unlocked — Perplexity results and all issues
-						</Badge>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							className="w-full sm:w-auto"
-							onClick={handleScanAnother}
-						>
-							Scan another domain
-						</Button>
-					</div>
+					<Badge
+						variant="success"
+						className="w-fit max-w-full whitespace-normal"
+					>
+						Full report unlocked — Perplexity results and all issues
+					</Badge>
+					<ScanShareLink scanId={scanQuery.data.scanId} />
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="w-full sm:w-auto"
+						onClick={handleScanAnother}
+					>
+						Scan another domain
+					</Button>
 				</div>
 			) : showDomainForm ? (
 				<ScanDomainForm
@@ -198,6 +197,12 @@ export function Scanner({ onSuccess, onScanStart, onScanIdle }: ScannerProps) {
 					formError={formError || null}
 					autoFocus={submittedDomain === null}
 				/>
+			) : null}
+
+			{scanQuery.data && submittedDomain !== null && !isReportUnlocked ? (
+				<div className="border-t border-border/60 pt-6">
+					<ScanShareLink scanId={scanQuery.data.scanId} />
+				</div>
 			) : null}
 
 			{submittedDomain !== null && (

@@ -6,6 +6,7 @@ export interface ScanMailer {
 		to: string;
 		domain: string;
 		code: string;
+		resultUrl?: string | null;
 	}): Promise<void>;
 	sendFullReport(params: {
 		to: string;
@@ -20,5 +21,6 @@ export interface ScanMailer {
 		probe: z.infer<typeof aiMentionProbeSchema>;
 		/** Second email after live Perplexity probe finishes (subject line differs). */
 		visibilityUpdate?: boolean;
+		resultUrl?: string | null;
 	}): Promise<void>;
 }

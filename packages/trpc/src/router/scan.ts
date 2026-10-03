@@ -11,6 +11,9 @@ import {
 	getMentionProbeHandler,
 	getMentionProbeInputSchema,
 	getMentionProbeOutputSchema,
+	getPublicScanResultHandler,
+	getPublicScanResultInputSchema,
+	getPublicScanResultOutputSchema,
 	ScanReportError,
 	runScanInputSchema,
 } from "@opencited/actions";
@@ -25,8 +28,13 @@ const scanProcedure = publicProcedure.use(
 function mapScanError(error: unknown): never {
 	if (error instanceof ScanReportError) {
 		const isRateLimit = error.message.includes("Too many");
+		const isNotFound = error.message === "Scan not found.";
 		throw new TRPCError({
-			code: isRateLimit ? "TOO_MANY_REQUESTS" : "BAD_REQUEST",
+			code: isRateLimit
+				? "TOO_MANY_REQUESTS"
+				: isNotFound
+					? "NOT_FOUND"
+					: "BAD_REQUEST",
 			message: error.message,
 		});
 	}
@@ -85,6 +93,16 @@ export const scanRouter = createTRPCRouter({
 		.query(async ({ ctx, input }) => {
 			try {
 				return await getMentionProbeHandler({ input, ctx });
+			} catch (error) {
+				mapScanError(error);
+			}
+		}),
+	publicResult: publicProcedure
+		.input(getPublicScanResultInputSchema)
+		.output(getPublicScanResultOutputSchema)
+		.query(async ({ ctx, input }) => {
+			try {
+				return await getPublicScanResultHandler({ input, ctx });
 			} catch (error) {
 				mapScanError(error);
 			}

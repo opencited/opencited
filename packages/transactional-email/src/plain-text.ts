@@ -4,6 +4,7 @@ export function buildFullReportPlainText(params: {
 	domain: string;
 	score: number;
 	readiness: string;
+	resultUrl?: string;
 	issues: Array<{
 		check: string;
 		issue: string;
@@ -42,10 +43,14 @@ export function buildFullReportPlainText(params: {
 						]),
 						"",
 					];
+	const shareLine = params.resultUrl
+		? [`Share your free result: ${params.resultUrl}`, ""]
+		: [];
 	const lines = [
 		`Full technical report for ${params.domain}`,
 		`Score: ${params.score}/100 (${readiness.label})`,
 		"",
+		...shareLine,
 		...probeLines,
 		...params.issues.flatMap((issue, index) => [
 			`${index + 1}. [${issue.check}] ${issue.issue}`,
@@ -59,6 +64,10 @@ export function buildFullReportPlainText(params: {
 export function buildVerificationPlainText(params: {
 	domain: string;
 	code: string;
+	resultUrl?: string;
 }): string {
-	return `Your verification code for ${params.domain} is ${params.code}. It expires in 10 minutes.\n\nIf you didn't request this, you can ignore this email.`;
+	const shareLine = params.resultUrl
+		? `\n\nShare your free result: ${params.resultUrl}`
+		: "";
+	return `Your verification code for ${params.domain} is ${params.code}. It expires in 10 minutes.${shareLine}\n\nIf you didn't request this, you can ignore this email.`;
 }

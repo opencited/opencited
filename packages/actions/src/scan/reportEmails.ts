@@ -32,8 +32,12 @@ export function createResendScanMailer(): ScanMailer {
 	const resend = new Resend(env.RESEND_API_KEY);
 
 	return {
-		async sendVerificationCode({ to, domain, code }) {
-			const email = await buildVerificationCodeEmail({ domain, code });
+		async sendVerificationCode({ to, domain, code, resultUrl }) {
+			const email = await buildVerificationCodeEmail({
+				domain,
+				code,
+				resultUrl: resultUrl ?? undefined,
+			});
 			const result = await resend.emails.send({
 				from: env.SCAN_FROM_EMAIL,
 				to,
@@ -51,6 +55,7 @@ export function createResendScanMailer(): ScanMailer {
 			issues,
 			probe,
 			visibilityUpdate,
+			resultUrl,
 		}) {
 			const email = await buildFullReportEmail({
 				domain,
@@ -59,6 +64,7 @@ export function createResendScanMailer(): ScanMailer {
 				issues,
 				probe,
 				visibilityUpdate,
+				resultUrl: resultUrl ?? undefined,
 			});
 			const result = await resend.emails.send({
 				from: env.SCAN_FROM_EMAIL,

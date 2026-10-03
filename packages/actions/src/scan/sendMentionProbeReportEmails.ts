@@ -1,6 +1,7 @@
 import type { Db } from "@opencited/db";
 import { createResendScanMailer } from "./reportEmails";
 import type { ScanMailer } from "./mailer";
+import { publicScanResultLink } from "./appOrigin";
 import {
 	createDrizzleScanRepository,
 	type ScanRepository,
@@ -37,6 +38,7 @@ export async function sendMentionProbeReportEmails(params: {
 			issues: scan.issues,
 			probe,
 			visibilityUpdate: true,
+			resultUrl: publicScanResultLink(scan.id),
 		});
 		await repo.updateLead(lead.id, { probeReportSentAt: now() });
 		sent += 1;

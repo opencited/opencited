@@ -40,3 +40,10 @@ export function scanErrorMessage(message: string | undefined): string {
 export function formatScanDuration(durationMs: number): string {
 	return `${(Math.max(durationMs, 100) / 1000).toFixed(1)}s`;
 }
+
+export function formatPublicScanTime(scannedAt: string): string {
+	return new Intl.DateTimeFormat(undefined, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(scannedAt));
+}

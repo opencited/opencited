@@ -79,4 +79,34 @@ describe("scan email builders", () => {
 		expect(email.html).toContain("Verify your email");
 		expect(email.text).toContain("123456");
 	});
+
+	it("includes the share URL when provided", async () => {
+		const resultUrl =
+			"https://opencited.com/scan/550e8400-e29b-41d4-a716-446655440000";
+		const verification = await buildVerificationCodeEmail({
+			domain: "example.com",
+			code: "123456",
+			resultUrl,
+		});
+		expect(verification.text).toContain(resultUrl);
+		expect(verification.html).toContain(resultUrl);
+
+		const report = await buildFullReportEmail({
+			domain: "example.com",
+			score: 80,
+			readiness: "ready",
+			issues: [
+				{
+					check: "robots",
+					issue: "Missing rule",
+					howToFix: "Fix robots.",
+				},
+			],
+			probe: { status: "unavailable" },
+			resultUrl,
+		});
+		expect(report.text).toContain(resultUrl);
+		expect(report.html).toContain(resultUrl);
+		expect(report.text).toContain("[robots]");
+	});
 });

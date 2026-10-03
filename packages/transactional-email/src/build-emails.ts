@@ -10,12 +10,14 @@ import { readinessStyle } from "./readiness";
 export async function buildVerificationCodeEmail(params: {
 	domain: string;
 	code: string;
+	resultUrl?: string;
 }): Promise<{ subject: string; text: string; html: string }> {
 	const subject = `Your OpenCited verification code for ${params.domain}`;
 	const html = await render(
 		ScanVerificationCodeEmail({
 			domain: params.domain,
 			code: params.code,
+			resultUrl: params.resultUrl,
 		}),
 	);
 	return {
@@ -47,6 +49,7 @@ export async function buildFullReportEmail(params: {
 				}>;
 		  };
 	visibilityUpdate?: boolean;
+	resultUrl?: string;
 }): Promise<{ subject: string; text: string; html: string }> {
 	const _readiness = readinessStyle(params.readiness);
 	const subject = params.visibilityUpdate
@@ -59,6 +62,7 @@ export async function buildFullReportEmail(params: {
 			readiness: params.readiness,
 			issues: params.issues,
 			probe: params.probe,
+			resultUrl: params.resultUrl,
 		}),
 	);
 	return {

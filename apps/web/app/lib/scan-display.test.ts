@@ -3,6 +3,7 @@ import {
 	READINESS_BADGE_VARIANTS,
 	READINESS_LABELS,
 	READINESS_STROKE_CLASSES,
+	formatPublicScanTime,
 	formatScanDuration,
 	scanErrorMessage,
 } from "./scan-display";
@@ -55,6 +56,14 @@ describe("scanErrorMessage", () => {
 		expect(scanErrorMessage("Internal server error")).toBe(
 			"Something went wrong while scanning. Please try again.",
 		);
+	});
+});
+
+describe("formatPublicScanTime", () => {
+	it("formats an ISO timestamp for display", () => {
+		const formatted = formatPublicScanTime("2026-10-03T16:00:00.000Z");
+		expect(formatted).toContain("2026");
+		expect(formatted.length).toBeGreaterThan(8);
 	});
 });
 

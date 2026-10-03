@@ -24,8 +24,8 @@ export default function Home() {
 				</header>
 
 				<main
-					className={`scan-hero-shell flex-1 flex flex-col items-center justify-center px-6 py-10 ${
-						heroCompact ? "gap-5" : "gap-8"
+					className={`scan-hero-shell flex-1 flex flex-col items-center px-6 pb-10 pt-10 ${
+						heroCompact ? "justify-start gap-6 pt-6" : "justify-center gap-8"
 					}`}
 				>
 					<div
@@ -48,7 +48,10 @@ export default function Home() {
 						</p>
 					</div>
 
-					<section className="w-full max-w-xl" aria-label="Domain scanner">
+					<section
+						className={`w-full ${heroCompact ? "max-w-2xl" : "max-w-xl"}`}
+						aria-label="Domain scanner"
+					>
 						<Scanner
 							onScanStart={() => setHeroCompact(true)}
 							onScanIdle={() => setHeroCompact(false)}
