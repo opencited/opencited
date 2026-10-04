@@ -1,0 +1,11 @@
+{
+	"version": 1,
+	"hooks": {
+		"preToolUse": [
+			{
+				"command": "[ ! -f \".agents/skills/impeccable/scripts/impeccable\" ] || \".agents/skills/impeccable/scripts/impeccable\" hook-before-edit",
+				"timeout": 30
+			}
+		]
+	}
+}

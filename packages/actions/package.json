@@ -19,6 +19,8 @@
 		"@opencited/crawler": "workspace:*",
 		"@opencited/db": "workspace:*",
 		"@opencited/logger": "workspace:*",
+		"@opencited/scanner": "workspace:*",
+		"@opencited/transactional-email": "workspace:*",
 		"@opencited/score-actions": "workspace:*",
 		"@trpc/server": "catalog:",
 		"workflow": "catalog:",
@@ -27,7 +29,9 @@
 		"ai": "catalog:",
 		"@ai-sdk/openai": "catalog:",
 		"@ai-sdk/groq": "catalog:",
-		"@t3-oss/env-core": "catalog:"
+		"@opencited/queue": "workspace:*",
+		"@t3-oss/env-core": "catalog:",
+		"resend": "catalog:"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",

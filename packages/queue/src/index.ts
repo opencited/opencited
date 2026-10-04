@@ -8,6 +8,7 @@ export {
 	dispatchCrawlJob,
 	getJobNameForProvider,
 } from "./dispatch-crawl-job";
+export { dispatchScanMentionProbe } from "./dispatch-scan-mention-probe";
 
 const queues = new Map<string, Queue>();
 

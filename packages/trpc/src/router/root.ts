@@ -10,6 +10,7 @@ import { aiVisibilityRouter } from "./aiVisibility";
 import { dashboardRouter } from "./dashboard";
 import { proxyConfigRouter } from "./proxyConfig";
 import { promptTemplateRouter } from "./promptTemplate";
+import { scanRouter } from "./scan";
 
 export const appRouter = createTRPCRouter({
 	user: userRouter,
@@ -23,6 +24,7 @@ export const appRouter = createTRPCRouter({
 	dashboard: dashboardRouter,
 	proxyConfig: proxyConfigRouter,
 	promptTemplate: promptTemplateRouter,
+	scan: scanRouter,
 });
 
 export type AppRouter = typeof appRouter;

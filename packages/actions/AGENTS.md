@@ -33,6 +33,7 @@ src/
 | `promptQuery` | Prompt query operations |
 | `promptTemplate` | Prompt library template listing |
 | `browser` | Browser crawl actions |
+| `scan` | Public technical readiness scan (`runTechnicalScan` + `publicScan`/`scanLead` persistence, email verification via Resend) |
 
 ## Context Schema
 

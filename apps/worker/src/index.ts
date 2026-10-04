@@ -9,6 +9,7 @@ import { HonoAdapter } from "@bull-board/hono";
 import { createLogger, flush } from "@opencited/logger";
 import { handleCrawlJob } from "./handlers/perplexity-crawl";
 import { handleSentimentRetry } from "./handlers/sentiment-retry";
+import { handleScanMentionProbeJob } from "./handlers/scan-mention-probe";
 import { env } from "./env";
 
 const logger = createLogger();
@@ -25,6 +26,10 @@ const chatgptCrawlQueue = new Queue("chatgpt-crawl", {
 });
 
 const sentimentRetryQueue = new Queue("sentiment-retry", {
+	connection: createRedisConnection(),
+});
+
+const scanMentionProbeQueue = new Queue("scan-mention-probe", {
 	connection: createRedisConnection(),
 });
 
@@ -98,6 +103,21 @@ const chatgptWorker = new Worker(
 	},
 );
 
+const scanMentionProbeWorker = new Worker(
+	"scan-mention-probe",
+	async (job) => {
+		logger.info("Processing scan mention probe", {
+			jobId: job.id,
+			data: job.data,
+		});
+		await handleScanMentionProbeJob(job, logger);
+	},
+	{
+		connection: createRedisConnection(),
+		concurrency: 1,
+	},
+);
+
 const sentimentRetryWorker = new Worker(
 	"sentiment-retry",
 	async (job) => {
@@ -161,6 +181,23 @@ sentimentRetryWorker.on("error", (err) => {
 	logger.error("Sentiment retry worker error", { error: err.message });
 });
 
+scanMentionProbeWorker.on("completed", async (job) => {
+	logger.info("Scan mention probe: job completed", { jobId: job.id });
+	await flush();
+});
+
+scanMentionProbeWorker.on("failed", async (job, err) => {
+	logger.error("Scan mention probe: job failed", {
+		jobId: job?.id,
+		error: err.message,
+	});
+	await flush();
+});
+
+scanMentionProbeWorker.on("error", (err) => {
+	logger.error("Scan mention probe worker error", { error: err.message });
+});
+
 const app = new Hono();
 
 const serverAdapter = new HonoAdapter(serveStatic);
@@ -169,6 +206,7 @@ createBullBoard({
 		new BullMQAdapter(perplexityCrawlQueue),
 		new BullMQAdapter(chatgptCrawlQueue),
 		new BullMQAdapter(sentimentRetryQueue),
+		new BullMQAdapter(scanMentionProbeQueue),
 	],
 	serverAdapter,
 });
@@ -176,6 +214,8 @@ app.route(
 	"/admin/queues",
 	serverAdapter.setBasePath("/admin/queues").registerPlugin(),
 );
+
+app.get("/", (c) => c.redirect("/admin/queues", 302));
 
 app.get("/health", async (c) => {
 	try {
@@ -206,12 +246,14 @@ async function shutdown(signal: string) {
 			worker.close(),
 			chatgptWorker.close(),
 			sentimentRetryWorker.close(),
+			scanMentionProbeWorker.close(),
 			queueEvents.close(),
 			chatgptQueueEvents.close(),
 			sentimentRetryQueueEvents.close(),
 			perplexityCrawlQueue.close(),
 			chatgptCrawlQueue.close(),
 			sentimentRetryQueue.close(),
+			scanMentionProbeQueue.close(),
 			sharedRedis.quit(),
 			flush(),
 		]);

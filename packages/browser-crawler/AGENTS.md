@@ -74,9 +74,9 @@ const result = await crawler.crawl({
 - **URL:** `https://www.perplexity.ai/`
 - **Auth:** `requiresAuth: false`
 - **Input:** `<textarea id="ask-input">`, Enter to submit
-- **Response container:** `.prose` inside `div[id^="markdown-content-"]`
+- **Response container:** `.prose` inside `div[id^="markdown-content-"]`, with fallbacks under `main` when markup changes
 - **Inline links:** Extracts `<a>` elements from the answer prose. Each link has a URL, title (anchor text), domain. Extracted into `InlineLink[]` and saved with `kind = 'inline-link'`.
-- **Streaming:** Detect via the stop button visibility + content stability for 2s
+- **Streaming:** Stop-generating button (visible + enabled) plus content/copy-button stability; dismiss cookie/sign-in overlays with Escape
 - **Cloudflare:** May show a challenge. `waitForCloudflareChallenge()` polls up to 15s.
 
 ### ChatGPT
@@ -115,9 +115,9 @@ points with growing wait windows).
 
 ## Adding a New Provider
 
-1. **Explore the target site.** Write a throwaway script in
-   `/var/folders/.../opencode/<provider>-explorer.ts` (or a similar scratch
-   location) that opens the site in Camoufox, submits a test query, and dumps
+1. **Explore the target site.** Write a throwaway script in a local scratch
+   path (e.g. `packages/browser-crawler/scripts/<provider>-explorer.ts`) that
+   opens the site in Camoufox, submits a test query, and dumps
    the DOM structure. Capture:
    - The actual input element (textarea vs ProseMirror vs other)
    - The response container selector

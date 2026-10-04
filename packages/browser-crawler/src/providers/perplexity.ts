@@ -13,9 +13,26 @@ import type { Logger } from "@opencited/logger";
 import { defaultLogger } from "@opencited/logger";
 import { toMarkdown } from "./turndown";
 import type { FailureType } from "../errors";
+import {
+	isDuplicatedPerplexityQuery,
+	normalizePerplexityQueryText,
+	perplexityBodyHasLoginWall,
+	PERPLEXITY_ANSWER_SELECTORS,
+	PERPLEXITY_ASK_INPUT_CANDIDATE_SELECTORS,
+	PERPLEXITY_ENSURE_ASK_INPUT_FN,
+	PERPLEXITY_RESPONSE_STATE_FN,
+} from "./perplexity-dom";
 
 const DEBUG_DIR = path.join(process.cwd(), "debug");
 const BUILD_TIMESTAMP = "2026-05-31T14:00:00Z";
+const PERPLEXITY_LOGIN_MODAL_HEADING_RE = /login or sign up/i;
+const PERPLEXITY_LOGIN_MODAL_TEXT_RE =
+	/login or sign up for free|continue with google|continue with apple|continue with email/i;
+const PERPLEXITY_GOOGLE_SIGNIN_RE = /sign in to perplexity with google/i;
+const PERPLEXITY_OVERLAY_SELECTOR =
+	'[role="dialog"], [aria-modal="true"], [data-radix-popper-content-wrapper]';
+const PERPLEXITY_SUBMIT_WAIT_MS = 15_000;
+const PERPLEXITY_ASK_INPUT_WAIT_MS = 45_000;
 
 function writeDebugFile(label: string, content: string): string {
 	fs.mkdirSync(DEBUG_DIR, { recursive: true });
@@ -39,8 +56,16 @@ export class PerplexityProvider implements CrawlerProvider {
 	async navigate(session: BrowserSession): Promise<void> {
 		this.logger.info("Navigating to Perplexity homepage...");
 		await session.page.goto("https://www.perplexity.ai/", {
-			waitUntil: "load",
+			waitUntil: "domcontentloaded",
+			timeout: 60_000,
 		});
+		try {
+			await session.page.waitForLoadState("load", { timeout: 30_000 });
+		} catch {
+			this.logger.warn(
+				"Perplexity load event slow; continuing after domcontentloaded",
+			);
+		}
 		const currentUrl = session.page.url();
 		this.logger.info(`Navigation complete. Current URL: ${currentUrl}`);
 
@@ -52,17 +77,61 @@ export class PerplexityProvider implements CrawlerProvider {
 			return text.substring(0, 200).replace(/\s+/g, " ").trim();
 		});
 		this.logger.info(`Page content preview: "${bodyTextPreview}..."`);
+		await this.dismissPerplexityOverlays(session);
+	}
+
+	private async waitForAskInput(session: BrowserSession): Promise<void> {
+		this.logger.info("Waiting for Perplexity composer (#ask-input)...");
+		const started = Date.now();
+		let lastDismiss = 0;
+		let lastMatched: string | null = null;
+
+		while (Date.now() - started < PERPLEXITY_ASK_INPUT_WAIT_MS) {
+			if (Date.now() - lastDismiss > 2000) {
+				await this.dismissPerplexityOverlays(session);
+				lastDismiss = Date.now();
+			}
+
+			const result = await session.page.evaluate(
+				PERPLEXITY_ENSURE_ASK_INPUT_FN,
+				[...PERPLEXITY_ASK_INPUT_CANDIDATE_SELECTORS],
+			);
+			if (result.ok) {
+				lastMatched = result.matched;
+				break;
+			}
+
+			await session.page.waitForTimeout(400);
+		}
+
+		if (!lastMatched) {
+			throw new Error(
+				`Search input #ask-input not found after ${PERPLEXITY_ASK_INPUT_WAIT_MS / 1000}s`,
+			);
+		}
+
+		this.logger.info(`Perplexity composer ready (matched: ${lastMatched})`);
+		await session.page.locator("#ask-input").first().waitFor({
+			state: "visible",
+			timeout: 5000,
+		});
 	}
 
 	async submitQuery(session: BrowserSession, query: string): Promise<void> {
 		this.logger.info(`Submitting query: "${query.substring(0, 50)}..."`);
 		await this.waitForCloudflareChallenge(session);
+		await this.dismissPerplexityOverlays(session);
 
-		this.logger.info("Waiting for search input #ask-input...");
-		const inputFound = await waitFor(session, "#ask-input", 10000, this.logger);
-
-		if (!inputFound) {
-			this.logger.error("Search input #ask-input not found after 10s");
+		try {
+			await this.waitForAskInput(session);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (!message.includes("#ask-input not found")) {
+				throw error;
+			}
+			this.logger.error(
+				`Search input #ask-input not found after ${PERPLEXITY_ASK_INPUT_WAIT_MS / 1000}s`,
+			);
 			const currentUrl = session.page.url();
 			const pageTitle = await session.page.title();
 			this.logger.error(`Current URL: ${currentUrl}`);
@@ -101,76 +170,756 @@ export class PerplexityProvider implements CrawlerProvider {
 			);
 		}
 
+		await this.prepareComposer(session);
 		this.logger.info("Search input found, filling query...");
-		await session.page.fill("#ask-input", query);
-		this.logger.info("Pressing Enter to submit...");
-		await session.page.keyboard.press("Enter");
+		await this.clearAndFillAskInput(session, query);
+		await this.prepareComposer(session);
+		this.logger.info("Submitting query to Perplexity...");
+		await this.submitAskInput(session, query);
 
-		await session.page.waitForTimeout(1000);
+		await this.dismissPerplexityOverlays(session);
+		await session.page.waitForTimeout(1500);
+		await this.assertNoLoginWall(session, "after query submit");
+
 		const postSubmitUrl = session.page.url();
 		this.logger.info(`Post-submit URL: ${postSubmitUrl}`);
+	}
+
+	private async assertNoLoginWall(
+		session: BrowserSession,
+		phase: string,
+	): Promise<void> {
+		if (await this.hasLoginWall(session)) {
+			throw new Error(
+				`Login wall detected (${phase}) - Perplexity requires sign-in to view answer`,
+			);
+		}
+	}
+
+	private async hasLoginModal(session: BrowserSession): Promise<boolean> {
+		return session.page.evaluate(
+			({ overlaySelector, headingRe, textRe }) => {
+				const heading = new RegExp(headingRe, "i");
+				const body = new RegExp(textRe, "i");
+				for (const el of document.querySelectorAll(overlaySelector)) {
+					const text = el.textContent ?? "";
+					if (heading.test(text) || body.test(text)) {
+						return true;
+					}
+				}
+				for (const el of document.querySelectorAll("h1, h2, h3, p, span")) {
+					const text = el.textContent?.trim() ?? "";
+					if (!heading.test(text)) continue;
+					let node: Element | null = el;
+					for (let depth = 0; depth < 12 && node; depth++) {
+						const style = window.getComputedStyle(node);
+						const z = Number.parseInt(style.zIndex || "0", 10);
+						if (
+							style.position === "fixed" ||
+							node.getAttribute("role") === "dialog" ||
+							z > 50
+						) {
+							return true;
+						}
+						node = node.parentElement;
+					}
+				}
+				return false;
+			},
+			{
+				overlaySelector: PERPLEXITY_OVERLAY_SELECTOR,
+				headingRe: PERPLEXITY_LOGIN_MODAL_HEADING_RE.source,
+				textRe: PERPLEXITY_LOGIN_MODAL_TEXT_RE.source,
+			},
+		);
+	}
+
+	private async removeLoginModal(session: BrowserSession): Promise<boolean> {
+		return session.page.evaluate(
+			({ overlaySelector, headingRe, textRe }) => {
+				const heading = new RegExp(headingRe, "i");
+				const body = new RegExp(textRe, "i");
+				let removed = false;
+
+				for (const el of document.querySelectorAll(overlaySelector)) {
+					const text = el.textContent ?? "";
+					if (heading.test(text) || body.test(text)) {
+						el.remove();
+						removed = true;
+					}
+				}
+
+				for (const el of document.querySelectorAll("h1, h2, h3, p, span")) {
+					const text = el.textContent?.trim() ?? "";
+					if (!heading.test(text)) continue;
+					let node: Element | null = el;
+					for (let depth = 0; depth < 12 && node; depth++) {
+						const style = window.getComputedStyle(node);
+						const z = Number.parseInt(style.zIndex || "0", 10);
+						if (
+							style.position === "fixed" ||
+							node.getAttribute("role") === "dialog" ||
+							z > 50
+						) {
+							node.remove();
+							removed = true;
+							break;
+						}
+						node = node.parentElement;
+					}
+				}
+
+				for (const btn of document.querySelectorAll("button")) {
+					const label = (btn.getAttribute("aria-label") ?? "").toLowerCase();
+					const text = (btn.textContent ?? "").trim();
+					if (
+						text === "Close" ||
+						label === "close" ||
+						label.includes("close dialog") ||
+						label === "dismiss"
+					) {
+						(btn as HTMLElement).click();
+						removed = true;
+					}
+				}
+
+				return removed;
+			},
+			{
+				overlaySelector: PERPLEXITY_OVERLAY_SELECTOR,
+				headingRe: PERPLEXITY_LOGIN_MODAL_HEADING_RE.source,
+				textRe: PERPLEXITY_LOGIN_MODAL_TEXT_RE.source,
+			},
+		);
+	}
+
+	private async dismissCookieBanner(session: BrowserSession): Promise<boolean> {
+		return session.page.evaluate(() => {
+			let acted = false;
+			for (const btn of document.querySelectorAll("button")) {
+				const text = (btn.textContent ?? "").trim();
+				if (/^(got it|decline optional|accept all)$/i.test(text)) {
+					(btn as HTMLElement).click();
+					acted = true;
+				}
+			}
+			for (const el of document.querySelectorAll("div, section")) {
+				const text = (el.textContent ?? "").slice(0, 200);
+				if (!/cookie policy/i.test(text)) continue;
+				const rect = el.getBoundingClientRect();
+				if (rect.width > 200 && rect.height > 80) {
+					el.remove();
+					acted = true;
+				}
+			}
+			return acted;
+		});
+	}
+
+	private async dismissGoogleSignInPrompt(
+		session: BrowserSession,
+	): Promise<boolean> {
+		return session.page.evaluate(
+			({ googleRe }) => {
+				const re = new RegExp(googleRe, "i");
+				let acted = false;
+
+				for (const iframe of document.querySelectorAll("iframe")) {
+					const src = iframe.getAttribute("src") ?? "";
+					if (/google|accounts\.google/i.test(src)) {
+						iframe.remove();
+						acted = true;
+					}
+				}
+
+				const removeOverlayRoot = (start: Element): boolean => {
+					let node: Element | null = start;
+					for (let depth = 0; depth < 14 && node; depth++) {
+						const style = window.getComputedStyle(node);
+						const rect = node.getBoundingClientRect();
+						if (
+							(style.position === "fixed" ||
+								style.position === "absolute" ||
+								node.getAttribute("role") === "dialog") &&
+							rect.width > 100 &&
+							rect.height > 60
+						) {
+							node.remove();
+							return true;
+						}
+						node = node.parentElement;
+					}
+					start.remove();
+					return true;
+				};
+
+				for (const el of document.querySelectorAll(
+					"div, section, aside, header",
+				)) {
+					const text = (el.textContent ?? "").trim();
+					if (!re.test(text) || text.length > 600) continue;
+					if (removeOverlayRoot(el)) acted = true;
+				}
+
+				for (const btn of document.querySelectorAll("button")) {
+					const label = (btn.getAttribute("aria-label") ?? "").toLowerCase();
+					const text = (btn.textContent ?? "").trim();
+					const card = btn.closest("div, section, aside");
+					const cardText = card?.textContent ?? "";
+					if (!re.test(cardText)) continue;
+					if (
+						text === "Close" ||
+						label === "close" ||
+						label.includes("close") ||
+						label === "dismiss"
+					) {
+						(btn as HTMLElement).click();
+						acted = true;
+					}
+				}
+
+				return acted;
+			},
+			{
+				googleRe: PERPLEXITY_GOOGLE_SIGNIN_RE.source,
+			},
+		);
+	}
+
+	private async hasBlockingOverlays(session: BrowserSession): Promise<boolean> {
+		return session.page.evaluate(
+			({ googleRe, headingRe }) => {
+				const google = new RegExp(googleRe, "i");
+				const heading = new RegExp(headingRe, "i");
+
+				const isVisible = (el: Element): boolean => {
+					const style = window.getComputedStyle(el);
+					const rect = el.getBoundingClientRect();
+					return (
+						style.display !== "none" &&
+						style.visibility !== "hidden" &&
+						rect.width > 0 &&
+						rect.height > 0
+					);
+				};
+
+				for (const btn of document.querySelectorAll("button")) {
+					if (!isVisible(btn)) continue;
+					const text = (btn.textContent ?? "").trim();
+					if (/^(got it|decline optional)$/i.test(text)) return true;
+					if (/^continue with (google|apple|email)$/i.test(text)) return true;
+					const card = btn.closest("div, section, aside");
+					const cardText = card?.textContent ?? "";
+					if (google.test(cardText) && /^continue$/i.test(text)) return true;
+				}
+
+				for (const el of document.querySelectorAll(
+					'[role="dialog"], [aria-modal="true"], div, section, aside',
+				)) {
+					if (!isVisible(el)) continue;
+					const text = (el.textContent ?? "").trim();
+					if (text.length > 900) continue;
+					if (google.test(text) || heading.test(text)) {
+						return true;
+					}
+				}
+
+				return false;
+			},
+			{
+				googleRe: PERPLEXITY_GOOGLE_SIGNIN_RE.source,
+				headingRe: PERPLEXITY_LOGIN_MODAL_HEADING_RE.source,
+			},
+		);
+	}
+
+	private async focusAskInput(session: BrowserSession): Promise<void> {
+		await session.page.evaluate(() => {
+			const el = document.querySelector("#ask-input");
+			if (el instanceof HTMLElement) {
+				el.focus({ preventScroll: true });
+			}
+		});
+	}
+
+	private async prepareComposer(session: BrowserSession): Promise<void> {
+		for (let attempt = 0; attempt < 4; attempt++) {
+			await this.dismissPerplexityOverlays(session);
+			await this.focusAskInput(session);
+			await session.page.waitForTimeout(150);
+			if (!(await this.hasBlockingOverlays(session))) {
+				return;
+			}
+			await session.page.waitForTimeout(300);
+		}
+
+		if (await this.hasBlockingOverlays(session)) {
+			this.logger.warn(
+				"Perplexity overlays may still be visible; attempting submit anyway",
+			);
+		}
+	}
+
+	private async hasLoginSheetButtons(
+		session: BrowserSession,
+	): Promise<boolean> {
+		return session.page.evaluate(() => {
+			for (const btn of document.querySelectorAll("button")) {
+				const text = (btn.textContent ?? "").trim();
+				if (/^continue with (google|apple|email)$/i.test(text)) {
+					return true;
+				}
+			}
+			return false;
+		});
+	}
+
+	private async dismissLoginSheet(session: BrowserSession): Promise<boolean> {
+		let any = false;
+		for (let round = 0; round < 5; round++) {
+			const acted = await session.page.evaluate(() => {
+				let clicked = false;
+				for (const btn of document.querySelectorAll("button")) {
+					const text = (btn.textContent ?? "").trim();
+					const aria = btn.getAttribute("aria-label") ?? "";
+					if (aria === "Close" || text === "Close") {
+						(btn as HTMLElement).click();
+						clicked = true;
+					}
+				}
+				for (const el of document.querySelectorAll(
+					'[role="dialog"], [aria-modal="true"]',
+				)) {
+					el.remove();
+					clicked = true;
+				}
+				return clicked;
+			});
+			if (acted) any = true;
+			if (!(await this.hasLoginSheetButtons(session))) {
+				break;
+			}
+			await session.page.keyboard.press("Escape");
+			await session.page.waitForTimeout(250);
+		}
+		return any;
+	}
+
+	private async dismissPerplexityOverlaysWithLocators(
+		session: BrowserSession,
+	): Promise<void> {
+		const page = session.page;
+
+		for (const name of ["Got it", "Decline optional"]) {
+			try {
+				const btn = page.getByRole("button", { name, exact: true });
+				await btn.click({ timeout: 1500 });
+				this.logger.info(`Clicked Perplexity overlay button: ${name}`);
+				await page.waitForTimeout(250);
+			} catch {
+				// button not shown
+			}
+		}
+
+		try {
+			const googleCard = page
+				.locator("div, section, aside")
+				.filter({ hasText: PERPLEXITY_GOOGLE_SIGNIN_RE })
+				.first();
+			if (await googleCard.isVisible({ timeout: 500 })) {
+				await googleCard.evaluate((el) => {
+					el.remove();
+				});
+				this.logger.info("Removed Google sign-in card (locator)");
+				await page.waitForTimeout(250);
+			}
+		} catch {
+			// no google card
+		}
+
+		try {
+			await page.keyboard.press("Escape");
+		} catch {
+			// ignore
+		}
+	}
+
+	private async dismissPerplexityOverlays(
+		session: BrowserSession,
+	): Promise<void> {
+		await this.dismissPerplexityOverlaysWithLocators(session);
+
+		if (await this.dismissLoginSheet(session)) {
+			this.logger.info("Dismissed Perplexity login sheet");
+			await session.page.waitForTimeout(300);
+		}
+
+		if (await this.dismissCookieBanner(session)) {
+			this.logger.info("Dismissed Perplexity cookie banner");
+			await session.page.waitForTimeout(300);
+		}
+
+		if (await this.dismissGoogleSignInPrompt(session)) {
+			this.logger.info("Dismissed Google sign-in prompt");
+			await session.page.waitForTimeout(300);
+		}
+
+		for (let attempt = 0; attempt < 4; attempt++) {
+			if (!(await this.hasLoginModal(session))) {
+				break;
+			}
+			this.logger.info(
+				`Perplexity login modal detected (attempt ${attempt + 1}); dismissing`,
+			);
+			await session.page.keyboard.press("Escape");
+			await session.page.waitForTimeout(200);
+			await session.page.keyboard.press("Escape");
+			await session.page.waitForTimeout(200);
+			if (await this.removeLoginModal(session)) {
+				this.logger.info("Removed Perplexity login modal from DOM");
+				await session.page.waitForTimeout(300);
+			}
+		}
+
+		await this.dismissGoogleSignInPrompt(session);
+		await this.dismissLoginSheet(session);
+
+		if (await this.hasLoginModal(session)) {
+			this.logger.warn(
+				"Perplexity login modal may still be visible after dismissal attempts",
+			);
+		}
+	}
+
+	private async readAskInputValue(session: BrowserSession): Promise<string> {
+		return session.page.evaluate(() => {
+			const el = document.querySelector("#ask-input");
+			if (!el) return "";
+			if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+				return el.value;
+			}
+			return (el as HTMLElement).innerText ?? el.textContent ?? "";
+		});
+	}
+
+	private async clearAskInputWithKeyboard(
+		session: BrowserSession,
+	): Promise<void> {
+		await session.page.keyboard.press("ControlOrMeta+a");
+		await session.page.keyboard.press("Backspace");
+	}
+
+	private async insertAskInputText(
+		session: BrowserSession,
+		query: string,
+	): Promise<void> {
+		await session.page.keyboard.insertText(query);
+	}
+
+	private async setAskInputViaDom(
+		session: BrowserSession,
+		query: string,
+	): Promise<boolean> {
+		return session.page.evaluate((text) => {
+			const el = document.querySelector("#ask-input");
+			if (!el) return false;
+
+			if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+				const proto =
+					el instanceof HTMLTextAreaElement
+						? HTMLTextAreaElement.prototype
+						: HTMLInputElement.prototype;
+				const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
+				descriptor?.set?.call(el, text);
+				el.dispatchEvent(new Event("input", { bubbles: true }));
+				el.dispatchEvent(new Event("change", { bubbles: true }));
+				return true;
+			}
+
+			if (el instanceof HTMLElement) {
+				el.textContent = "";
+				el.textContent = text;
+				el.dispatchEvent(
+					new InputEvent("input", {
+						bubbles: true,
+						inputType: "insertText",
+						data: text,
+					}),
+				);
+				return true;
+			}
+
+			return false;
+		}, query);
+	}
+
+	private async clearAndFillAskInput(
+		session: BrowserSession,
+		query: string,
+	): Promise<void> {
+		const input = session.page.locator("#ask-input").first();
+		await this.dismissPerplexityOverlays(session);
+
+		const domSet = await this.setAskInputViaDom(session, query);
+		if (!domSet) {
+			await input.click({ timeout: 10_000, force: true });
+			await this.clearAskInputWithKeyboard(session);
+			await this.insertAskInputText(session, query);
+		}
+
+		const expected = normalizePerplexityQueryText(query);
+		for (let attempt = 0; attempt < 3; attempt++) {
+			const actual = normalizePerplexityQueryText(
+				await this.readAskInputValue(session),
+			);
+			if (actual === expected) {
+				return;
+			}
+			if (isDuplicatedPerplexityQuery(actual, query)) {
+				this.logger.warn(
+					"Ask input contained duplicated query text; clearing via keyboard",
+				);
+			} else {
+				this.logger.warn(
+					`Ask input mismatch (len ${actual.length} vs ${expected.length}); resetting`,
+				);
+			}
+			await this.clearAskInputWithKeyboard(session);
+			await this.insertAskInputText(session, query);
+		}
+
+		const finalValue = normalizePerplexityQueryText(
+			await this.readAskInputValue(session),
+		);
+		if (finalValue !== expected) {
+			throw new Error(
+				`Failed to set Perplexity ask input (got ${finalValue.length} chars, expected ${expected.length})`,
+			);
+		}
+	}
+
+	private async clickAskSubmitButton(
+		session: BrowserSession,
+	): Promise<boolean> {
+		return session.page.evaluate(() => {
+			const input = document.querySelector("#ask-input");
+			if (!input) return false;
+			const inputRect = input.getBoundingClientRect();
+
+			const isToolbarLabelButton = (btn: HTMLButtonElement): boolean => {
+				const text = (btn.textContent ?? "").trim();
+				if (!text) return false;
+				return /^(search|work|model|attach|pro|sources)$/i.test(text);
+			};
+
+			const candidates: Array<{ btn: HTMLButtonElement; score: number }> = [];
+
+			for (const btn of document.querySelectorAll("button")) {
+				if (!(btn instanceof HTMLButtonElement) || btn.disabled) continue;
+				const label = (btn.getAttribute("aria-label") ?? "").toLowerCase();
+				const text = (btn.textContent ?? "").trim();
+				if (
+					/sign in|log in|google|apple|continue with|single sign-on|sso/i.test(
+						`${text} ${label}`,
+					)
+				) {
+					continue;
+				}
+				if (isToolbarLabelButton(btn)) continue;
+				if (btn.closest('[role="dialog"], [aria-modal="true"]')) continue;
+
+				const rect = btn.getBoundingClientRect();
+				if (rect.width <= 0 || rect.height <= 0) continue;
+				if (rect.left < inputRect.left - 20) continue;
+				if (Math.abs(rect.bottom - inputRect.bottom) > 72) continue;
+
+				let score = rect.left;
+				if (label.includes("submit") || label.includes("send")) score += 10_000;
+				if (!text) score += 500;
+				candidates.push({ btn, score });
+			}
+
+			candidates.sort((a, b) => b.score - a.score);
+			const best = candidates[0]?.btn;
+			if (!best) return false;
+			best.click();
+			return true;
+		});
+	}
+
+	private async requestComposerSubmit(
+		session: BrowserSession,
+	): Promise<boolean> {
+		return session.page.evaluate(() => {
+			const input = document.querySelector("#ask-input");
+			const form = input?.closest("form");
+			if (form instanceof HTMLFormElement) {
+				form.requestSubmit();
+				return true;
+			}
+			return false;
+		});
+	}
+
+	private async waitForSearchRoute(session: BrowserSession): Promise<boolean> {
+		try {
+			await session.page.waitForURL(/\/search\//, {
+				timeout: PERPLEXITY_SUBMIT_WAIT_MS,
+			});
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	private async hasLoginWall(session: BrowserSession): Promise<boolean> {
+		return session.page.evaluate(() => {
+			const bodyText = document.body?.innerText ?? "";
+			const normalized = bodyText.replace(/\s+/g, " ").trim();
+			if (/sign up and repeat your request/i.test(normalized)) {
+				return true;
+			}
+			if (
+				/something went wrong/i.test(normalized) &&
+				/sign up/i.test(normalized)
+			) {
+				return true;
+			}
+			return false;
+		});
+	}
+
+	private async submitAskInput(
+		session: BrowserSession,
+		_query: string,
+	): Promise<void> {
+		const askInput = session.page.locator("#ask-input").first();
+
+		await this.prepareComposer(session);
+
+		if (await this.requestComposerSubmit(session)) {
+			this.logger.info("Submitted Perplexity query via form.requestSubmit()");
+			if (await this.waitForSearchRoute(session)) {
+				return;
+			}
+		}
+
+		await this.prepareComposer(session);
+		this.logger.info("Submitting with Enter on #ask-input");
+		await askInput.focus();
+		await askInput.press("Enter");
+		if (await this.waitForSearchRoute(session)) {
+			return;
+		}
+
+		await this.prepareComposer(session);
+		if (await this.clickAskSubmitButton(session)) {
+			this.logger.info("Submitting via composer arrow button");
+			if (await this.waitForSearchRoute(session)) {
+				return;
+			}
+		}
+
+		const blocked = await this.hasBlockingOverlays(session);
+		throw new Error(
+			blocked
+				? "Perplexity query submit failed: overlays are blocking the composer"
+				: "Perplexity query submit failed: did not navigate to /search/",
+		);
 	}
 
 	async waitForResponse(session: BrowserSession): Promise<void> {
 		await session.page.waitForLoadState("domcontentloaded");
 		await this.waitForCloudflareChallenge(session);
+		await this.dismissPerplexityOverlays(session);
+
+		if (await this.hasLoginWall(session)) {
+			throw new Error(
+				"Login wall detected - Perplexity requires sign-in to view answer",
+			);
+		}
 
 		this.logger.info("Waiting for Perplexity response to finish streaming...");
 		const maxWait = 60000;
 		const pollInterval = 300;
+		const stableWindowMs = 1500;
+		const copyReadyStableMs = 2000;
 		let elapsed = 0;
 		let seenContent = false;
-		let lastContentLength = 0;
+		let lastSignature = "";
 		let stableSince = 0;
+		let lastContentLength = 0;
+		let lastLoggedBucket = -1;
 
 		while (elapsed < maxWait) {
-			const state = await session.page.evaluate(() => {
-				const stopButton = document.querySelector(
-					'button[aria-label*="Stop" i], button[aria-label*="stop" i]',
-				);
-				const isStreaming = !!stopButton;
+			if (elapsed % 1500 < pollInterval) {
+				await this.dismissPerplexityOverlays(session);
+			}
+			await this.assertNoLoginWall(session, "while waiting for answer");
 
-				const contentEl = document.querySelector(
-					'div[id^="markdown-content-"] .prose, [id^="markdown-content-"]',
-				);
-				const contentLength = contentEl?.textContent?.length ?? 0;
-
-				return { isStreaming, contentLength };
-			});
+			const state = await session.page.evaluate(PERPLEXITY_RESPONSE_STATE_FN);
 
 			if (state.contentLength > 0) {
 				seenContent = true;
 			}
+			lastContentLength = state.contentLength;
 
-			if (state.contentLength !== lastContentLength) {
-				lastContentLength = state.contentLength;
+			const signature = `${state.isStreaming}:${state.contentLength}:${state.hasCopyButton}`;
+			if (signature !== lastSignature) {
+				lastSignature = signature;
 				stableSince = elapsed;
 			}
 
 			const stableFor = elapsed - stableSince;
 
-			if (!state.isStreaming && seenContent && stableFor >= 2000) {
+			const copyReady =
+				state.hasCopyButton &&
+				state.contentLength >= 80 &&
+				stableFor >= copyReadyStableMs;
+
+			const copyButtonStable =
+				state.hasCopyButton && stableFor >= 2500 && !state.isStreaming;
+
+			const streamDone =
+				!state.isStreaming && seenContent && stableFor >= stableWindowMs;
+
+			if (copyReady || copyButtonStable || streamDone) {
 				this.logger.info(
-					`Response finished (content: ${state.contentLength} chars, stable for ${stableFor}ms)`,
+					`Response finished (content: ${state.contentLength} chars, copy: ${state.hasCopyButton}, streaming: ${state.isStreaming}, stable for ${stableFor}ms)`,
 				);
 				return;
 			}
 
-			if (state.isStreaming) {
-				if (elapsed % 5000 < pollInterval) {
-					this.logger.info(
-						`Still streaming... (${elapsed / 1000}s, content: ${state.contentLength} chars)`,
-					);
-				}
+			const bucket = Math.floor(elapsed / 5000);
+			if (bucket !== lastLoggedBucket) {
+				this.logger.info(
+					`Still waiting... (${elapsed / 1000}s, content: ${state.contentLength} chars, copy: ${state.hasCopyButton}, streaming: ${state.isStreaming})`,
+				);
+				lastLoggedBucket = bucket;
 			}
 
 			await session.page.waitForTimeout(pollInterval);
 			elapsed += pollInterval;
 		}
 
+		await this.assertNoLoginWall(session, "after response wait timeout");
+
 		this.logger.info(
 			`Response wait timed out at ${elapsed / 1000}s (content: ${lastContentLength} chars)`,
 		);
+	}
+
+	private async queryAnswerProseHtml(session: BrowserSession): Promise<string> {
+		const selectors = [...PERPLEXITY_ANSWER_SELECTORS];
+		return session.page.evaluate((sels) => {
+			for (const sel of sels) {
+				const answerEl = document.querySelector(sel);
+				if (answerEl?.textContent && answerEl.textContent.trim().length > 50) {
+					return answerEl.getHTML();
+				}
+			}
+			return document.body.getHTML();
+		}, selectors);
 	}
 
 	private async waitForCloudflareChallenge(
@@ -204,6 +953,7 @@ export class PerplexityProvider implements CrawlerProvider {
 
 			if (!hasChallenge) {
 				this.logger.info("No Cloudflare challenge detected");
+				await this.dismissPerplexityOverlays(session);
 				return;
 			}
 
@@ -335,13 +1085,7 @@ export class PerplexityProvider implements CrawlerProvider {
 				);
 				if (!content) {
 					this.logger.warn("Clipboard is empty, using DOM extraction");
-					const html = await session.page.evaluate(() => {
-						const answerEl = document.querySelector(
-							'div[id^="markdown-content-"] .prose',
-						);
-						return answerEl?.getHTML() ?? document.body.getHTML();
-					});
-					content = toMarkdown(html);
+					content = toMarkdown(await this.queryAnswerProseHtml(session));
 				}
 			} else {
 				this.logger.info("Click failed, writing page content to debug file...");
@@ -358,13 +1102,7 @@ export class PerplexityProvider implements CrawlerProvider {
 					);
 				} catch {
 					this.logger.warn("Clipboard also failed, using DOM extraction");
-					const html = await session.page.evaluate(() => {
-						const answerEl = document.querySelector(
-							'div[id^="markdown-content-"] .prose',
-						);
-						return answerEl?.getHTML() ?? document.body.getHTML();
-					});
-					content = toMarkdown(html);
+					content = toMarkdown(await this.queryAnswerProseHtml(session));
 				}
 			}
 		} else {
@@ -437,23 +1175,11 @@ export class PerplexityProvider implements CrawlerProvider {
 					);
 					content = clipboardContent;
 				} else {
-					const html = await session.page.evaluate(() => {
-						const answerEl = document.querySelector(
-							'div[id^="markdown-content-"] .prose',
-						);
-						return answerEl?.getHTML() ?? document.body.getHTML();
-					});
-					content = toMarkdown(html);
+					content = toMarkdown(await this.queryAnswerProseHtml(session));
 				}
 			} catch (error) {
 				this.logger.warn("Clipboard also failed, using DOM extraction", error);
-				const html = await session.page.evaluate(() => {
-					const answerEl = document.querySelector(
-						'div[id^="markdown-content-"] .prose',
-					);
-					return answerEl?.getHTML() ?? document.body.getHTML();
-				});
-				content = toMarkdown(html);
+				content = toMarkdown(await this.queryAnswerProseHtml(session));
 				this.logger.info(
 					`Using DOM extraction (length: ${content.length} chars)`,
 				);
@@ -471,7 +1197,7 @@ export class PerplexityProvider implements CrawlerProvider {
 			`Related questions: ${structured.relatedQuestions?.length ?? 0}`,
 		);
 
-		const isLikelyLoginWall = /sign up and repeat your request/i.test(content);
+		const isLikelyLoginWall = perplexityBodyHasLoginWall(content);
 		const isTooShort = content.length < 50;
 		if (isLikelyLoginWall) {
 			this.logger.info("Content appears to be a login wall message — throwing");

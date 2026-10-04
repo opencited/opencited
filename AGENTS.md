@@ -5,6 +5,7 @@
 ```sh
 bun run dev                      # dev server for all packages (UI builds CSS in watch mode)
 bun run dev --filter=web         # dev server for specific app
+bun run dev:email                # React Email preview for scan templates (http://localhost:3030)
 docker compose up redis          # start Valkey (Redis) for BullMQ worker
 bun run build                    # build all packages
 bun run tsc                     # typecheck all packages (runs next typegen first)
@@ -51,6 +52,7 @@ Agents MUST NOT use `git commit` or `git push`. Git is only to be used for read-
 | `packages/browser-crawler` | `@opencited/browser-crawler` | Browser automation with Camoufox (Strategy Pattern + Orchestrator) |
 | `packages/logger` | `@opencited/logger` | Structured logging with pluggable transports (Console, Axiom) |
 | `packages/actions` | `@opencited/actions` | Vercel Workflow SDK actions (DB operations) |
+| `packages/transactional-email` | `@opencited/transactional-email` | React Email templates (scan verification + report) |
 | `packages/queue` | `@opencited/queue` | BullMQ job registry and dispatch (shared between tRPC and worker) |
 | `apps/worker` | `@opencited/worker` | BullMQ worker process (Camoufox + AI providers) |
 | `packages/tailwind-config` | `@opencited/tailwind-config` | Shared Tailwind theme + PostCSS config |
@@ -126,6 +128,10 @@ const url = env.DATABASE_URL;
 ```
 
 ## Agent skills
+
+### Cursor
+
+Primary editor setup: `.cursor/mcp.json`, `.cursor/hooks.json`, and `.cursor/skills/`. See `docs/agents/cursor.md`. Impeccable hooks: `.agents/skills/impeccable/scripts/impeccable hooks on` once per clone.
 
 ### Issue tracker
 

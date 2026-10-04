@@ -9,7 +9,7 @@ dist
 .husky
 .vscode
 .agents
-.opencode
+.cursor
 *.md
 !README.md
 docker-compose.yml

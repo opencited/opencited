@@ -3,6 +3,7 @@ import type { Logger as CrawlerLogger } from "@opencited/logger";
 import type { ProxyOptions } from "@opencited/browser-crawler";
 import { getProxyConfigByDomainProjectIdAction } from "@opencited/actions";
 import type { Context } from "@opencited/actions";
+import { buildProxyOptionsFromList } from "./build-proxy-options";
 import { env } from "../env";
 
 const STICKY_PROXY_PREFIX = "proxy:sticky";
@@ -22,8 +23,8 @@ export async function fetchProxyList(url: string): Promise<string[]> {
 
 	const text = await response.text();
 	const proxies = text
-		.split("\n")
-		.map((line) => line.trim())
+		.split(/\r?\n/)
+		.map((line) => line.replace(/\r/g, "").trim())
 		.filter((line) => line.length > 0 && line.includes(":"));
 
 	if (proxies.length === 0) {
@@ -31,12 +32,6 @@ export async function fetchProxyList(url: string): Promise<string[]> {
 	}
 
 	return proxies;
-}
-
-function buildProxyOptions(proxyList: string[]): ProxyOptions[] {
-	return proxyList.map((proxy) => ({
-		server: `http://${proxy}`,
-	}));
 }
 
 function parseBatchProxyList(raw: string): string[] {
@@ -105,7 +100,7 @@ async function resolveCustomProxyApi(
 	}
 
 	const proxyList = await fetchProxyList(config.sourceValue);
-	const proxies = buildProxyOptions(proxyList);
+	const proxies = buildProxyOptionsFromList(proxyList);
 	logger.info("Proxy list fetched", {
 		proxyCount: proxies.length,
 	});
@@ -130,7 +125,7 @@ async function resolveCustomProxyBatch(
 
 	const proxyList = parseBatchProxyList(config.sourceValue);
 	if (proxyList.length > 0) {
-		const proxies = buildProxyOptions(proxyList);
+		const proxies = buildProxyOptionsFromList(proxyList);
 		logger.info("Using custom batch proxy list", {
 			proxyCount: proxies.length,
 		});
@@ -156,7 +151,7 @@ async function resolveThorDataProxy(
 	}
 
 	const proxyList = await fetchProxyList(env.THORDATA_PROXY_API_URL!);
-	const proxies = buildProxyOptions(proxyList);
+	const proxies = buildProxyOptionsFromList(proxyList);
 	logger.info("Proxy list fetched", {
 		proxyCount: proxies.length,
 	});

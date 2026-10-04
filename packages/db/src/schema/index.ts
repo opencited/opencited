@@ -13,3 +13,6 @@ export * from "./crawlBrandMention";
 export * from "./crawlVisibilityScore";
 export * from "./proxyConfig";
 export * from "./promptTemplate";
+export * from "./publicScan";
+export * from "./publicScanEvent";
+export * from "./scanLead";

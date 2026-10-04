@@ -1,6 +1,9 @@
 import { mock } from "bun:test";
 
 process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/test";
+process.env.RESEND_API_KEY ??= "re_test_key";
+process.env.SCAN_FROM_EMAIL ??= "onboarding@resend.dev";
+process.env.SCAN_CODE_SECRET ??= "test-scan-code-secret-16";
 process.env.LLM_PROVIDER ??= "openai";
 process.env.LLM_MODEL ??= "test-model";
 process.env.LLM_API_KEY ??= "test-key";

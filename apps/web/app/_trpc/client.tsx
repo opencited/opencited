@@ -31,7 +31,8 @@ function getUrl() {
 
 export function TRPCReactProvider({
 	children,
-}: Readonly<{ children: React.ReactNode }>) {
+	devtools = true,
+}: Readonly<{ children: React.ReactNode; devtools?: boolean }>) {
 	const queryClient = getQueryClient();
 	const [trpcClient] = useState(() =>
 		createTRPCClient<AppRouter>({
@@ -44,17 +45,19 @@ export function TRPCReactProvider({
 			<TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
 				{children}
 			</TRPCProvider>
-			<TanStackDevtools
-				config={{ position: "bottom-right", hideUntilHover: true }}
-				eventBusConfig={{ connectToServerBus: true }}
-				plugins={[
-					{
-						name: "TanStack Query",
-						render: <ReactQueryDevtoolsPanel />,
-						defaultOpen: true,
-					},
-				]}
-			/>
+			{devtools && (
+				<TanStackDevtools
+					config={{ position: "bottom-right", hideUntilHover: true }}
+					eventBusConfig={{ connectToServerBus: true }}
+					plugins={[
+						{
+							name: "TanStack Query",
+							render: <ReactQueryDevtoolsPanel />,
+							defaultOpen: true,
+						},
+					]}
+				/>
+			)}
 		</QueryClientProvider>
 	);
 }

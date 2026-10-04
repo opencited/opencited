@@ -11,7 +11,8 @@
 		"./schemas": "./schemas.ts"
 	},
 	"scripts": {
-		"tsc": "tsc --noEmit"
+		"tsc": "tsc --noEmit",
+		"test": "bun test"
 	},
 	"devDependencies": {
 		"@opencited/typescript-config": "workspace:*",
@@ -23,6 +24,7 @@
 		"@opencited/actions": "workspace:*",
 		"@opencited/db": "workspace:*",
 		"@opencited/queue": "workspace:*",
+		"@opencited/scanner": "workspace:*",
 		"@trpc/server": "catalog:",
 		"@trpc/client": "catalog:",
 		"drizzle-orm": "catalog:",

@@ -49,8 +49,8 @@
 }
 
 .animate-fade-up {
-	animation: fade-up 500ms var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1))
-		both;
+	animation: fade-up 300ms cubic-bezier(0.23, 1, 0.32, 1) both;
+	animation-delay: calc(var(--i, 0) * 50ms);
 }
 
 .animate-fade-in {
@@ -72,19 +72,436 @@
 	animation: pulse-subtle 1.2s ease-in-out infinite;
 }
 
+@keyframes scan-action-in {
+	from {
+		opacity: 0;
+		transform: translateX(-6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+.animate-scan-action-in {
+	animation: scan-action-in 280ms
+		var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1)) both;
+}
+
+@keyframes line-swap {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.animate-line-swap {
+	animation: line-swap 320ms
+		var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1)) both;
+}
+
+@keyframes scan-result-in {
+	from {
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.animate-scan-result-in {
+	animation: scan-result-in 520ms
+		var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1)) both;
+}
+
+.scan-hero-shell {
+	position: relative;
+	isolation: isolate;
+	overflow-x: clip;
+}
+
+.scan-hero-shell::before {
+	content: "";
+	position: absolute;
+	top: -12rem;
+	left: 0;
+	right: 0;
+	height: 28rem;
+	width: 100%;
+	max-width: 100%;
+	z-index: -1;
+	pointer-events: none;
+	opacity: 0.55;
+	background-image:
+		linear-gradient(
+			to right,
+			color-mix(in oklab, var(--border) 35%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			to bottom,
+			color-mix(in oklab, var(--border) 35%, transparent) 1px,
+			transparent 1px
+		);
+	background-size: 48px 48px;
+	mask-image: radial-gradient(
+		ellipse 70% 60% at 50% 40%,
+		black 20%,
+		transparent 75%
+	);
+}
+
+.scan-workbench {
+	border-radius: var(--radius-lg, 0.75rem);
+	border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+	background: color-mix(in oklab, var(--muted) 35%, transparent);
+	padding: 0.75rem;
+	box-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 4%, transparent);
+	transition:
+		border-color 200ms ease,
+		box-shadow 200ms ease,
+		background-color 200ms ease;
+}
+
+@keyframes scan-loading-slide {
+	from {
+		transform: translateX(-120%);
+	}
+	to {
+		transform: translateX(320%);
+	}
+}
+
+.scan-loading-track {
+	contain: paint;
+}
+
+.scan-loading-bar {
+	animation: scan-loading-slide 1.4s
+		var(--ease-out-quart, cubic-bezier(0.25, 1, 0.5, 1)) infinite;
+	will-change: transform;
+}
+
+/* About six seconds of drawing, then a hold, then the same loop. */
+.score-card-artifact {
+	--score-card-loop: 8s;
+	--score-card-ease: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes score-card-json {
+	0% {
+		stroke-dashoffset: 100;
+		animation-timing-function: var(--score-card-ease);
+	}
+	10%,
+	100% {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes score-card-llms {
+	0%,
+	10% {
+		stroke-dashoffset: 100;
+		animation-timing-function: var(--score-card-ease);
+	}
+	20%,
+	100% {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes score-card-q1 {
+	0%,
+	20% {
+		stroke-dashoffset: 100;
+		animation-timing-function: var(--score-card-ease);
+	}
+	38%,
+	100% {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes score-card-q2 {
+	0%,
+	54% {
+		stroke-dashoffset: 100;
+		animation-timing-function: var(--score-card-ease);
+	}
+	70%,
+	100% {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes score-card-q3 {
+	0%,
+	70% {
+		stroke-dashoffset: 100;
+		animation-timing-function: var(--score-card-ease);
+	}
+	86%,
+	100% {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes score-card-q2-label {
+	0%,
+	54% {
+		fill: var(--color-muted-foreground);
+		animation-timing-function: var(--score-card-ease);
+	}
+	70%,
+	100% {
+		fill: var(--color-foreground);
+	}
+}
+
+@keyframes score-card-q3-label {
+	0%,
+	70% {
+		fill: var(--color-muted-foreground);
+		animation-timing-function: var(--score-card-ease);
+	}
+	86%,
+	100% {
+		fill: var(--color-foreground);
+	}
+}
+
+@keyframes score-card-tick {
+	0%,
+	38% {
+		transform: scale(0);
+		animation-timing-function: var(--score-card-ease);
+	}
+	46%,
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes score-card-tick-mark {
+	0%,
+	42% {
+		opacity: 0;
+		animation-timing-function: var(--score-card-ease);
+	}
+	48%,
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes score-card-number {
+	0%,
+	46% {
+		opacity: 0;
+		animation-timing-function: var(--score-card-ease);
+	}
+	54%,
+	100% {
+		opacity: 1;
+	}
+}
+
+.score-card-json,
+.score-card-llms,
+.score-card-q1,
+.score-card-q2,
+.score-card-q3,
+.score-card-tick-fill,
+.score-card-tick-mark,
+.score-card-number {
+	animation-duration: var(--score-card-loop);
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+}
+
+.score-card-json,
+.score-card-llms,
+.score-card-q1,
+.score-card-q2,
+.score-card-q3 {
+	stroke-dasharray: 100;
+	stroke-dashoffset: 100;
+}
+
+.score-card-json {
+	animation-name: score-card-json;
+}
+
+.score-card-llms {
+	animation-name: score-card-llms;
+}
+
+.score-card-q1 {
+	animation-name: score-card-q1;
+}
+
+.score-card-q2 {
+	animation-name: score-card-q2;
+}
+
+.score-card-q3 {
+	animation-name: score-card-q3;
+}
+
+.score-card-q1-label {
+	fill: var(--color-foreground);
+}
+
+.score-card-q2-label,
+.score-card-q3-label {
+	animation-duration: var(--score-card-loop);
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+	fill: var(--color-muted-foreground);
+}
+
+.score-card-q2-label {
+	animation-name: score-card-q2-label;
+}
+
+.score-card-q3-label {
+	animation-name: score-card-q3-label;
+}
+
+.score-card-tick-fill {
+	fill: var(--color-foreground);
+	transform-box: fill-box;
+	transform-origin: center;
+	transform: scale(0);
+	animation-name: score-card-tick;
+}
+
+.score-card-tick-mark {
+	fill: none;
+	stroke: var(--color-background);
+	opacity: 0;
+	animation-name: score-card-tick-mark;
+}
+
+.score-card-number {
+	opacity: 0;
+	animation-name: score-card-number;
+}
+
+.score-card-artifact[data-playing="false"] .score-card-json,
+.score-card-artifact[data-playing="false"] .score-card-llms,
+.score-card-artifact[data-playing="false"] .score-card-q1,
+.score-card-artifact[data-playing="false"] .score-card-q2,
+.score-card-artifact[data-playing="false"] .score-card-q3,
+.score-card-artifact[data-playing="false"] .score-card-q2-label,
+.score-card-artifact[data-playing="false"] .score-card-q3-label,
+.score-card-artifact[data-playing="false"] .score-card-tick-fill,
+.score-card-artifact[data-playing="false"] .score-card-tick-mark,
+.score-card-artifact[data-playing="false"] .score-card-number {
+	animation-play-state: paused;
+}
+
+.scan-workbench:focus-within {
+	border-color: color-mix(in oklab, var(--border) 100%, transparent);
+	box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 80%, transparent);
+	background: color-mix(in oklab, var(--muted) 50%, transparent);
+}
+
+.scan-hero-copy[data-compact="true"] {
+	opacity: 0.85;
+}
+
+.scan-hero-copy[data-compact="true"] .scan-hero-subcopy {
+	display: none;
+}
+
+.scan-hero-copy[data-compact="true"] .scan-hero-headline {
+	font-size: 1.125rem;
+	line-height: 1.35;
+}
+
 @media (prefers-reduced-motion: reduce) {
-	.animate-fade-up,
+	.animate-fade-up {
+		animation: fade-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+		animation-delay: 0ms;
+	}
+
 	.animate-fade-in,
 	.animate-scale-in {
 		animation-duration: 200ms;
+		animation-delay: 0ms;
 		animation-fill-mode: both;
-	}
-
-	.animate-fade-up {
-		transform: none;
 	}
 
 	.animate-pulse-subtle {
 		animation-duration: 2s;
+	}
+
+	.animate-scan-action-in {
+		animation-duration: 150ms;
+		transform: none;
+	}
+
+	.animate-line-swap {
+		animation: none;
+	}
+
+	.animate-check-draw {
+		animation: none;
+		stroke-dashoffset: 0;
+	}
+
+	.animate-scan-result-in {
+		animation-duration: 200ms;
+		transform: none;
+	}
+
+	.scan-workbench {
+		transition: none;
+	}
+
+	.scan-hero-shell::before {
+		opacity: 0.35;
+	}
+
+	.scan-loading-bar {
+		animation: none;
+		transform: translateX(0);
+		width: 40%;
+	}
+
+	.score-card-json,
+	.score-card-llms,
+	.score-card-q1,
+	.score-card-q2,
+	.score-card-q3 {
+		animation: none;
+		stroke-dashoffset: 0;
+	}
+
+	.score-card-tick-fill {
+		animation: none;
+		transform: scale(1);
+	}
+
+	.score-card-tick-mark {
+		animation: none;
+		opacity: 1;
+	}
+
+	.score-card-number {
+		animation: none;
+		opacity: 1;
+	}
+
+	.score-card-q2-label,
+	.score-card-q3-label {
+		animation: none;
+		fill: var(--color-foreground);
 	}
 }
