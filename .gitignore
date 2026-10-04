@@ -51,8 +51,12 @@ debug
 .omc
 
 .playwright
+# playwright-cli session snapshots and console logs (local only)
+.playwright-cli/
 # used by playwrite playground for storage (cookie, session etc)
 .playwrite-playground
+# Cursor debug sessions (agent instrumentation)
+.cursor/debug-*.log
 .trigger
 
 .impeccable

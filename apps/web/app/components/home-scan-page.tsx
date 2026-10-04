@@ -1,12 +1,13 @@
 "use client";
 
+import { Separator } from "@opencited/ui";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
-import { Separator } from "@opencited/ui";
-import { BrandNameLink } from "./brand-name";
 import { TRPCReactProvider } from "../_trpc/client";
 import { HOME_SCAN_FAQ } from "../lib/home-scan-seo";
+import { BrandNameLink } from "./brand-name";
+import { ScoreCardArtifact } from "./scan/score-card-artifact";
 import "../components/animations.css";
 
 const FAQ_MONO_PATTERN = /(JSON-LD|llms\.txt)/g;
@@ -50,32 +51,40 @@ export function HomeScanPage() {
 					}`}
 				>
 					<div
-						className="scan-hero-copy max-w-xl text-center space-y-3"
-						data-compact={heroCompact ? "true" : "false"}
+						className={`flex w-full max-w-xl flex-col items-center ${
+							heroCompact ? "gap-6" : "gap-8"
+						}`}
 					>
-						<h1
-							className="scan-hero-headline text-2xl font-semibold tracking-tight lg:text-3xl animate-fade-up"
-							style={{ "--i": 0 } as React.CSSProperties}
-						>
-							See if answer engines cite your site
-						</h1>
-						<p
-							className="scan-hero-subcopy text-sm text-muted-foreground leading-relaxed max-w-[36rem] mx-auto animate-fade-up"
-							style={{ "--i": 1 } as React.CSSProperties}
-						>
-							Free checklist score and top issues here. Verify a work email on
-							your domain for three live Perplexity queries and the full report
-							by email.
-						</p>
-					</div>
+						{heroCompact ? null : <ScoreCardArtifact />}
 
-					<section className="w-full max-w-xl" aria-label="Domain scanner">
-						<Scanner
-							onScanStart={() => setHeroCompact(true)}
-							onScanIdle={() => setHeroCompact(false)}
-							onSuccess={() => setHeroCompact(true)}
-						/>
-					</section>
+						<div
+							className="scan-hero-copy max-w-xl text-center space-y-3"
+							data-compact={heroCompact ? "true" : "false"}
+						>
+							<h1
+								className="scan-hero-headline text-2xl font-semibold tracking-tight lg:text-3xl animate-fade-up"
+								style={{ "--i": 0 } as React.CSSProperties}
+							>
+								See if answer engines cite your site
+							</h1>
+							<p
+								className="scan-hero-subcopy text-sm text-muted-foreground leading-relaxed max-w-[36rem] mx-auto animate-fade-up"
+								style={{ "--i": 1 } as React.CSSProperties}
+							>
+								Free checklist score and top issues here. Verify a work email on
+								your domain for three live Perplexity queries and the full
+								report by email.
+							</p>
+						</div>
+
+						<section className="w-full" aria-label="Domain scanner">
+							<Scanner
+								onScanStart={() => setHeroCompact(true)}
+								onScanIdle={() => setHeroCompact(false)}
+								onSuccess={() => setHeroCompact(true)}
+							/>
+						</section>
+					</div>
 
 					<section
 						className="w-full max-w-xl text-left"

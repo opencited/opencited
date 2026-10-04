@@ -190,6 +190,12 @@
 			"sourceType": "github",
 			"computedHash": "6cea41cf9cf62f8ec857d506426524179ed8be11e897dc5cfb2290d38a079237"
 		},
+		"isometric-animation": {
+			"source": "iart-ai/explainer-video-skills",
+			"sourceType": "github",
+			"skillPath": "skills/isometric-animation/SKILL.md",
+			"computedHash": "3b7b114f3292526edb8f3da0436e2c722715e3cdc421d329c231fc8afe6f4dc5"
+		},
 		"layout": {
 			"source": "pbakaus/impeccable",
 			"sourceType": "github",
