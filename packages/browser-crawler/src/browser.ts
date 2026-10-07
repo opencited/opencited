@@ -61,6 +61,13 @@ function buildCamoufoxLocaleOptions() {
 	};
 }
 
+/** Font list must match the host. A Windows fingerprint on macOS replaces the chrome font and garbles the address bar. */
+function hostFingerprintOs(): "macos" | "windows" | "linux" {
+	if (process.platform === "darwin") return "macos";
+	if (process.platform === "win32") return "windows";
+	return "linux";
+}
+
 export async function openBrowser(
 	options: BrowserOptions = {},
 	logger?: Logger,
@@ -109,6 +116,7 @@ export async function openBrowser(
 		context = (await Promise.race([
 			Camoufox({
 				headless: opts.headless,
+				os: hostFingerprintOs(),
 				user_data_dir: userDataDir,
 				...buildProxyOptions(opts.proxy),
 				...buildWindowOption(opts.viewport),
@@ -138,6 +146,7 @@ export async function openBrowser(
 		browser = (await Promise.race([
 			Camoufox({
 				headless: opts.headless,
+				os: hostFingerprintOs(),
 				...buildProxyOptions(opts.proxy),
 				...buildWindowOption(opts.viewport),
 				...buildCamoufoxLocaleOptions(),
