@@ -83,7 +83,8 @@ const result = await crawler.crawl({
 
 - **URL:** `https://chatgpt.com/`
 - **Auth:** `requiresAuth: false` (works in incognito, no login needed for queries)
-- **Input:** ProseMirror contenteditable div `#prompt-textarea.ProseMirror`. The `<textarea>` is a hidden fallback (`display: none`) and must not be targeted. Click the ProseMirror div to focus, then `keyboard.type()`.
+- **Input:** Prefer the ProseMirror editor `#prompt-textarea.ProseMirror` when it is visible. Logged-out ChatGPT currently renders a native textarea `#mobile-composer-prompt` (`aria-label="Chat with ChatGPT"`, placeholder "Ask ChatGPT"). Focus that textarea, `fill()` the query, and click `button[aria-label="Send message"]`. Enter does not submit this textarea.
+- **Response:** Assistant turns use `[data-message-author-role="assistant"]` or `[data-message-role="assistant"]`. When those are absent, the answer is `section[aria-label="Conversation"] p[data-d-component="text"]`. Streaming ends when `button[aria-label="Stop generating"]` disappears and the answer text is stable. The conversation URL is `/uc/<id>`.
 - **Sign-in popup:** On first visit, ChatGPT shows a "Sign in with Google" modal in the top-right. Dismiss it before interacting with the input: click outside, press Escape, or remove `[role='dialog']` elements via JS.
 - **Response container:** `.markdown.prose` (class `markdown prose dark:prose-invert wrap-break-word w-full dark markdown-new-styling`). The response is standard markdown HTML — `<p>`, `<table>`, `<ul>`, etc.
 - **Inline links and source panel:** ChatGPT produces two kinds of references:

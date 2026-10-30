@@ -1,15 +1,21 @@
-import type { BrowserSession } from "../types";
-import type { CrawlerProvider } from "./base";
-import type { CrawlResult, InlineLink } from "./types";
-import type { FailureType } from "../errors";
 import type { Logger } from "@opencited/logger";
 import { defaultLogger } from "@opencited/logger";
-import { toMarkdown } from "./turndown";
+import type { FailureType } from "../errors";
+import type { BrowserSession } from "../types";
+import type { CrawlerProvider } from "./base";
 import { filterSelfCitations } from "./self-citation-filter";
+import { toMarkdown } from "./turndown";
+import type { CrawlResult, InlineLink } from "./types";
 
 const AUTH_MODAL_SELECTOR = '[role="dialog"][data-state="open"]';
 const AUTH_MODAL_TEXT_RE = /Thanks for trying ChatGPT|Log in or sign up/i;
-const PROVIDER_BUILD = "2026-06-29-chatgpt-logs";
+const PROSE_MIRROR_SELECTOR = "#prompt-textarea.ProseMirror";
+const COMPOSER_SELECTORS = [
+	PROSE_MIRROR_SELECTOR,
+	"#mobile-composer-prompt",
+	'textarea[aria-label="Chat with ChatGPT"]',
+] as const;
+const PROVIDER_BUILD = "2026-10-30-textarea-composer";
 
 export const PROVIDER_TIMINGS = {
 	noOutputTimeout: 90_000,
@@ -32,6 +38,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 	readonly name = "chatgpt";
 	readonly requiresAuth = false;
 	private initialUrl: string | null = null;
+	private composerSelector: string = PROSE_MIRROR_SELECTOR;
 	private logger: Logger;
 	/**
 	 * How long `extractFromSourcesPanel` will poll for the Sources button
@@ -257,11 +264,14 @@ export class ChatGPTProvider implements CrawlerProvider {
 		dialogText: string | null;
 	}> {
 		try {
-			return await session.page.evaluate(() => {
+			return await session.page.evaluate((selector) => {
 				const editor = document.querySelector(
-					"#prompt-textarea.ProseMirror",
+					selector || "#prompt-textarea.ProseMirror",
 				) as HTMLElement | null;
-				const textContent = editor?.textContent ?? "";
+				const textContent =
+					editor instanceof HTMLTextAreaElement
+						? editor.value
+						: (editor?.textContent ?? "");
 				const rect = editor?.getBoundingClientRect();
 				const editorHidden = !rect || rect.height === 0;
 				const dialog = document.querySelector(
@@ -279,7 +289,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 					dialogPresent: !!dialog,
 					dialogText: dialogText || null,
 				};
-			});
+			}, this.composerSelector);
 		} catch (e) {
 			return {
 				url: "<evaluate-failed>",
@@ -298,18 +308,21 @@ export class ChatGPTProvider implements CrawlerProvider {
 		editorTextLength: number;
 	}> {
 		try {
-			return await session.page.evaluate(() => {
+			return await session.page.evaluate((selector) => {
 				const editor = document.querySelector(
-					"#prompt-textarea.ProseMirror",
+					selector || "#prompt-textarea.ProseMirror",
 				) as HTMLElement | null;
 				const focused = !!editor && document.activeElement === editor;
-				const textContent = editor?.textContent ?? "";
+				const textContent =
+					editor instanceof HTMLTextAreaElement
+						? editor.value
+						: (editor?.textContent ?? "");
 				return {
 					focused,
 					documentHasFocus: document.hasFocus(),
 					editorTextLength: textContent.length,
 				};
-			});
+			}, this.composerSelector);
 		} catch {
 			return { focused: false, documentHasFocus: false, editorTextLength: -1 };
 		}
@@ -328,7 +341,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 		);
 
 		try {
-			await session.page.focus("#prompt-textarea.ProseMirror");
+			await session.page.focus(this.composerSelector);
 		} catch (e) {
 			this.logger.info(
 				`[chatgpt:typing] ⚠️ re-focus failed at chunk ${chunkIndex}`,
@@ -352,9 +365,15 @@ export class ChatGPTProvider implements CrawlerProvider {
 		const initialUrl = this.initialUrl;
 		try {
 			const result = await session.page.evaluate(
-				({ initialUrl }) => {
-					const editor = document.querySelector("#prompt-textarea.ProseMirror");
-					const textContent = editor?.textContent?.trim() ?? "";
+				({ initialUrl, selector }) => {
+					const editor = document.querySelector(
+						selector || "#prompt-textarea.ProseMirror",
+					);
+					const textContent = (
+						editor instanceof HTMLTextAreaElement
+							? editor.value
+							: (editor?.textContent ?? "")
+					).trim();
 					const inputCleared = textContent.length === 0;
 
 					const urlChanged =
@@ -374,7 +393,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 						initialUrl,
 					};
 				},
-				{ initialUrl },
+				{ initialUrl, selector: this.composerSelector },
 			);
 			if (result.wasSubmittedEarly) {
 				this.logger.debug("[chatgpt:typing] early-submit signal detected", {
@@ -401,9 +420,15 @@ export class ChatGPTProvider implements CrawlerProvider {
 	): Promise<boolean> {
 		const initialUrl = this.initialUrl;
 		const checks = await session.page.evaluate(
-			({ initialUrl }) => {
-				const editor = document.querySelector("#prompt-textarea.ProseMirror");
-				const textContent = editor?.textContent?.trim() ?? "";
+			({ initialUrl, selector }) => {
+				const editor = document.querySelector(
+					selector || "#prompt-textarea.ProseMirror",
+				);
+				const textContent = (
+					editor instanceof HTMLTextAreaElement
+						? editor.value
+						: (editor?.textContent ?? "")
+				).trim();
 				const inputCleared = textContent.length === 0;
 
 				const urlChanged =
@@ -414,16 +439,22 @@ export class ChatGPTProvider implements CrawlerProvider {
 
 				return { inputCleared, urlChanged, inputHidden };
 			},
-			{ initialUrl },
+			{ initialUrl, selector: this.composerSelector },
 		);
 
 		if (checks.inputCleared || checks.urlChanged || checks.inputHidden) {
 			await session.page.waitForTimeout(200);
-			const doubleCheck = await session.page.evaluate(() => {
-				const editor = document.querySelector("#prompt-textarea.ProseMirror");
-				const textContent = editor?.textContent?.trim() ?? "";
+			const doubleCheck = await session.page.evaluate((selector) => {
+				const editor = document.querySelector(
+					selector || "#prompt-textarea.ProseMirror",
+				);
+				const textContent = (
+					editor instanceof HTMLTextAreaElement
+						? editor.value
+						: (editor?.textContent ?? "")
+				).trim();
 				return textContent.length === 0;
-			});
+			}, this.composerSelector);
 			return (
 				doubleCheck ||
 				checks.inputCleared ||
@@ -458,6 +489,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 					const selectors = [
 						'button[data-testid="send-button"]',
 						'button[aria-label="Send prompt"]',
+						'button[aria-label="Send message"]',
 						'button[aria-label="Send"]',
 						"form button[type='submit']",
 					];
@@ -535,6 +567,108 @@ export class ChatGPTProvider implements CrawlerProvider {
 		);
 	}
 
+	private async focusComposer(session: BrowserSession): Promise<void> {
+		const page = session.page as BrowserSession["page"] & {
+			locator?: (selector: string) => {
+				first: () => {
+					waitFor: (options: {
+						state: "visible";
+						timeout: number;
+					}) => Promise<void>;
+					focus: (options: { timeout: number }) => Promise<void>;
+				};
+			};
+		};
+		let lastError: unknown;
+
+		for (const selector of COMPOSER_SELECTORS) {
+			try {
+				if (typeof page.locator === "function") {
+					const target = page.locator(selector).first();
+					if ((await target.count()) === 0) continue;
+					const box = await target.boundingBox();
+					if (!box || box.width === 0 || box.height === 0) continue;
+					await target.focus({ timeout: 2500 });
+				} else {
+					await page.focus(selector);
+				}
+				this.composerSelector = selector;
+				this.logger.info("[chatgpt:submitQuery] focused composer", {
+					selector,
+				});
+				return;
+			} catch (error) {
+				lastError = error;
+			}
+		}
+
+		const currentUrl = session.page.url();
+		const pageTitle = await session.page.title();
+		this.logger.info("[chatgpt:submitQuery] ❌ focus failed", {
+			selectors: COMPOSER_SELECTORS,
+			url: currentUrl,
+			title: pageTitle,
+			error: lastError instanceof Error ? lastError.message : String(lastError),
+		});
+		throw new Error(
+			`ProseMirror editor #prompt-textarea not found or not focusable. URL: ${currentUrl}, Title: "${pageTitle}"`,
+			{ cause: lastError instanceof Error ? lastError : undefined },
+		);
+	}
+
+	private async submitTextarea(
+		session: BrowserSession,
+		query: string,
+	): Promise<void> {
+		const page = session.page;
+		const composer = page.locator(this.composerSelector);
+		await composer.click();
+		await composer.fill(query);
+		this.logger.info("[chatgpt:submitQuery] filled textarea composer", {
+			selector: this.composerSelector,
+			queryLength: query.length,
+		});
+
+		try {
+			await page
+				.locator('button[aria-label="Send message"]')
+				.click({ timeout: 10_000 });
+		} catch (error) {
+			throw new Error(
+				"submission_failed: Send message button not found on the textarea composer",
+				{ cause: error instanceof Error ? error : undefined },
+			);
+		}
+
+		const initialUrl = this.initialUrl;
+		const started = Date.now();
+		while (Date.now() - started < 8_000) {
+			const state = await session.page.evaluate((selector) => {
+				const editor = document.querySelector(
+					selector,
+				) as HTMLTextAreaElement | null;
+				return {
+					value: editor?.value ?? "",
+					url: window.location.href,
+				};
+			}, this.composerSelector);
+			if (
+				state.value.trim().length === 0 ||
+				(initialUrl !== null && state.url !== initialUrl)
+			) {
+				this.logger.info("[chatgpt:submitQuery] textarea submitted", {
+					url: state.url,
+				});
+				return;
+			}
+			await session.page.waitForTimeout(200);
+		}
+
+		throw new Error(
+			"submission_failed: textarea composer was filled but Send did not submit",
+		);
+	}
+
 	async submitQuery(session: BrowserSession, query: string): Promise<void> {
 		this.initialUrl = session.page.url();
 		this.logger.info("[chatgpt:submitQuery] start", {
@@ -567,23 +701,11 @@ export class ChatGPTProvider implements CrawlerProvider {
 			);
 		}
 
-		try {
-			await session.page.focus("#prompt-textarea.ProseMirror");
-			this.logger.info("[chatgpt:submitQuery] focused ProseMirror editor", {
-				selector: "#prompt-textarea.ProseMirror",
-			});
-		} catch (e) {
-			const currentUrl = session.page.url();
-			const pageTitle = await session.page.title();
-			this.logger.info("[chatgpt:submitQuery] ❌ focus failed", {
-				selector: "#prompt-textarea.ProseMirror",
-				url: currentUrl,
-				title: pageTitle,
-				error: e instanceof Error ? e.message : String(e),
-			});
-			throw new Error(
-				`ProseMirror editor #prompt-textarea not found or not focusable. URL: ${currentUrl}, Title: "${pageTitle}"`,
-			);
+		await this.focusComposer(session);
+
+		if (this.composerSelector !== PROSE_MIRROR_SELECTOR) {
+			await this.submitTextarea(session, sanitizedQuery);
+			return;
 		}
 
 		const focusState = await this.isEditorFocusedAndReady(session);
@@ -640,9 +762,20 @@ export class ChatGPTProvider implements CrawlerProvider {
 
 		while (elapsed < maxWait) {
 			const state = await session.page.evaluate(() => {
-				const stopButton = document.querySelector(
-					'button[data-testid="stop-button"]',
-				);
+				const stopButton = Array.from(
+					document.querySelectorAll(
+						'button[data-testid="stop-button"], button[aria-label="Stop generating"]',
+					),
+				).find((btn) => {
+					const style = window.getComputedStyle(btn);
+					const rect = btn.getBoundingClientRect();
+					return (
+						style.display !== "none" &&
+						style.visibility !== "hidden" &&
+						rect.width > 0 &&
+						rect.height > 0
+					);
+				});
 				const stopVisible = !!stopButton;
 				const stopText = stopButton?.textContent?.trim() ?? "";
 				const stopAriaLabel = stopButton?.getAttribute("aria-label") ?? "";
@@ -650,7 +783,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 					stopButton?.getAttribute("aria-disabled") === "true";
 
 				const responseEls = document.querySelectorAll(
-					'[data-message-author-role="assistant"]',
+					'[data-message-author-role="assistant"], [data-message-role="assistant"]',
 				);
 				let lastEl: Element | null = null;
 				for (const el of responseEls) {
@@ -658,6 +791,17 @@ export class ChatGPTProvider implements CrawlerProvider {
 					if (style.display !== "none" && style.visibility !== "hidden") {
 						lastEl = el;
 					}
+				}
+				if (!lastEl) {
+					const paragraphs = Array.from(
+						document.querySelectorAll(
+							'section[aria-label="Conversation"] p[data-d-component="text"]',
+						),
+					).filter((el) => {
+						const style = window.getComputedStyle(el);
+						return style.display !== "none" && style.visibility !== "hidden";
+					});
+					lastEl = paragraphs[0]?.parentElement ?? paragraphs.at(-1) ?? null;
 				}
 
 				const textContent = lastEl?.textContent ?? "";
@@ -738,7 +882,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 	} | null> {
 		const result = await session.page.evaluate(() => {
 			const elements = document.querySelectorAll(
-				'[data-message-author-role="assistant"]',
+				'[data-message-author-role="assistant"], [data-message-role="assistant"]',
 			);
 			let lastVisible: Element | null = null;
 			for (const el of elements) {
@@ -747,10 +891,24 @@ export class ChatGPTProvider implements CrawlerProvider {
 					lastVisible = el;
 				}
 			}
+			if (!lastVisible) {
+				const paragraphs = Array.from(
+					document.querySelectorAll(
+						'section[aria-label="Conversation"] p[data-d-component="text"]',
+					),
+				).filter((el) => {
+					const style = window.getComputedStyle(el);
+					return style.display !== "none" && style.visibility !== "hidden";
+				});
+				lastVisible = paragraphs[0]?.parentElement ?? paragraphs.at(-1) ?? null;
+			}
 			if (!lastVisible) return null;
 
 			const clone = lastVisible.cloneNode(true) as HTMLElement;
 
+			for (const el of clone.querySelectorAll("[data-message-attribution]")) {
+				el.remove();
+			}
 			for (const el of clone.querySelectorAll('[aria-hidden="true"]')) {
 				el.remove();
 			}
@@ -781,7 +939,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 	): Promise<import("./types").InlineLink[]> {
 		const links = await session.page.evaluate(() => {
 			const responseEls = document.querySelectorAll(
-				'[data-message-author-role="assistant"]',
+				'[data-message-author-role="assistant"], [data-message-role="assistant"]',
 			);
 			let lastVisible: Element | null = null;
 			for (const el of responseEls) {
@@ -838,7 +996,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 			const FOOTNOTE_CLASS = "footnote";
 
 			const responseEls = document.querySelectorAll(
-				'[data-message-author-role="assistant"]',
+				'[data-message-author-role="assistant"], [data-message-role="assistant"]',
 			);
 			const lastResp = responseEls[
 				responseEls.length - 1
@@ -995,7 +1153,7 @@ export class ChatGPTProvider implements CrawlerProvider {
 			const TEXT_RE = /\b\d+\s*sources?\b/i;
 			const ARIA_RE = /\bsources?\b/i;
 			const responseEls = document.querySelectorAll(
-				'[data-message-author-role="assistant"]',
+				'[data-message-author-role="assistant"], [data-message-role="assistant"]',
 			);
 			const lastResp = responseEls[
 				responseEls.length - 1
