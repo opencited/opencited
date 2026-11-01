@@ -1,10 +1,8 @@
-import { Button } from "@opencited/ui";
-import Link from "next/link";
 import { FinalMotif } from "./hairline-icons";
-import { getStartedUrl } from "./landing-links";
+import { GetStartedLink } from "./landing-auth";
 import { LandingContainer, LandingSection } from "./landing-section";
 
-export function FinalCta({ signedIn }: { signedIn: boolean }) {
+export function FinalCta() {
 	return (
 		<LandingSection className="relative isolate overflow-hidden pb-20 pt-16 text-center md:pb-28 md:pt-24">
 			<div
@@ -26,18 +24,15 @@ export function FinalCta({ signedIn }: { signedIn: boolean }) {
 				</p>
 
 				<div className="mt-6">
-					<Button
-						asChild
+					<GetStartedLink
 						size="marketing"
 						className="w-full max-w-[345px] sm:w-auto"
 					>
-						<Link href={getStartedUrl(signedIn)}>
-							Get started
-							<span aria-hidden="true" className="text-marketing-accent-glow">
-								→
-							</span>
-						</Link>
-					</Button>
+						Get started
+						<span aria-hidden="true" className="text-marketing-accent-glow">
+							→
+						</span>
+					</GetStartedLink>
 				</div>
 
 				<p className="mt-3.5 inline-flex items-center gap-1.5 font-mono text-xs leading-none tracking-[0.04em] text-marketing-soft">

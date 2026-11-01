@@ -503,7 +503,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 			at(ANSWERS, index).engine,
 			engine.x + 31,
 			engine.cy + 4.5,
-			{ "font-size": 12.5, "font-weight": 550, fill: C.ink },
+			{ "font-size": 13, "font-weight": 550, fill: C.ink },
 			group,
 		);
 		const spinnerX = engine.x + engine.w - 15;
@@ -675,7 +675,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 			"SOURCES",
 			card.x + 16,
 			chipTop - 6,
-			{ class: "mono", "font-size": 8.5, fill: C.hairline },
+			{ class: "mono", "font-size": 9.5, fill: C.hairline },
 			group,
 		);
 		const chips: ChipNode[] = card.chips.map((sourceChip) => {

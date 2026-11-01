@@ -9,6 +9,7 @@ export const LANDING_DESCRIPTION =
 	"OpenCited runs your buyers' questions on ChatGPT and Perplexity and shows where you're mentioned, cited, or losing out to competitors.";
 
 export const landingMetadata: Metadata = {
+	metadataBase: new URL(LANDING_CANONICAL_URL),
 	title: LANDING_TITLE,
 	description: LANDING_DESCRIPTION,
 	alternates: {
@@ -18,6 +19,11 @@ export const landingMetadata: Metadata = {
 		type: "website",
 		url: LANDING_CANONICAL_URL,
 		siteName: "OpenCited",
+		title: LANDING_TITLE,
+		description: LANDING_DESCRIPTION,
+	},
+	twitter: {
+		card: "summary_large_image",
 		title: LANDING_TITLE,
 		description: LANDING_DESCRIPTION,
 	},

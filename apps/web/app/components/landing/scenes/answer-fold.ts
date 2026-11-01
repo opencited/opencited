@@ -661,7 +661,7 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 		sourcesY + 4,
 		{
 			class: "mono",
-			"font-size": 8.5,
+			"font-size": 9.5,
 			fill: C.hairline,
 		},
 		content,

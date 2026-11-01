@@ -2,7 +2,6 @@ import {
 	at,
 	easeInOut,
 	easeOut,
-	easeOutBack,
 	lerp,
 	pill,
 	progress,
@@ -200,7 +199,7 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 			layout.headerY + 14,
 			{
 				class: "mono",
-				"font-size": 8,
+				"font-size": 10,
 				fill: C.text,
 				"text-anchor": "middle",
 			},
@@ -258,7 +257,7 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 				layout.headerY + 14,
 				{
 					class: "mono",
-					"font-size": 8.5,
+					"font-size": 9.5,
 					fill: C.hairline,
 					"text-anchor": "middle",
 				},
@@ -694,7 +693,7 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 				: "0";
 			cell.ring.setAttribute("stroke-dasharray", run < 1 ? "4 4" : "none");
 			cell.ring.setAttribute("stroke-dashoffset", String(-time * 30));
-			const scale = easeOutBack(pop);
+			const scale = easeOut(pop);
 			cell.dot.group.setAttribute(
 				"transform",
 				`translate(${cell.x},${cell.y}) scale(${pop > 0 ? scale : 0})`,
@@ -745,15 +744,10 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 			"fill",
 			scoreProgress > 0 && scoreProgress < 1 ? C.accentStrong : C.ink,
 		);
-		ofLabel.setAttribute(
-			"x",
-			String(
-				numberX +
-					canvas.measure(String(score), mobile ? 50 : 60, 600) -
-					(mobile ? 2 : 4) +
-					6,
-			),
-		);
+		// Measure the real element, not the shared measurer: the number's
+		// letter-spacing is part of its rendered width.
+		const numberWidth = number.getComputedTextLength();
+		ofLabel.setAttribute("x", String(numberX - 2 + numberWidth + 6));
 		const haloProgress = progress(SCORE_START - 0.2, SCORE_END + 0.4, time);
 		halo.setAttribute(
 			"opacity",
@@ -765,7 +759,7 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 		reveal(spark, easeInOut(progress(6.2, 7.4, time)));
 		area.setAttribute("opacity", String(easeOut(progress(7, 7.6, time))));
 		const endProgress = progress(7.35, 7.7, time);
-		endDot.setAttribute("r", String(3.5 * easeOutBack(endProgress)));
+		endDot.setAttribute("r", String(3.5 * easeOut(endProgress)));
 		endDot.style.opacity = endProgress > 0 ? "1" : "0";
 		const ringProgress = progress(7.5, 8.6, time);
 		endRing.setAttribute("r", String(4 + 10 * ringProgress));

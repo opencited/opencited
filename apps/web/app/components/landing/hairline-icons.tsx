@@ -650,10 +650,12 @@ export function FinalMotif() {
 					stroke="#334155"
 					strokeWidth="1.1"
 				/>
+				{/* Hidden below md: the 560-unit diagram scales down and this
+				    would render under 12px. */}
 				<text
 					x="258"
 					y="23"
-					fontSize="12"
+					fontSize="13"
 					fontWeight="550"
 					fill="#0f172a"
 					className="hidden md:block"
@@ -678,7 +680,7 @@ export function FinalMotif() {
 				<text
 					x="258"
 					y="81"
-					fontSize="12"
+					fontSize="13"
 					fontWeight="550"
 					fill="#0f172a"
 					className="hidden md:block"

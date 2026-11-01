@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
 import Link from "next/link";
+import { useSignedIn } from "./landing-auth";
 import {
 	DASHBOARD_URL,
 	getStartedUrl,
@@ -24,7 +25,9 @@ import {
  * Below 860px the middle nav links move behind this menu.
  * Radix Dialog (Sheet) gives us focus trapping, Escape-to-close and a backdrop.
  */
-export function MobileNav({ signedIn }: { signedIn: boolean }) {
+export function MobileNav() {
+	const signedIn = useSignedIn();
+
 	return (
 		<Sheet>
 			<SheetTrigger

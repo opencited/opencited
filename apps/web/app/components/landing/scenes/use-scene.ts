@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import {
+	type RefObject,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { SvgCanvas } from "./engine";
 
 export const SCENE_MOBILE_QUERY = "(max-width: 767.98px)";
@@ -11,27 +17,41 @@ export type SceneLayout = { W: number; H: number };
 export type SceneDefinition<L extends SceneLayout> = {
 	/** Stable id, used for debugging and as a React key. */
 	id: string;
-	/** Loop length in seconds. */
+	/** Scene timeline length in seconds; playback holds at `finalTime`. */
 	duration: number;
-	/** A moment where every element is in its final, readable state. */
+	/** The frame the scene holds once it has played. */
 	finalTime: number;
 	layout: (mobile: boolean, canvas: SvgCanvas) => L;
 	build: (canvas: SvgCanvas, layout: L) => (time: number) => void;
 };
 
+export type SceneControls = {
+	/** True once the scene has reached its final frame. */
+	finished: boolean;
+	/** Reset to the start frame and play once again. No-op with reduced motion. */
+	replay: () => void;
+};
+
+type Phase = "idle" | "playing" | "done";
+
 /**
  * Drives one scene.
  *
- * - Runs a rAF clock only while the stage is on screen and the tab is visible.
+ * - Plays once when the stage first scrolls into view, then holds `finalTime`.
+ * - Pauses off-screen or in a hidden tab only while playing; it resumes and
+ *   finishes rather than restarting.
+ * - `replay()` resets to the start frame and starts a fresh single play.
  * - With reduced motion, draws the final frame once and never starts the clock.
- * - Rebuilds when the mobile/desktop layout flips.
- * - Starts from time 0, so the pre-JS empty stage is the animation's start state.
+ * - Starts at time 0, so the pre-JS empty stage is the animation's start state.
  */
 export function useScene<L extends SceneLayout>(
 	scene: SceneDefinition<L>,
 	svgRef: RefObject<SVGSVGElement | null>,
 	stageRef: RefObject<HTMLDivElement | null>,
-): void {
+): SceneControls {
+	const [finished, setFinished] = useState(false);
+	const replayRef = useRef<() => void>(() => {});
+
 	useEffect(() => {
 		const svg = svgRef.current;
 		const stage = stageRef.current;
@@ -45,18 +65,19 @@ export function useScene<L extends SceneLayout>(
 		let canvas: SvgCanvas | null = null;
 		let render: ((time: number) => void) | null = null;
 		let builtMode: boolean | null = null;
+		let phase: Phase = "idle";
 		let currentTime = 0;
 		let frameId = 0;
 		let lastTimestamp: number | null = null;
 		let onScreen = false;
 		let disposed = false;
 
-		const draw = (time: number) => {
-			currentTime = time;
+		const drawAt = (time: number) => {
+			currentTime = Math.min(time, scene.finalTime);
 			if (!canvas || !render) {
 				return;
 			}
-			render(time);
+			render(currentTime);
 		};
 
 		const build = () => {
@@ -73,28 +94,6 @@ export function useScene<L extends SceneLayout>(
 			render = scene.build(canvas, layout);
 		};
 
-		const renderNow = () => {
-			build();
-			draw(motionQuery.matches ? scene.finalTime : currentTime);
-		};
-
-		const tick = (timestamp: number) => {
-			if (lastTimestamp !== null) {
-				currentTime += Math.min(0.1, (timestamp - lastTimestamp) / 1000);
-			}
-			lastTimestamp = timestamp;
-			draw(currentTime % scene.duration);
-			frameId = requestAnimationFrame(tick);
-		};
-
-		const start = () => {
-			if (frameId || motionQuery.matches || !onScreen || document.hidden) {
-				return;
-			}
-			lastTimestamp = null;
-			frameId = requestAnimationFrame(tick);
-		};
-
 		const stop = () => {
 			if (frameId) {
 				cancelAnimationFrame(frameId);
@@ -102,10 +101,64 @@ export function useScene<L extends SceneLayout>(
 			frameId = 0;
 		};
 
+		const finish = () => {
+			phase = "done";
+			stop();
+			drawAt(scene.finalTime);
+			if (!disposed) {
+				setFinished(true);
+			}
+		};
+
+		const tick = (timestamp: number) => {
+			if (lastTimestamp !== null) {
+				currentTime += Math.min(0.1, (timestamp - lastTimestamp) / 1000);
+			}
+			lastTimestamp = timestamp;
+			if (currentTime >= scene.finalTime) {
+				finish();
+				return;
+			}
+			drawAt(currentTime);
+			frameId = requestAnimationFrame(tick);
+		};
+
+		const start = () => {
+			if (
+				frameId ||
+				motionQuery.matches ||
+				!onScreen ||
+				document.hidden ||
+				phase !== "playing"
+			) {
+				return;
+			}
+			lastTimestamp = null;
+			frameId = requestAnimationFrame(tick);
+		};
+
+		const renderNow = () => {
+			build();
+			drawAt(motionQuery.matches ? scene.finalTime : currentTime);
+		};
+
+		const replay = () => {
+			if (disposed || motionQuery.matches) {
+				return;
+			}
+			stop();
+			lastTimestamp = null;
+			phase = "playing";
+			setFinished(false);
+			drawAt(0);
+			start();
+		};
+		replayRef.current = replay;
+
 		const observer = new IntersectionObserver(
 			(entries) => {
 				onScreen = entries[0]?.isIntersecting ?? false;
-				if (onScreen) {
+				if (onScreen && phase === "playing") {
 					start();
 				} else {
 					stop();
@@ -118,23 +171,35 @@ export function useScene<L extends SceneLayout>(
 		const onVisibilityChange = () => {
 			if (document.hidden) {
 				stop();
-			} else {
+			} else if (phase === "playing") {
 				start();
 			}
 		};
 		document.addEventListener("visibilitychange", onVisibilityChange);
 
 		const onLayoutChange = () => {
-			renderNow();
+			build();
+			drawAt(motionQuery.matches ? scene.finalTime : currentTime);
 		};
 		layoutQuery.addEventListener("change", onLayoutChange);
 
 		const onMotionChange = () => {
 			if (motionQuery.matches) {
 				stop();
-				renderNow();
-			} else {
+				phase = "done";
+				drawAt(scene.finalTime);
+				if (!disposed) {
+					setFinished(false);
+				}
+				return;
+			}
+			if (phase === "playing") {
 				start();
+			} else if (phase === "done") {
+				drawAt(scene.finalTime);
+				if (!disposed) {
+					setFinished(true);
+				}
 			}
 		};
 		motionQuery.addEventListener("change", onMotionChange);
@@ -146,6 +211,11 @@ export function useScene<L extends SceneLayout>(
 				return;
 			}
 			renderNow();
+			if (motionQuery.matches) {
+				phase = "done";
+				return;
+			}
+			phase = "playing";
 			start();
 		});
 
@@ -156,6 +226,13 @@ export function useScene<L extends SceneLayout>(
 			document.removeEventListener("visibilitychange", onVisibilityChange);
 			layoutQuery.removeEventListener("change", onLayoutChange);
 			motionQuery.removeEventListener("change", onMotionChange);
+			replayRef.current = () => {};
 		};
 	}, [scene, svgRef, stageRef]);
+
+	const replay = useCallback(() => {
+		replayRef.current();
+	}, []);
+
+	return { finished, replay };
 }

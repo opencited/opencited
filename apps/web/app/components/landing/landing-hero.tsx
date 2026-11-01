@@ -1,10 +1,10 @@
 import { Button } from "@opencited/ui";
 import Link from "next/link";
-import { getStartedUrl } from "./landing-links";
+import { GetStartedLink } from "./landing-auth";
 import { LandingContainer } from "./landing-section";
 import { HeroStage } from "./scenes/landing-stages";
 
-export function LandingHero({ signedIn }: { signedIn: boolean }) {
+export function LandingHero() {
 	return (
 		<section className="relative isolate overflow-hidden pb-14 pt-10 md:pb-20 md:pt-12">
 			<div
@@ -31,18 +31,15 @@ export function LandingHero({ signedIn }: { signedIn: boolean }) {
 					</p>
 
 					<div className="mt-6 flex flex-col items-center justify-center gap-1.5 sm:flex-row sm:gap-2">
-						<Button
-							asChild
+						<GetStartedLink
 							size="marketing"
 							className="w-full max-w-[345px] sm:w-auto"
 						>
-							<Link href={getStartedUrl(signedIn)}>
-								Get started
-								<span aria-hidden="true" className="text-marketing-accent-glow">
-									→
-								</span>
-							</Link>
-						</Button>
+							Get started
+							<span aria-hidden="true" className="text-marketing-accent-glow">
+								→
+							</span>
+						</GetStartedLink>
 						<Button
 							asChild
 							variant="ghost"

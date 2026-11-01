@@ -17,7 +17,7 @@ export function BrandNameLink({ className, variant = "app" }: BrandNameProps) {
 	return (
 		<Link
 			href="/"
-			aria-label="OpenCited home"
+			aria-label={marketing ? "OpenCited home" : undefined}
 			className={cn("inline-flex items-center gap-2.5", className)}
 		>
 			{marketing ? (

@@ -1,15 +1,10 @@
-import { Button } from "@opencited/ui";
 import Link from "next/link";
 import { BrandNameLink } from "../brand-name";
-import {
-	DASHBOARD_URL,
-	getStartedUrl,
-	LANDING_NAV_LINKS,
-	SIGN_IN_URL,
-} from "./landing-links";
+import { AccountLink, GetStartedLink } from "./landing-auth";
+import { LANDING_NAV_LINKS } from "./landing-links";
 import { MobileNav } from "./mobile-nav";
 
-export function LandingNav({ signedIn }: { signedIn: boolean }) {
+export function LandingNav() {
 	return (
 		<header className="sticky top-0 z-30 border-b border-marketing-rule bg-marketing-paper">
 			<nav
@@ -31,20 +26,9 @@ export function LandingNav({ signedIn }: { signedIn: boolean }) {
 				</div>
 
 				<div className="flex items-center gap-2">
-					<Button
-						asChild
-						variant="outline"
-						size="marketing-sm"
-						className="hidden sm:inline-flex"
-					>
-						<Link href={signedIn ? DASHBOARD_URL : SIGN_IN_URL}>
-							{signedIn ? "Dashboard" : "Sign in"}
-						</Link>
-					</Button>
-					<Button asChild size="marketing-sm">
-						<Link href={getStartedUrl(signedIn)}>Get started</Link>
-					</Button>
-					<MobileNav signedIn={signedIn} />
+					<AccountLink className="hidden sm:inline-flex" />
+					<GetStartedLink size="marketing-sm">Get started</GetStartedLink>
+					<MobileNav />
 				</div>
 			</nav>
 		</header>

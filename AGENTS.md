@@ -22,14 +22,6 @@ bun run format                   # biome format --write
 - **TypeScript**: Strict mode. `apps/web` extends `@opencited/typescript-config/nextjs.json`; `packages/*` extends `react-library.json`.
 - **Framework**: Next.js 16 App Router (`apps/web/app/`).
 
-
-### Before you commit
-
-- The **`commit-msg` hook** strips `Co-authored-by: Cursor <cursoragent@cursor.com>` if the IDE injects it; everything else about message format is still your responsibility.
-- Never commit `.env`, secrets, keys, or lockfile churn you did not intend.
-- Only commit when explicitly asked; never push, force-push, amend published commits, or open a PR unless asked.
-- Never add `Co-authored-by` trailers for Cursor or other agents; the author line should reflect the human maintainer only.
-
 ## Pre-commit hook
 
 ```

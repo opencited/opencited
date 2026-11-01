@@ -31,9 +31,16 @@ tokens, the dot grid or glows inside the workspace.
 
 ## Motion rules
 
-- Scenes animate only while visible (`IntersectionObserver`) and pause when the tab
-  is hidden (`visibilitychange`).
-- `prefers-reduced-motion: reduce` renders each scene's **final static state** with no animation.
+- Each scene plays **once** when it first scrolls into view, then holds its final
+  frame. Scenes never loop.
+- Show a hairline replay control only after a scene finishes. It resets to the start
+  frame and plays once again; it has `aria-label="Replay animation"`, a hover state
+  and a visible focus ring.
+- Pause off-screen (`IntersectionObserver`) and when the tab is hidden
+  (`visibilitychange`) only while a scene is mid-play. Resuming finishes the scene;
+  it never restarts it.
+- `prefers-reduced-motion: reduce` renders each scene's **final static state** with no
+  animation and no replay control.
 - The pre-JS/SSR frame is the animation's **start** state (empty stage), never the end state.
 - Reserve each stage with a fixed aspect ratio per breakpoint; target CLS ≈ 0.
 - Animate `transform`, `opacity` and SVG stroke properties only. Ease out with

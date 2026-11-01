@@ -54,14 +54,6 @@ export function easeInOut(value: number): number {
 	return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
 
-/** Slight overshoot used for "things landing in place". Never used for text. */
-export function easeOutBack(value: number): number {
-	const t = clamp(value);
-	const c1 = 1.5;
-	const c3 = c1 + 1;
-	return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
-}
-
 export function lerp(from: number, to: number, amount: number): number {
 	return from + (to - from) * amount;
 }

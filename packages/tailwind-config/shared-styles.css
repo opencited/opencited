@@ -1,10 +1,16 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-@theme {
+/*
+ * `inline` so the font utilities resolve the next/font variable on the
+ * element that carries it (the <body>), not on :root where it is undefined.
+ */
+@theme inline {
 	--font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
 
+@theme {
 	--color-background: hsl(0 0% 100%);
 	--color-background-subtle: hsl(220 14% 96%);
 	--color-foreground: hsl(240 10% 3.9%);

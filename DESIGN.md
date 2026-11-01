@@ -250,13 +250,15 @@ Geist for UI and display. Geist Mono for eyebrows, captions, "SAMPLE DATA" tags 
 **The No-Invented-Proof Rule.** No testimonials, customer logos, user counts or benchmarks. The page may not promise what the product doesn't do: no scheduled or weekly runs, no absolute privacy guarantee, no license name, no pricing beyond "Free during beta".
 
 ### Motion
-- Run scenes only while visible (IntersectionObserver). Pause off-screen and when `document.hidden`.
-- With `prefers-reduced-motion: reduce`, render each scene's **final static state** immediately, with no animation.
+- Each scene **plays once** when it first scrolls into view, then holds its final frame. Scenes never loop.
+- A hairline **replay control** appears in the corner of the stage once a scene has finished. It resets to the start frame and plays the scene once more. The control has an `aria-label`, a visible focus ring, a hover state and appears only when the scene is finished.
+- Stop the clock off-screen and while `document.hidden`, but only while a scene is **mid-play**. When it comes back into view it resumes and finishes; it does not restart.
+- With `prefers-reduced-motion: reduce`, render each scene's **final static state** immediately, with no animation, and hide the replay control.
 - The pre-JS/SSR frame matches the animation's **start** state. For these scenes that start state is an empty, invisible stage, so nothing flashes or jumps when JS hydrates.
 - Reserve every stage's final size up front with a fixed aspect ratio per breakpoint. Target CLS ≈ 0.
 - Animate `transform`, `opacity` and SVG stroke properties only — never layout properties. Ease out with `--ease-out-quart` or `--ease-out-expo`. No bounce, no elastic.
 - Hairline icons run **once** when they enter the viewport; their first and last keyframes are the full icon.
-- Build scenes from SVG driven by a small rAF loop. No video files, no stock footage.
+- Build scenes from SVG driven by a small rAF loop that ends at the scene's final frame. No video files, no stock footage.
 
 ## 7. Do's and Don'ts
 
