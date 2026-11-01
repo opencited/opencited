@@ -41,6 +41,37 @@
 	--radius: 0.375rem;
 }
 
+/*
+ * Marketing surface tokens (landing page, `/`).
+ *
+ * DESIGN.md "Steel and Paper" is monochrome and applies to the signed-in app.
+ * The marketing surface adds one emerald accent plus hairline, dot-grid and
+ * glow primitives. These tokens are intentionally separate from the app
+ * palette so a future theme change can't leak the accent into the workspace.
+ */
+@theme {
+	--color-marketing-paper: #fbfcfc;
+	--color-marketing-ink: #0f172a;
+	--color-marketing-ink-soft: #334155;
+	--color-marketing-muted: #475569;
+	--color-marketing-soft: #64748b;
+	--color-marketing-hairline: #94a3b8;
+	--color-marketing-faint: #cbd5e1;
+	--color-marketing-rule: #e2e8f0;
+
+	--color-marketing-accent: #059669;
+	--color-marketing-accent-strong: #047857;
+	--color-marketing-accent-glow: #10b981;
+	--color-marketing-accent-highlight: #d1fae5;
+	--color-marketing-accent-wash: #ecfdf5;
+
+	--color-marketing-competitor: #a8a29e;
+	--color-marketing-competitor-strong: #78716c;
+	--color-marketing-competitor-wash: #efedeb;
+
+	--marketing-hairline-width: 1.25px;
+}
+
 [data-theme="light"] {
 	--color-background: hsl(0 0% 100%);
 	--color-background-subtle: hsl(220 14% 96%);

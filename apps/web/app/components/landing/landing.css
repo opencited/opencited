@@ -1,0 +1,350 @@
+/*
+ * Landing page only. Tokens live in @opencited/tailwind-config;
+ * this file holds the few composed surfaces that are not worth a utility.
+ * See DESIGN.md §6 "Marketing Surface".
+ */
+
+.landing-hairline {
+	border-style: solid;
+	border-width: var(--marketing-hairline-width);
+}
+
+/* Faint dot grid behind the hero and the final CTA. */
+.landing-dot-grid {
+	background-image: radial-gradient(
+		circle at 1px 1px,
+		rgb(15 23 42 / 0.075) 1px,
+		transparent 0
+	);
+	background-size: 22px 22px;
+	mask-image: radial-gradient(
+		ellipse 70% 75% at 50% 42%,
+		#000 30%,
+		transparent 80%
+	);
+	-webkit-mask-image: radial-gradient(
+		ellipse 70% 75% at 50% 42%,
+		#000 30%,
+		transparent 80%
+	);
+}
+
+/* Soft emerald glow behind hero visuals only. Clipped by its section. */
+.landing-glow {
+	background: radial-gradient(
+		ellipse,
+		rgb(16 185 129 / 0.18),
+		rgb(16 185 129 / 0.05) 45%,
+		transparent 70%
+	);
+	filter: blur(30px);
+}
+
+/* Scene typography. Fonts come from next/font CSS variables in layout.tsx. */
+.landing-scene text {
+	font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.landing-scene text.mono {
+	font-family: var(--font-geist-mono), ui-monospace, monospace;
+	letter-spacing: 0.05em;
+}
+
+/*
+ * Hairline icons.
+ *
+ * The 0% and 100% keyframes are the full icon, so the icon is complete before
+ * it runs, after it has run, and for visitors who ask for reduced motion.
+ * Motion runs once, when the icon enters the viewport (data-run).
+ */
+.landing-icon .motion {
+	animation-duration: var(--d, 4s);
+	animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+	animation-iteration-count: 1;
+	animation-fill-mode: both;
+	animation-play-state: paused;
+	transform-box: fill-box;
+}
+
+.landing-icon .motion-view {
+	transform-box: view-box;
+}
+
+.landing-icon[data-run="true"] .motion {
+	animation-play-state: running;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.landing-icon .motion {
+		animation: none;
+	}
+}
+
+@keyframes landing-type {
+	0%,
+	18% {
+		transform: scaleX(1);
+	}
+	30% {
+		transform: scaleX(0);
+	}
+	55%,
+	100% {
+		transform: scaleX(1);
+	}
+}
+
+@keyframes landing-caret {
+	0%,
+	18% {
+		opacity: 1;
+	}
+	30% {
+		opacity: 0;
+	}
+	55%,
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes landing-pop {
+	0%,
+	100% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.14);
+	}
+	60% {
+		transform: scale(1);
+	}
+}
+
+@keyframes landing-travel {
+	0% {
+		offset-distance: 0%;
+		opacity: 1;
+	}
+	70% {
+		offset-distance: 100%;
+		opacity: 1;
+	}
+	85% {
+		offset-distance: 100%;
+		opacity: 0;
+	}
+	86% {
+		offset-distance: 0%;
+		opacity: 0;
+	}
+	100% {
+		offset-distance: 0%;
+		opacity: 1;
+	}
+}
+
+@keyframes landing-ping {
+	0%,
+	100% {
+		transform: scale(1);
+		opacity: 0;
+	}
+	10% {
+		opacity: 0.9;
+	}
+	60% {
+		transform: scale(2.2);
+		opacity: 0;
+	}
+}
+
+@keyframes landing-grow {
+	0%,
+	100% {
+		transform: scaleX(1);
+	}
+	35% {
+		transform: scaleX(0.45);
+	}
+	65% {
+		transform: scaleX(1);
+	}
+}
+
+@keyframes landing-sweep {
+	0%,
+	100% {
+		transform: rotate(0);
+	}
+	40% {
+		transform: rotate(-75deg);
+	}
+	75% {
+		transform: rotate(0);
+	}
+}
+
+@keyframes landing-highlight {
+	0%,
+	25% {
+		transform: scaleX(1);
+	}
+	40% {
+		transform: scaleX(0);
+	}
+	75%,
+	100% {
+		transform: scaleX(1);
+	}
+}
+
+@keyframes landing-nudge {
+	0%,
+	100% {
+		transform: translate(0, 0);
+	}
+	40% {
+		transform: translate(2px, -2px);
+	}
+	60% {
+		transform: translate(0, 0);
+	}
+}
+
+@keyframes landing-swap-left {
+	0%,
+	20%,
+	100% {
+		transform: translateX(0);
+	}
+	45%,
+	70% {
+		transform: translateX(9px);
+	}
+}
+
+@keyframes landing-swap-right {
+	0%,
+	20%,
+	100% {
+		transform: translateX(0);
+	}
+	45%,
+	70% {
+		transform: translateX(-9px);
+	}
+}
+
+@keyframes landing-glint {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	40% {
+		opacity: 0.15;
+	}
+	60% {
+		opacity: 1;
+	}
+}
+
+@keyframes landing-led {
+	0%,
+	100% {
+		fill: #059669;
+	}
+	50% {
+		fill: #ffffff;
+	}
+}
+
+@keyframes landing-spread {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	50% {
+		transform: translateX(var(--dx));
+	}
+}
+
+@keyframes landing-flow {
+	0% {
+		stroke-dashoffset: 0;
+	}
+	100% {
+		stroke-dashoffset: -48;
+	}
+}
+
+@keyframes landing-shackle {
+	0%,
+	15%,
+	100% {
+		transform: translateY(0);
+	}
+	35%,
+	60% {
+		transform: translateY(-3px);
+	}
+	75% {
+		transform: translateY(0);
+	}
+}
+
+.motion-type {
+	animation-name: landing-type;
+	transform-origin: left center;
+}
+.motion-caret {
+	animation-name: landing-caret;
+}
+.motion-pop {
+	animation-name: landing-pop;
+	transform-origin: center;
+}
+.motion-travel {
+	animation-name: landing-travel;
+	animation-timing-function: linear;
+}
+.motion-ping {
+	animation-name: landing-ping;
+	transform-origin: center;
+}
+.motion-grow {
+	animation-name: landing-grow;
+	transform-origin: left center;
+}
+.motion-sweep {
+	animation-name: landing-sweep;
+}
+.motion-highlight {
+	animation-name: landing-highlight;
+	transform-origin: left center;
+}
+.motion-nudge {
+	animation-name: landing-nudge;
+}
+.motion-swap-left {
+	animation-name: landing-swap-left;
+}
+.motion-swap-right {
+	animation-name: landing-swap-right;
+}
+.motion-glint {
+	animation-name: landing-glint;
+}
+.motion-led {
+	animation-name: landing-led;
+}
+.motion-spread {
+	animation-name: landing-spread;
+}
+.motion-flow {
+	animation-name: landing-flow;
+	animation-timing-function: linear;
+}
+.motion-shackle {
+	animation-name: landing-shackle;
+}

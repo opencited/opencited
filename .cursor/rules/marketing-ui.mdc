@@ -1,0 +1,52 @@
+---
+description: Landing page and marketing surface rules
+globs:
+  - "apps/web/app/components/landing/**"
+  - "apps/web/app/page.tsx"
+alwaysApply: false
+---
+
+# Marketing UI
+
+Before writing code here, read `DESIGN.md` (§6 "Marketing Surface") and `PRODUCT.md`.
+
+## Scope
+
+This rule covers the public landing page only: `apps/web/app/page.tsx` and
+`apps/web/app/components/landing/**`. The signed-in app (`/app/*`) keeps the
+monochrome "Steel and Paper" rules in `DESIGN.md` §2–§5. Never reuse marketing
+tokens, the dot grid or glows inside the workspace.
+
+## Copy guardrails
+
+- Positioning: "See what AI tells your buyers about you."
+- **Get started** → `/sign-up` (`/app/dashboard` when signed in). **Sign in** → `/sign-in`.
+- Pricing: only "Free during beta". No pricing section, no tiers.
+- No license name (no MIT) anywhere until a `LICENSE` file exists.
+- No Privacy or Terms links until `/privacy` and `/terms` exist.
+- No testimonials, customer logos, user counts or benchmarks.
+- No weekly/automatic run promises, no absolute privacy guarantees.
+- Every illustrative number, answer, brand and competitor is labelled sample data,
+  using Acme CRM (brand) and Northwind / Globex (competitors).
+
+## Motion rules
+
+- Scenes animate only while visible (`IntersectionObserver`) and pause when the tab
+  is hidden (`visibilitychange`).
+- `prefers-reduced-motion: reduce` renders each scene's **final static state** with no animation.
+- The pre-JS/SSR frame is the animation's **start** state (empty stage), never the end state.
+- Reserve each stage with a fixed aspect ratio per breakpoint; target CLS ≈ 0.
+- Animate `transform`, `opacity` and SVG stroke properties only. Ease out with
+  `--ease-out-quart` / `--ease-out-expo`. No bounce.
+- Hairline icons run once on enter; first and last keyframes are the full icon.
+- No video files and no stock footage.
+
+## Components
+
+- Use `Button`/`Sheet`/`Badge` from `@opencited/ui`. Colour, border and variant
+  changes belong in `cva` variants in `packages/ui`, not in `className` here.
+- Allowed `className` use: layout, spacing, sizing, typography scale, interaction states.
+- Internal links use `next/link`. External links (GitHub) use `<a>` with
+  `target="_blank"` and `rel="noreferrer"`.
+- Keep `page.tsx` a server component. Client components are limited to the animated
+  scenes, the mobile menu and any interactive widget.

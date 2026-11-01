@@ -20,7 +20,9 @@ OpenCited is an open-source Answer Engine Optimization (AEO) workspace: it analy
 
 ## Positioning
 
-OpenCited's claim that a neighboring product could not truthfully copy: **open-source (MIT), self-hostable AEO analysis with no limits on workspaces, domains, or users**—against closed-source AEO/AIO tools charging $200–500/month. Mechanism-wise, the peer-relative AI Visibility Score is computed from a documented, versioned formula with inspectable sub-scores rather than a proprietary black-box number.
+**See what AI tells your buyers about you.** OpenCited runs your buyers' questions on real answer engines (ChatGPT and Perplexity today) and shows where you're mentioned, cited, or losing out to competitors — mentions, citations, competitors, insights and the AI Visibility Score, in one report.
+
+OpenCited's claim that a neighboring product could not truthfully copy: **open source, self-hostable AEO analysis with no limits on workspaces, domains, or users**—against closed-source AEO/AIO tools charging $200–500/month. Mechanism-wise, the peer-relative AI Visibility Score is computed from a documented, versioned formula with inspectable sub-scores rather than a proprietary black-box number.
 
 ## Operating Context
 
@@ -28,7 +30,7 @@ OpenCited's claim that a neighboring product could not truthfully copy: **open-s
 - Crawls may require proxies and per-provider rate limits; results arrive asynchronously and are reviewed later.
 - Technical setup is part of the product: self-hosting (Postgres, Redis/Valkey, Clerk auth, LLM API key), Docker for the worker, Bun for development.
 - Documentation and specs live in-repo: `README.md`, `CONTEXT.md` glossary, `docs/adr/`, `docs/agents/visibility-score.md`.
-- Evaluation happens in the open: GitHub repo, MIT license, self-host guide.
+- Evaluation happens in the open: GitHub repo and self-host guide.
 
 ## Capabilities and Constraints
 
@@ -48,9 +50,10 @@ OpenCited's claim that a neighboring product could not truthfully copy: **open-s
 ## Brand Commitments
 
 - **Name:** OpenCited.
-- **License stance:** MIT, self-hostable, no workspace/domain/user limits in the open-source version.
+- **License stance:** open source and self-hostable, with no workspace/domain/user limits in the open-source edition. Do not name a license until a `LICENSE` file ships in the repo.
 - **Voice**: Precise, minimal, no fluff. Every element earns its place.
 - **Personality**: Calm, focused, authoritative — a well-organized workspace that reduces cognitive load. Not flashy; confident through restraint. Technical but not intimidating.
+- **Marketing positioning**: "See what AI tells your buyers about you." The landing page sells answer-engine runs, mentions, citations, competitors, insights and the AI Visibility Score, and sends people to sign up. Free during beta; no waitlist and no invite-only wording.
 - **3-word personality**: Calm · Technical · Refined
 
 (Visual identity — palette, typography, components — is recorded in `DESIGN.md`, not here.)
@@ -61,8 +64,8 @@ OpenCited's claim that a neighboring product could not truthfully copy: **open-s
 - `CONTEXT.md` — canonical domain glossary (domainProject, crawl, visibilityScore, peer set, etc.).
 - `docs/adr/0001-ai-visibility-redesign.md`, `0002-visibility-score.md`, `0003-multi-provider-architecture.md` — decision history.
 - `docs/agents/visibility-score.md` — normative score specification.
-- `DESIGN.md` — incumbent visual system ("Steel and Paper").
-- **Absences future work must not fabricate:** no customer logos, testimonials, case studies, press, benchmarks, or pricing pages exist in the repo. No dedicated brand logo asset ships in `apps/web/public/` (only framework svgs).
+- `DESIGN.md` — incumbent visual system ("Steel and Paper"); §6 covers the marketing surface.
+- **Absences future work must not fabricate:** no customer logos, testimonials, case studies, press, benchmarks, or pricing pages exist in the repo. No dedicated brand logo asset ships in `apps/web/public/` (only framework svgs). There is no `LICENSE` file, so no surface may name a license.
 
 ## Product Principles
 
