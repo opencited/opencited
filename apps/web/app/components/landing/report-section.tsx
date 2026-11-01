@@ -54,7 +54,7 @@ export function ReportSection() {
 					<AnswerStage
 						label="Line drawing: one AI answer is highlighted for brand mentions, cited sources and competitors, then folds into a single report row with a sample score change. Sample data."
 						caption="Illustrative example · made-up brand and competitors · sample data"
-						stageClassName="mx-auto aspect-[620/346] max-w-[620px] max-md:aspect-[345/418] max-md:max-w-[345px]"
+						stageClassName="mx-auto aspect-[345/418] max-w-[345px] sm:max-w-[440px] xl:aspect-[620/346] xl:max-w-[620px]"
 					/>
 
 					<ul>

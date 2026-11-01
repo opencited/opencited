@@ -9,7 +9,7 @@ import {
 } from "react";
 import { SvgCanvas } from "./engine";
 
-export const SCENE_MOBILE_QUERY = "(max-width: 767.98px)";
+export const SCENE_COMPACT_QUERY = "(max-width: 1279.98px)";
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 export type SceneLayout = { W: number; H: number };
@@ -28,6 +28,8 @@ export type SceneDefinition<L extends SceneLayout> = {
 export type SceneControls = {
 	/** True once the scene has reached its final frame. */
 	finished: boolean;
+	/** True when the visitor asked for reduced motion; no replay control. */
+	reducedMotion: boolean;
 	/** Reset to the start frame and play once again. No-op with reduced motion. */
 	replay: () => void;
 };
@@ -43,6 +45,12 @@ type Phase = "idle" | "playing" | "done";
  * - `replay()` resets to the start frame and starts a fresh single play.
  * - With reduced motion, draws the final frame once and never starts the clock.
  * - Starts at time 0, so the pre-JS empty stage is the animation's start state.
+ *
+ * The compact (stacked) composition is used below the `xl` breakpoint: the wide
+ * composition is drawn for a 1080px stage, and letting it shrink to a tablet
+ * container would render its 8.5px labels under 10px. The compact composition
+ * is capped at 440px from `sm` up, so tablet widths keep every label at or
+ * above 10px.
  */
 export function useScene<L extends SceneLayout>(
 	scene: SceneDefinition<L>,
@@ -50,6 +58,7 @@ export function useScene<L extends SceneLayout>(
 	stageRef: RefObject<HTMLDivElement | null>,
 ): SceneControls {
 	const [finished, setFinished] = useState(false);
+	const [reducedMotion, setReducedMotion] = useState(false);
 	const replayRef = useRef<() => void>(() => {});
 
 	useEffect(() => {
@@ -59,8 +68,9 @@ export function useScene<L extends SceneLayout>(
 			return;
 		}
 
-		const layoutQuery = window.matchMedia(SCENE_MOBILE_QUERY);
+		const layoutQuery = window.matchMedia(SCENE_COMPACT_QUERY);
 		const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+		setReducedMotion(motionQuery.matches);
 
 		let canvas: SvgCanvas | null = null;
 		let render: ((time: number) => void) | null = null;
@@ -184,6 +194,7 @@ export function useScene<L extends SceneLayout>(
 		layoutQuery.addEventListener("change", onLayoutChange);
 
 		const onMotionChange = () => {
+			setReducedMotion(motionQuery.matches);
 			if (motionQuery.matches) {
 				stop();
 				phase = "done";
@@ -234,5 +245,5 @@ export function useScene<L extends SceneLayout>(
 		replayRef.current();
 	}, []);
 
-	return { finished, replay };
+	return { finished, reducedMotion, replay };
 }

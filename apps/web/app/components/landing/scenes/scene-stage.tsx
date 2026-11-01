@@ -1,7 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { useRef } from "react";
 import { type SceneDefinition, type SceneLayout, useScene } from "./use-scene";
 
 function ReplayIcon() {
@@ -43,12 +43,41 @@ export function SceneStage<L extends SceneLayout>({
 	stageClassName,
 	className,
 }: SceneStageProps<L>) {
+	const figureRef = useRef<HTMLElement>(null);
+	const buttonRef = useRef<HTMLButtonElement>(null);
 	const stageRef = useRef<HTMLDivElement>(null);
 	const svgRef = useRef<SVGSVGElement>(null);
-	const { finished, replay } = useScene(scene, svgRef, stageRef);
+	const restoreFocus = useRef(false);
+	const { finished, replay, reducedMotion } = useScene(scene, svgRef, stageRef);
+
+	const handleReplay = () => {
+		// The button is hidden and out of the tab order while the scene plays, so
+		// focus would otherwise fall back to <body>. Park it on the figure and
+		// move it back when the replay finishes.
+		restoreFocus.current = document.activeElement === buttonRef.current;
+		if (restoreFocus.current) {
+			figureRef.current?.focus({ preventScroll: true });
+		}
+		replay();
+	};
+
+	useEffect(() => {
+		if (!finished || !restoreFocus.current) {
+			return;
+		}
+		restoreFocus.current = false;
+		buttonRef.current?.focus({ preventScroll: true });
+	}, [finished]);
 
 	return (
-		<figure className={cn("m-0", className)}>
+		<figure
+			ref={figureRef}
+			tabIndex={-1}
+			className={cn(
+				"m-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-marketing-accent focus-visible:ring-offset-2 focus-visible:ring-offset-marketing-paper",
+				className,
+			)}
+		>
 			<div
 				ref={stageRef}
 				className={cn("landing-scene relative w-full", stageClassName)}
@@ -65,17 +94,23 @@ export function SceneStage<L extends SceneLayout>({
 				<span className="text-center font-mono text-[11px] leading-relaxed tracking-[0.03em] text-marketing-soft">
 					{caption}
 				</span>
-				{finished ? (
+				{reducedMotion ? null : (
 					<button
+						ref={buttonRef}
 						type="button"
-						onClick={replay}
+						onClick={handleReplay}
 						aria-label="Replay animation"
+						aria-hidden={finished ? undefined : true}
+						tabIndex={finished ? 0 : -1}
 						title="Replay animation"
-						className="absolute right-0 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full border-[1.25px] border-marketing-faint bg-marketing-paper text-marketing-ink-soft transition-colors hover:border-marketing-accent hover:text-marketing-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marketing-accent focus-visible:ring-offset-2 focus-visible:ring-offset-marketing-paper"
+						className={cn(
+							"absolute right-0 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full border-[1.25px] border-marketing-faint bg-marketing-paper text-marketing-ink-soft transition-[color,border-color,opacity] duration-200 hover:border-marketing-accent hover:text-marketing-accent-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marketing-accent focus-visible:ring-offset-2 focus-visible:ring-offset-marketing-paper",
+							finished ? "opacity-100" : "pointer-events-none opacity-0",
+						)}
 					>
 						<ReplayIcon />
 					</button>
-				) : null}
+				)}
 			</figcaption>
 		</figure>
 	);

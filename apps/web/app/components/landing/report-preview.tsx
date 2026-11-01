@@ -25,7 +25,7 @@ export function ReportPreview() {
 				<ReportGridStage
 					label="Line drawing: a grid of buyer questions against answer engines fills in as runs finish, then resolves into a sample AI Visibility Score and a trend line. Sample data."
 					caption="Sample report · made-up brand (Acme CRM) · sample data, not real results"
-					stageClassName="mx-auto aspect-[1080/400] max-w-[1080px] max-md:aspect-[345/538] max-md:max-w-[345px]"
+					stageClassName="mx-auto aspect-[345/538] max-w-[345px] sm:max-w-[440px] xl:aspect-[1080/400] xl:max-w-[1080px]"
 				/>
 			</LandingContainer>
 		</LandingSection>

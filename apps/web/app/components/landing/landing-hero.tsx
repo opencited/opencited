@@ -64,7 +64,7 @@ export function LandingHero() {
 				<HeroStage
 					label="Line drawing: one buyer question is sent to ChatGPT and Perplexity, both answers come back with the brand, cited sources and competitors highlighted, and the marks add up into a report with a sample AI Visibility Score. Sample data."
 					caption="Illustrative example · made-up brand (Acme CRM) and competitors · sample data"
-					stageClassName="mx-auto mt-10 aspect-[1080/400] max-w-[1080px] max-md:aspect-[345/783] max-md:max-w-[345px]"
+					stageClassName="mx-auto mt-10 aspect-[345/783] max-w-[345px] sm:max-w-[440px] xl:aspect-[1080/400] xl:max-w-[1080px]"
 				/>
 			</LandingContainer>
 		</section>

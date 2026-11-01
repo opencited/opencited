@@ -2,9 +2,18 @@ import { ImageResponse } from "next/og";
 import { LANDING_DESCRIPTION } from "./lib/landing-seo";
 
 export const alt =
-	"OpenCited — see what AI tells your buyers about you. Sample report with mentions, citations and an AI Visibility Score.";
+	"OpenCited — see what AI tells your buyers about you. Runs your buyers' questions on ChatGPT and Perplexity and shows where you're mentioned, cited, or losing out to competitors. Free during beta.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+/**
+ * `next/og`'s text layout measures the space after a word ending in "y" about
+ * twice as wide, which reads as a double space ("Perplexity  and"). A
+ * zero-width non-joiner keeps the following space at its normal width.
+ */
+function normalizeSpaceAfterY(text: string): string {
+	return text.replace(/y /g, "y\u200C ");
+}
 
 /**
  * Site-wide share card. Generated at build time, no image asset to maintain.
@@ -78,7 +87,7 @@ export default function OpenGraphImage() {
 						maxWidth: 820,
 					}}
 				>
-					{LANDING_DESCRIPTION}
+					{normalizeSpaceAfterY(LANDING_DESCRIPTION)}
 				</div>
 			</div>
 
@@ -96,7 +105,7 @@ export default function OpenGraphImage() {
 							color: "#334155",
 						}}
 					>
-						{label}
+						{normalizeSpaceAfterY(label)}
 					</div>
 				))}
 				<div
