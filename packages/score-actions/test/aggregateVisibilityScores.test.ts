@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { aggregateVisibilityScores } from "../src/aggregateVisibilityScores";
 import type { ScoredCrawl } from "../src";
+import { aggregateVisibilityScores } from "../src/aggregateVisibilityScores";
 
 const TARGET_BRAND_ID = "target";
 const COMPETITOR_A_ID = "competitor-a";
@@ -604,5 +604,78 @@ describe("aggregateVisibilityScores — trend", () => {
 		const nonNullDays = result.trend.filter((p) => p.score !== null);
 		expect(nonNullDays.length).toBeGreaterThan(0);
 		expect(nonNullDays.length).toBeLessThan(30);
+	});
+});
+
+describe("aggregateVisibilityScores — engine availability", () => {
+	function scoredPair(engine: string, mentionScore: number): ScoredCrawl[] {
+		return [
+			makeCrawl({
+				brandId: TARGET_BRAND_ID,
+				engine,
+				completedAt: makeDate(1),
+				mentionScore,
+				positionScore: mentionScore,
+				citationScore: mentionScore,
+				sentimentScore: mentionScore,
+				coMentionScore: mentionScore,
+			}),
+			makeCrawl({
+				brandId: COMPETITOR_A_ID,
+				engine,
+				completedAt: makeDate(1),
+				mentionScore: 0,
+				positionScore: 0,
+				citationScore: 0,
+				sentimentScore: 0,
+				coMentionScore: 0,
+			}),
+		];
+	}
+
+	it("keeps disabled engines in the breakdown but out of crossEngineScore", () => {
+		const crawls = [
+			...scoredPair("chatgpt", 100),
+			...scoredPair("perplexity", 0),
+		];
+
+		const allEngines = aggregateVisibilityScores(crawls, TARGET_BRAND_ID, {
+			minCrawlsPerEngine: 1,
+		});
+		const enabledOnly = aggregateVisibilityScores(crawls, TARGET_BRAND_ID, {
+			minCrawlsPerEngine: 1,
+			includedEngines: ["chatgpt"],
+		});
+
+		expect(
+			enabledOnly.perBrandPerEngineScores.map((score) => score.engine).sort(),
+		).toEqual(["chatgpt", "perplexity"]);
+		const chatgptScore = enabledOnly.perBrandPerEngineScores.find(
+			(score) => score.engine === "chatgpt",
+		)?.score;
+		expect(chatgptScore).toBeNumber();
+		expect(enabledOnly.crossEngineScore).toBe(chatgptScore ?? null);
+		expect(enabledOnly.crossEngineScore).not.toBe(allEngines.crossEngineScore);
+	});
+
+	it("averages every engine when includedEngines is omitted", () => {
+		const crawls = [
+			...scoredPair("chatgpt", 100),
+			...scoredPair("perplexity", 0),
+		];
+
+		const result = aggregateVisibilityScores(crawls, TARGET_BRAND_ID, {
+			minCrawlsPerEngine: 1,
+		});
+
+		expect(result.perBrandPerEngineScores).toHaveLength(2);
+		expect(result.crossEngineScore).not.toBeNull();
+		const average = Math.round(
+			result.perBrandPerEngineScores.reduce(
+				(sum, score) => sum + score.score,
+				0,
+			) / result.perBrandPerEngineScores.length,
+		);
+		expect(result.crossEngineScore).toBe(average);
 	});
 });

@@ -1,20 +1,21 @@
-import type { Job } from "bullmq";
-import type { Logger as CrawlerLogger } from "@opencited/logger";
-import {
-	Crawler,
-	createProvider,
-	type CrawlResult,
-} from "@opencited/browser-crawler";
 import {
 	citationUrlsFromCrawl,
 	createDrizzleScanRepository,
 	executeScanMentionProbe,
 	sendMentionProbeReportEmails,
 } from "@opencited/actions";
+import {
+	Crawler,
+	type CrawlResult,
+	createProvider,
+} from "@opencited/browser-crawler";
+import type { Logger as CrawlerLogger } from "@opencited/logger";
 import type { JobPayload } from "@opencited/queue";
+import type { Job } from "bullmq";
 import { withDb } from "../db";
-import { resolveProxiesForPublicScan } from "../lib/resolve-public-scan-proxies";
 import { env } from "../env";
+import { readAnswerEngines } from "../lib/answer-engine-availability";
+import { resolveProxiesForPublicScan } from "../lib/resolve-public-scan-proxies";
 
 type ScanMentionProbeJob = Job<JobPayload<"scan-mention-probe">>;
 
@@ -54,32 +55,45 @@ export async function handleScanMentionProbeJob(
 	job: ScanMentionProbeJob,
 	logger: CrawlerLogger,
 ): Promise<void> {
-	const { publicScanId, domain, brandName, queries } = job.data;
+	const { publicScanId } = job.data;
 	const now = () => new Date();
 
 	let probe: Awaited<ReturnType<typeof executeScanMentionProbe>> = {
 		status: "unavailable",
 	};
 
-	try {
-		const crawl = await createDefaultScanMentionProbeCrawl(logger);
-		probe = await executeScanMentionProbe(
-			job.data,
-			crawl,
-			now,
-			(query, error) => {
-				logger.error("Scan mention probe crawl failed", {
-					query,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			},
-		);
-	} catch (error) {
-		logger.error("Scan mention probe failed", {
+	const perplexity = await withDb(async (db) => {
+		const engines = await readAnswerEngines(db);
+		return engines.find((engine) => engine.key === "perplexity");
+	});
+
+	if (!perplexity?.enabled) {
+		// Same stored outcome as a probe that fails: status "unavailable", and no browser.
+		logger.info("Skipped scan mention probe because Perplexity is disabled", {
 			publicScanId,
-			error: error instanceof Error ? error.message : String(error),
+			reason: perplexity?.disabledReason,
 		});
-		probe = { status: "unavailable" };
+	} else {
+		try {
+			const crawl = await createDefaultScanMentionProbeCrawl(logger);
+			probe = await executeScanMentionProbe(
+				job.data,
+				crawl,
+				now,
+				(query, error) => {
+					logger.error("Scan mention probe crawl failed", {
+						query,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				},
+			);
+		} catch (error) {
+			logger.error("Scan mention probe failed", {
+				publicScanId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			probe = { status: "unavailable" };
+		}
 	}
 
 	await withDb(async (db) => {

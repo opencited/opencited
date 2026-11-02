@@ -167,16 +167,15 @@ points with growing wait windows).
 5. **Set the rate limit** in the `CRAWL_RATE_LIMITS` env var (JSON map). If
    unsure, start at `0.5` RPS and adjust based on observed failure rates.
 
-6. **Add the dropdown item** in the frontend. Two locations:
-   - `apps/web/app/app/prompts/_components/run-crawl-button.tsx` — the
-     provider selector on the single-crawl dialog
-   - `apps/web/app/app/prompts/_components/batch-run-dialog.tsx` — the
-     provider selector on the batch run dialog
+6. **Insert a row into `answer_engine` and start it `disabled`.** The run
+   pickers read from that table, so there is no dropdown list to edit. Leave
+   the row disabled until the adapter is ready to run. See
+   `packages/db/AGENTS.md` for the SQL that turns an engine on or off.
 
-7. **Add the new job payload type to `computeVisibilityScoreAction`.** The
-   fallback `crawl.provider ?? "perplexity"` in
-   `packages/actions/src/aiVisibility/computeVisibilityScoreAction.ts` must
-   be updated to include the new provider name.
+7. **Keep `computeVisibilityScoreAction` engine-neutral.** A missing
+   `crawl.provider` falls back to `"unknown"` in
+   `packages/actions/src/aiVisibility/computeVisibilityScoreAction.ts`. Do not
+   point that fallback at a specific engine.
 
 8. **Document the provider** by appending a subsection to the "Provider
     Reference" section of this file. Capture the same findings from step 1:

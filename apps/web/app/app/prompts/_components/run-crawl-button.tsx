@@ -1,18 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTRPC } from "@/app/_trpc/client";
 import { Button, Spinner } from "@opencited/ui";
-import { useConfirmation } from "@/app/hooks/use-confirmation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useTRPC } from "@/app/_trpc/client";
+import { AnswerEnginePicker } from "@/app/components/answer-engine-picker";
 import { useActiveCrawls } from "@/app/hooks/use-active-crawls";
 import {
-	CRAWL_PROVIDER_OPTIONS,
-	defaultCrawlProvider,
-	type CrawlProviderId,
-} from "./crawl-providers";
-
-import { toast } from "sonner";
+	type AnswerEngine,
+	useAnswerEngines,
+} from "@/app/hooks/use-answer-engines";
+import { useConfirmation } from "@/app/hooks/use-confirmation";
 
 interface RunCrawlButtonProps {
 	promptQueryId: string;
@@ -26,9 +25,12 @@ export function RunCrawlButton({
 	const trpc = useTRPC();
 	const queryClient = useQueryClient();
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [selectedProvider, setSelectedProvider] =
-		useState<CrawlProviderId>(defaultCrawlProvider);
+	const [selectedProvider, setSelectedProvider] = useState<
+		AnswerEngine["key"] | null
+	>(null);
 	const { confirm, dialog } = useConfirmation();
+	const { engines, defaultEngine, allEnginesDisabled, query } =
+		useAnswerEngines();
 
 	const { activeCrawls } = useActiveCrawls({
 		domainProjectId,
@@ -37,6 +39,13 @@ export function RunCrawlButton({
 	const isRunning = activeCrawls.some(
 		(crawl) => crawl.promptQueryId === promptQueryId,
 	);
+
+	useEffect(() => {
+		if (!engines) return;
+		const selected = engines.find((engine) => engine.key === selectedProvider);
+		if (selected?.enabled) return;
+		setSelectedProvider(defaultEngine?.key ?? null);
+	}, [engines, selectedProvider, defaultEngine]);
 
 	const startCrawlMutation = useMutation(
 		trpc.promptQueryCrawl.start.mutationOptions({
@@ -67,7 +76,17 @@ export function RunCrawlButton({
 
 	const handleClick = async (e: React.MouseEvent) => {
 		e.stopPropagation();
-		if (isRunning || isSubmitting) return;
+		if (isRunning || isSubmitting || allEnginesDisabled || !selectedProvider) {
+			return;
+		}
+
+		const selected = engines?.find((engine) => engine.key === selectedProvider);
+		if (!selected?.enabled) {
+			toast.error("This engine is unavailable", {
+				description: selected?.disabledReason ?? undefined,
+			});
+			return;
+		}
 
 		const confirmed = await confirm({
 			title: "Run Crawl",
@@ -79,32 +98,33 @@ export function RunCrawlButton({
 		if (!confirmed) return;
 		startCrawlMutation.mutate({
 			promptQueryId,
-			provider: selectedProvider,
+			provider: selected.key,
 		});
 	};
+
+	const runsPaused = allEnginesDisabled || query.isError;
+	const canRun =
+		!isRunning &&
+		!isSubmitting &&
+		!runsPaused &&
+		selectedProvider !== null &&
+		!query.isLoading;
 
 	return (
 		<>
 			<div className="flex items-center gap-2">
-				<select
-					value={selectedProvider}
-					onClick={(e) => e.stopPropagation()}
-					onChange={(e) =>
-						setSelectedProvider(e.target.value as CrawlProviderId)
-					}
-					className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-				>
-					{CRAWL_PROVIDER_OPTIONS.map((opt) => (
-						<option key={opt.id} value={opt.id}>
-							{opt.label}
-						</option>
-					))}
-				</select>
+				{engines && engines.length > 0 ? (
+					<AnswerEnginePicker
+						engines={engines}
+						value={selectedProvider}
+						onChange={setSelectedProvider}
+					/>
+				) : null}
 				<Button
 					variant="outline"
 					size="sm"
 					onClick={handleClick}
-					disabled={isRunning || isSubmitting}
+					disabled={!canRun}
 					className="gap-2 run-crawl-btn"
 				>
 					{(isRunning || isSubmitting) && <Spinner className="h-3 w-3" />}

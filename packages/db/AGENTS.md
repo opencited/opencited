@@ -39,6 +39,7 @@ drizzle.config.ts          # drizzle-kit config
 | `pageAnalysisTable` | LLM-analyzed page content |
 | `promptQueryTable` | Prompt query history |
 | `promptTemplateTable` | System-curated prompt library templates |
+| `answerEngineTable` | Which answer engines are available to run, and the reason when one is off |
 
 ## Schema Pattern
 
@@ -71,3 +72,38 @@ bun run sync:templates
 ## Environment
 
 Requires `DATABASE_URL` (Neon Postgres connection string).
+
+## Turning an answer engine on or off
+
+`answer_engine` is the source of truth for whether ChatGPT or Perplexity can run. The app and the worker read it on their own, so a change shows up within about 60 seconds with no redeploy or restart.
+
+Run this on the production database (Neon SQL editor) or locally with `bun run --filter @opencited/db dev` (Drizzle Studio).
+
+```sql
+-- Disable an engine with a reason users will see
+UPDATE answer_engine
+SET status = 'disabled',
+    disabled_reason = 'Perplexity is temporarily unavailable while we fix an issue with it. ChatGPT is fully working.',
+    updated_at = now()
+WHERE key = 'perplexity';
+
+-- Change only the reason
+UPDATE answer_engine SET disabled_reason = 'New message here', updated_at = now() WHERE key = 'perplexity';
+
+-- Re-enable
+UPDATE answer_engine SET status = 'enabled', disabled_reason = NULL, updated_at = now() WHERE key = 'perplexity';
+
+-- Check current state
+SELECT key, display_name, status, disabled_reason, updated_at FROM answer_engine ORDER BY sort_order;
+```
+
+One-off cleanup to run once after deploy (it frees prompts blocked by stuck Perplexity runs):
+
+```sql
+UPDATE prompt_query_crawl
+SET status = 'failed',
+    error = 'Skipped: Perplexity is disabled.',
+    completed_at = now(),
+    updated_at = now()
+WHERE provider = 'perplexity' AND status IN ('pending', 'running');
+```

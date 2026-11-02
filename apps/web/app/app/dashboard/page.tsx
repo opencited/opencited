@@ -1,20 +1,20 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useTRPC } from "@/app/_trpc/client";
 import {
 	EntityCard,
-	EntityCardHeader,
-	EntityCardTitle,
-	EntityCardValue,
 	EntityCardContent,
 	EntityCardFooter,
+	EntityCardHeader,
 	EntityCardSkeleton,
+	EntityCardTitle,
+	EntityCardValue,
 } from "@opencited/ui";
-import { QueryCell } from "@/app/components/query-cell";
-import { Target, FileText, CheckCircle, Type, AlertCircle } from "lucide-react";
-import { PageShell } from "@/app/components/page-shell";
+import { useQuery } from "@tanstack/react-query";
+import { AlertCircle, CheckCircle, FileText, Target, Type } from "lucide-react";
+import { useTRPC } from "@/app/_trpc/client";
 import { useDomainProject } from "@/app/components/domain-project-provider";
+import { PageShell } from "@/app/components/page-shell";
+import { QueryCell } from "@/app/components/query-cell";
 import { VisibilityScoreCard } from "./visibility-score-card";
 
 function StatCard({
@@ -86,6 +86,9 @@ export default function DashboardPage() {
 							<div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-[360px_200px]">
 								<VisibilityScoreCard
 									crossEngineScore={aggregate.crossEngineScore}
+									scoreIncludesPausedEngines={
+										aggregate.scoreIncludesPausedEngines
+									}
 									perBrandPerEngineScores={aggregate.perBrandPerEngineScores}
 									trend={aggregate.trend}
 									totalCompletedCrawls={aggregate.totalCompletedCrawls}

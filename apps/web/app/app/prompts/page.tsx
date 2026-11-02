@@ -1,38 +1,42 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useTRPC } from "@/app/_trpc/client";
-import { PageShell } from "@/app/components/page-shell";
 import {
 	Button,
 	Card,
 	CardContent,
 	CardHeader,
 	CardTitle,
+	Skeleton,
 	Tabs,
 	TabsContent,
 	TabsList,
 	TabsTrigger,
 } from "@opencited/ui";
-import { Plus, Trash2, Clock, Calendar, Terminal, Pencil } from "lucide-react";
-import { Skeleton } from "@opencited/ui";
-import { CreatePromptDialog } from "./_components/create-prompt-dialog";
-import { ViewPromptDialog } from "./_components/view-prompt-dialog";
-import { EditPromptDialog } from "./_components/edit-prompt-dialog";
-import { RunCrawlButton } from "./_components/run-crawl-button";
-import { BatchRunDialog } from "./_components/batch-run-dialog";
-import { LibraryTab } from "./_components/library-tab";
-import { TimeAgo } from "@/app/components/time-ago";
-import { QueryCell } from "@/app/components/query-cell";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useConfirmation } from "@/app/hooks/use-confirmation";
+import { Calendar, Clock, Pencil, Plus, Terminal, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useTRPC } from "@/app/_trpc/client";
+import { RunsPausedMessage } from "@/app/components/answer-engine-label";
 import { useDomainProject } from "@/app/components/domain-project-provider";
+import { PageShell } from "@/app/components/page-shell";
+import { QueryCell } from "@/app/components/query-cell";
+import { TimeAgo } from "@/app/components/time-ago";
+import { useAnswerEngines } from "@/app/hooks/use-answer-engines";
+import { useConfirmation } from "@/app/hooks/use-confirmation";
+import { BatchRunDialog } from "./_components/batch-run-dialog";
+import { CreatePromptDialog } from "./_components/create-prompt-dialog";
+import { EditPromptDialog } from "./_components/edit-prompt-dialog";
+import { LibraryTab } from "./_components/library-tab";
+import { RunCrawlButton } from "./_components/run-crawl-button";
+import { ViewPromptDialog } from "./_components/view-prompt-dialog";
 
 export default function PromptsPage() {
 	const trpc = useTRPC();
 	const { confirm, dialog } = useConfirmation();
 	const domainProject = useDomainProject();
+	const { allEnginesDisabled, query: answerEnginesQuery } = useAnswerEngines();
+	const runsPaused = allEnginesDisabled || answerEnginesQuery.isError;
 
 	const [activeTab, setActiveTab] = useState("my-prompts");
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -170,7 +174,11 @@ export default function PromptsPage() {
 						<Button
 							variant="outline"
 							onClick={() => setIsBatchRunDialogOpen(true)}
-							disabled={!promptsQuery.data || promptsQuery.data.length === 0}
+							disabled={
+								!promptsQuery.data ||
+								promptsQuery.data.length === 0 ||
+								runsPaused
+							}
 						>
 							Batch Run
 						</Button>
@@ -206,6 +214,11 @@ export default function PromptsPage() {
 				</TabsList>
 
 				<TabsContent value="my-prompts" className="mt-0">
+					{runsPaused ? (
+						<div className="mb-4">
+							<RunsPausedMessage />
+						</div>
+					) : null}
 					<QueryCell
 						query={promptsQuery}
 						loading={

@@ -2,7 +2,6 @@
 
 import type { AppRouter } from "@opencited/trpc";
 import {
-	Badge,
 	Button,
 	Card,
 	CardContent,
@@ -33,6 +32,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTRPC } from "@/app/_trpc/client";
+import { AnswerEngineLabel } from "@/app/components/answer-engine-label";
 import { PromptQueryCrawlStatusBadge } from "@/app/components/prompt-query-crawl-status-badge";
 import { QueryCell } from "@/app/components/query-cell";
 import { formatDuration } from "@/lib/utils";
@@ -228,11 +228,9 @@ export function RunLogsSection({ domainProjectId }: RunLogsSectionProps) {
 													</span>
 												</TableCell>
 												<TableCell>
-													{run.provider && (
-														<Badge variant="outline" className="text-xs">
-															{run.provider}
-														</Badge>
-													)}
+													{run.provider ? (
+														<AnswerEngineLabel provider={run.provider} />
+													) : null}
 												</TableCell>
 												<TableCell className="text-right">
 													<div className="flex items-center justify-end gap-1.5 text-muted-foreground">

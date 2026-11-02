@@ -1,16 +1,16 @@
 "use client";
 
 import {
+	Badge,
+	Button,
 	Dialog,
 	DialogContent,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogFooter,
-	Button,
-	Badge,
 } from "@opencited/ui";
-import { Clock, Calendar, Hash, Type, Pencil } from "lucide-react";
 import { format } from "date-fns";
+import { Calendar, Clock, Hash, Pencil, Type } from "lucide-react";
 
 interface ViewPromptDialogProps {
 	open: boolean;

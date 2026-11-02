@@ -1,28 +1,29 @@
-import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
-import { dispatchCrawlJob } from "@opencited/queue";
 import {
-	listCrawlsHandler,
-	listCrawlsInputSchema,
-	listCrawlsOutputSchema,
-	getCrawlHandler,
-	getCrawlInputSchema,
-	getCrawlOutputSchema,
-	updateCrawlHandler,
-	updateCrawlInputSchema,
-	updateCrawlOutputSchema,
-	triggerCrawlTaskHandler,
-	triggerCrawlTaskOutputSchema,
-	saveCrawlResultHandler,
-	saveCrawlResultInputSchema,
-	saveCrawlResultOutputSchema,
-	failCrawlHandler,
-	failCrawlInputSchema,
-	failCrawlOutputSchema,
-	triggerCrawlTaskInputSchema,
 	batchTriggerCrawlTaskHandler,
 	batchTriggerCrawlTaskInputSchema,
 	batchTriggerCrawlTaskOutputSchema,
+	failCrawlHandler,
+	failCrawlInputSchema,
+	failCrawlOutputSchema,
+	getCrawlHandler,
+	getCrawlInputSchema,
+	getCrawlOutputSchema,
+	listCrawlsHandler,
+	listCrawlsInputSchema,
+	listCrawlsOutputSchema,
+	saveCrawlResultHandler,
+	saveCrawlResultInputSchema,
+	saveCrawlResultOutputSchema,
+	triggerCrawlTaskHandler,
+	triggerCrawlTaskInputSchema,
+	triggerCrawlTaskOutputSchema,
+	updateCrawlHandler,
+	updateCrawlInputSchema,
+	updateCrawlOutputSchema,
 } from "@opencited/actions";
+import { dispatchCrawlJob } from "@opencited/queue";
+import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
+import { rethrowEngineDisabled } from "./answerEngine";
 
 export const promptQueryCrawlRouter = createTRPCRouter({
 	start: orgProtectedProcedure
@@ -34,7 +35,7 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 				await triggerCrawlTaskHandler({
 					input,
 					ctx,
-				});
+				}).catch(rethrowEngineDisabled);
 
 			const { jobId } = await dispatchCrawlJob(provider, {
 				query,
@@ -103,7 +104,7 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 			const { crawlIds, promptQueries } = await batchTriggerCrawlTaskHandler({
 				input,
 				ctx,
-			});
+			}).catch(rethrowEngineDisabled);
 
 			// Dispatch all jobs
 			const jobResults = await Promise.all(
