@@ -1,27 +1,27 @@
 "use client";
 
-import { allTags, categories, industries } from "@opencited/db/client";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useTRPC } from "@/app/_trpc/client";
 import {
-	Badge,
-	Button,
 	Card,
 	CardContent,
-	CardDescription,
 	CardHeader,
 	CardTitle,
+	CardDescription,
+	Button,
+	Badge,
 	Input,
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-	Skeleton,
 } from "@opencited/ui";
-import { useQuery } from "@tanstack/react-query";
-import { Filter, Plus, Search } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useTRPC } from "@/app/_trpc/client";
+import { Plus, Search, Filter } from "lucide-react";
+import { Skeleton } from "@opencited/ui";
 import { QueryCell } from "@/app/components/query-cell";
+import { industries, categories, allTags } from "@opencited/db/client";
 
 interface TemplateData {
 	id: string;
@@ -34,7 +34,6 @@ interface TemplateData {
 	createdAt: string;
 	updatedAt: string;
 }
-
 import { AddTemplateDialog } from "./add-template-dialog";
 
 interface LibraryTabProps {

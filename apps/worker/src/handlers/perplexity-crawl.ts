@@ -1,28 +1,28 @@
-import {
-	failCrawlAction,
-	getCrawlContextAction,
-	intakeCrawlResultAction,
-} from "@opencited/actions";
-import {
-	AllProxiesFailedError,
-	Crawler,
-	createProvider,
-	type LoggerContext,
-} from "@opencited/browser-crawler";
-import type { Logger as CrawlerLogger } from "@opencited/logger";
-import { dispatch, type JobPayload } from "@opencited/queue";
 import type { Job } from "bullmq";
 import type { Redis } from "ioredis";
-import { withDb } from "../db";
-import { env } from "../env";
-import { readAnswerEngines } from "../lib/answer-engine-availability";
+import type { Logger as CrawlerLogger } from "@opencited/logger";
 import {
-	clearStickyProxy,
-	fetchProxyList,
+	Crawler,
+	createProvider,
+	AllProxiesFailedError,
+	type LoggerContext,
+} from "@opencited/browser-crawler";
+import {
+	intakeCrawlResultAction,
+	failCrawlAction,
+	getCrawlContextAction,
+} from "@opencited/actions";
+import { dispatch, type JobPayload } from "@opencited/queue";
+import { withDb } from "../db";
+import {
 	resolveProxies,
+	fetchProxyList,
+	clearStickyProxy,
 	setStickyProxy,
 } from "../lib/proxy-resolution";
 import { rateLimit } from "../lib/rate-limit";
+import { readAnswerEngines } from "../lib/answer-engine-availability";
+import { env } from "../env";
 
 function adaptLogger(
 	base: CrawlerLogger,
@@ -49,8 +49,12 @@ export async function handleCrawlJob(
 	} = job.data;
 
 	await withDb(async (db) => {
-		const engines = await readAnswerEngines(db);
-		const engine = engines.find((candidate) => candidate.key === provider);
+		let engines = await readAnswerEngines(db);
+		let engine = engines.find((candidate) => candidate.key === provider);
+		if (!engine?.enabled) {
+			engines = await readAnswerEngines(db, { fresh: true });
+			engine = engines.find((candidate) => candidate.key === provider);
+		}
 		if (!engine?.enabled) {
 			const displayName = engine?.displayName ?? provider;
 			const reason =

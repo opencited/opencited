@@ -55,11 +55,9 @@ export function AnswerEngineLabel({
 	);
 }
 
+export const RUNS_PAUSED_MESSAGE =
+	"Runs are paused right now while we fix our answer engines. Your existing results are still here.";
+
 export function RunsPausedMessage() {
-	return (
-		<p className="text-sm text-muted-foreground">
-			Runs are paused right now while we fix our answer engines. Your existing
-			results are still here.
-		</p>
-	);
+	return <p className="text-sm text-muted-foreground">{RUNS_PAUSED_MESSAGE}</p>;
 }

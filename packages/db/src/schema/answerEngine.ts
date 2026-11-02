@@ -23,12 +23,12 @@ export const answerEngineTable = pgTable(
 		createdAt,
 		updatedAt,
 	},
-	(table) => ({
-		statusCheck: check(
+	(table) => [
+		check(
 			"answer_engine_status_check",
 			sql`${table.status} in ('enabled', 'disabled')`,
 		),
-	}),
+	],
 );
 
 export const answerEngineSelectSchema = createSelectSchema(answerEngineTable);

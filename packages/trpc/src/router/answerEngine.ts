@@ -19,8 +19,9 @@ export function rethrowEngineDisabled(error: unknown): never {
 
 export const answerEngineRouter = createTRPCRouter({
 	/**
-	 * Availability is read from the database on every request. The client keeps
-	 * the default 30s stale time and refetches on focus, so a row edit shows up
+	 * Availability is read from the database on every request. The client sets
+	 * a 30s stale time, refetches on that same interval, and refetches on
+	 * window focus. Together with the worker's 30s cache, a row edit shows up
 	 * within about 60 seconds with no redeploy.
 	 */
 	list: protectedProcedure

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
 import {
@@ -56,4 +56,60 @@ export const updateCrawlHandler = async (params: {
 	ctx: z.infer<typeof updateCrawlContextSchema>;
 }) => {
 	return updateCrawlAction(params);
+};
+
+export const recordCrawlDispatchInputSchema = z.object({
+	id: z.string().min(1, "Crawl ID is required"),
+	triggerRunId: z.string().min(1),
+	startedAt: z.date(),
+});
+
+/**
+ * Stores the queue job id after dispatch. Status moves to running only while
+ * the row is still pending, so a worker that already failed the crawl cannot
+ * be overwritten back to running.
+ */
+export const recordCrawlDispatchAction = async (params: {
+	input: z.infer<typeof recordCrawlDispatchInputSchema>;
+	ctx: z.infer<typeof updateCrawlContextSchema>;
+}) => {
+	const { input, ctx } = params;
+
+	const promoted = await ctx.db
+		.update(promptQueryCrawlTable)
+		.set({
+			triggerRunId: input.triggerRunId,
+			status: "running",
+			startedAt: input.startedAt,
+		})
+		.where(
+			and(
+				eq(promptQueryCrawlTable.id, input.id),
+				eq(promptQueryCrawlTable.status, "pending"),
+			),
+		)
+		.returning();
+
+	if (promoted[0]) {
+		return promoted[0];
+	}
+
+	const recorded = await ctx.db
+		.update(promptQueryCrawlTable)
+		.set({ triggerRunId: input.triggerRunId })
+		.where(eq(promptQueryCrawlTable.id, input.id))
+		.returning();
+
+	if (!recorded[0]) {
+		throw new Error("Crawl not found");
+	}
+
+	return recorded[0];
+};
+
+export const recordCrawlDispatchHandler = async (params: {
+	input: z.infer<typeof recordCrawlDispatchInputSchema>;
+	ctx: z.infer<typeof updateCrawlContextSchema>;
+}) => {
+	return recordCrawlDispatchAction(params);
 };

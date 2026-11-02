@@ -1,20 +1,20 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { useTRPC } from "@/app/_trpc/client";
 import {
 	EntityCard,
-	EntityCardContent,
-	EntityCardFooter,
 	EntityCardHeader,
-	EntityCardSkeleton,
 	EntityCardTitle,
 	EntityCardValue,
+	EntityCardContent,
+	EntityCardFooter,
+	EntityCardSkeleton,
 } from "@opencited/ui";
-import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, CheckCircle, FileText, Target, Type } from "lucide-react";
-import { useTRPC } from "@/app/_trpc/client";
-import { useDomainProject } from "@/app/components/domain-project-provider";
-import { PageShell } from "@/app/components/page-shell";
 import { QueryCell } from "@/app/components/query-cell";
+import { Target, FileText, CheckCircle, Type, AlertCircle } from "lucide-react";
+import { PageShell } from "@/app/components/page-shell";
+import { useDomainProject } from "@/app/components/domain-project-provider";
 import { VisibilityScoreCard } from "./visibility-score-card";
 
 function StatCard({

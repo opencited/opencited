@@ -1,21 +1,21 @@
+import type { Job } from "bullmq";
+import type { Logger as CrawlerLogger } from "@opencited/logger";
+import {
+	Crawler,
+	createProvider,
+	type CrawlResult,
+} from "@opencited/browser-crawler";
 import {
 	citationUrlsFromCrawl,
 	createDrizzleScanRepository,
 	executeScanMentionProbe,
 	sendMentionProbeReportEmails,
 } from "@opencited/actions";
-import {
-	Crawler,
-	type CrawlResult,
-	createProvider,
-} from "@opencited/browser-crawler";
-import type { Logger as CrawlerLogger } from "@opencited/logger";
 import type { JobPayload } from "@opencited/queue";
-import type { Job } from "bullmq";
 import { withDb } from "../db";
-import { env } from "../env";
 import { readAnswerEngines } from "../lib/answer-engine-availability";
 import { resolveProxiesForPublicScan } from "../lib/resolve-public-scan-proxies";
+import { env } from "../env";
 
 type ScanMentionProbeJob = Job<JobPayload<"scan-mention-probe">>;
 
@@ -63,8 +63,13 @@ export async function handleScanMentionProbeJob(
 	};
 
 	const perplexity = await withDb(async (db) => {
-		const engines = await readAnswerEngines(db);
-		return engines.find((engine) => engine.key === "perplexity");
+		let engines = await readAnswerEngines(db);
+		let engine = engines.find((candidate) => candidate.key === "perplexity");
+		if (!engine?.enabled) {
+			engines = await readAnswerEngines(db, { fresh: true });
+			engine = engines.find((candidate) => candidate.key === "perplexity");
+		}
+		return engine;
 	});
 
 	if (!perplexity?.enabled) {

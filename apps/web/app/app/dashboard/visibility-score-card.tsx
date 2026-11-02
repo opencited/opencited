@@ -272,6 +272,9 @@ export function VisibilityScoreCard({
 	if (crossEngineScore === null) {
 		const progress = Math.min(maxCrawlsPerEngine, COLD_START_MIN_CRAWLS);
 		const progressPercent = (progress / COLD_START_MIN_CRAWLS) * 100;
+		const pausedEngines = perBrandPerEngineScores.filter(
+			(engine) => engine.paused,
+		);
 
 		return (
 			<EntityCard size="md">
@@ -294,6 +297,15 @@ export function VisibilityScoreCard({
 							<Progress value={progressPercent} className="h-1.5" />
 						</div>
 					</div>
+					{pausedEngines.length > 0 ? (
+						<div className="space-y-2">
+							<TooltipProvider>
+								{pausedEngines.map((engine) => (
+									<EngineBar key={engine.engine} engine={engine} />
+								))}
+							</TooltipProvider>
+						</div>
+					) : null}
 				</EntityCardContent>
 			</EntityCard>
 		);

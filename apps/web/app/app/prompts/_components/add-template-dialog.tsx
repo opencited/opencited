@@ -1,21 +1,20 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useTRPC } from "@/app/_trpc/client";
 import {
-	Badge,
-	Button,
 	Dialog,
 	DialogContent,
-	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	Spinner,
+	DialogDescription,
+	DialogFooter,
+	Button,
 	Textarea,
+	Badge,
+	Spinner,
 } from "@opencited/ui";
-import { useMutation } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { useTRPC } from "@/app/_trpc/client";
-
 interface TemplateData {
 	id: string;
 	title: string;

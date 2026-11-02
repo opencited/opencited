@@ -1,17 +1,17 @@
 import { createTRPCRouter } from "../trpc";
-import { aiVisibilityRouter } from "./aiVisibility";
-import { answerEngineRouter } from "./answerEngine";
-import { competitorRouter } from "./competitor";
-import { crawlRouter } from "./crawl";
-import { dashboardRouter } from "./dashboard";
+import { userRouter } from "./user";
 import { domainProjectRouter } from "./domainProject";
+import { sitemapRouter } from "./sitemap";
+import { crawlRouter } from "./crawl";
 import { promptQueryRouter } from "./promptQuery";
 import { promptQueryCrawlRouter } from "./promptQueryCrawl";
-import { promptTemplateRouter } from "./promptTemplate";
+import { competitorRouter } from "./competitor";
+import { aiVisibilityRouter } from "./aiVisibility";
+import { dashboardRouter } from "./dashboard";
 import { proxyConfigRouter } from "./proxyConfig";
+import { promptTemplateRouter } from "./promptTemplate";
+import { answerEngineRouter } from "./answerEngine";
 import { scanRouter } from "./scan";
-import { sitemapRouter } from "./sitemap";
-import { userRouter } from "./user";
 
 export const appRouter = createTRPCRouter({
 	user: userRouter,

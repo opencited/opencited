@@ -23,9 +23,14 @@ export function resetAnswerEngineAvailabilityCache() {
 
 export async function readAnswerEngines(
 	db: Db,
+	options?: { fresh?: boolean },
 ): Promise<AnswerEngineAvailability[]> {
 	const now = Date.now();
-	if (cached && now - cached.fetchedAt < ANSWER_ENGINE_CACHE_TTL_MS) {
+	if (
+		!options?.fresh &&
+		cached &&
+		now - cached.fetchedAt < ANSWER_ENGINE_CACHE_TTL_MS
+	) {
 		return cached.engines;
 	}
 

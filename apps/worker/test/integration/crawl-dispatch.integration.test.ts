@@ -69,6 +69,7 @@ const intakeCrawlResultMock = mock(async () => ({
 	sentimentRetryNeeded: false,
 }));
 const failCrawlActionMock = mock(async () => ({}));
+const getAnswerEnginesMock = mock(async () => answerEngines);
 const rateLimitMock = mock(async () => {});
 const resolveProxiesMock = mock(async () => ({
 	proxies: [{ server: "http://mock-proxy:8080" }],
@@ -89,7 +90,7 @@ mock.module("@opencited/actions", () => ({
 	intakeCrawlResultAction: intakeCrawlResultMock,
 	failCrawlAction: failCrawlActionMock,
 	getCrawlContextAction: getCrawlContextMock,
-	getAnswerEnginesAction: mock(async () => answerEngines),
+	getAnswerEnginesAction: getAnswerEnginesMock,
 }));
 
 // Relative to test file: apps/worker/test/integration/ -> apps/worker/src/lib/
@@ -118,7 +119,10 @@ mock.module("../../src/env", () => ({
 }));
 
 import { handleCrawlJob } from "../../src/handlers/perplexity-crawl";
-import { resetAnswerEngineAvailabilityCache } from "../../src/lib/answer-engine-availability";
+import {
+	readAnswerEngines,
+	resetAnswerEngineAvailabilityCache,
+} from "../../src/lib/answer-engine-availability";
 
 function makeJob(overrides?: Record<string, unknown>) {
 	return {
@@ -183,6 +187,7 @@ describe("handleCrawlJob with chatgpt provider", () => {
 		intakeCrawlResultMock.mockClear();
 		getCrawlContextMock.mockClear();
 		failCrawlActionMock.mockClear();
+		getAnswerEnginesMock.mockClear();
 		resolveProxiesMock.mockClear();
 		rateLimitMock.mockClear();
 		resetAnswerEngineAvailabilityCache();
@@ -308,5 +313,55 @@ describe("handleCrawlJob with chatgpt provider", () => {
 		expect(rateLimitMock).not.toHaveBeenCalled();
 		expect(logger.error).not.toHaveBeenCalled();
 		expect(logger.info).toHaveBeenCalled();
+	});
+
+	it("rechecks a stale cached disabled entry and runs when the database is enabled", async () => {
+		answerEngines = [
+			{
+				key: "chatgpt",
+				displayName: "ChatGPT",
+				enabled: true,
+				disabledReason: null,
+				sortOrder: 10,
+			},
+			{
+				key: "perplexity",
+				displayName: "Perplexity",
+				enabled: false,
+				disabledReason:
+					"Perplexity is temporarily unavailable while we fix an issue with it. ChatGPT is fully working.",
+				sortOrder: 20,
+			},
+		];
+		await readAnswerEngines({} as never);
+		expect(getAnswerEnginesMock).toHaveBeenCalledTimes(1);
+
+		answerEngines = [
+			{
+				key: "chatgpt",
+				displayName: "ChatGPT",
+				enabled: true,
+				disabledReason: null,
+				sortOrder: 10,
+			},
+			{
+				key: "perplexity",
+				displayName: "Perplexity",
+				enabled: true,
+				disabledReason: null,
+				sortOrder: 20,
+			},
+		];
+
+		await handleCrawlJob(
+			makeJob({ provider: "perplexity" }),
+			makeLogger(),
+			makeRedis(),
+		);
+
+		expect(getAnswerEnginesMock).toHaveBeenCalledTimes(2);
+		expect(failCrawlActionMock).not.toHaveBeenCalled();
+		expect(crawlCrawlMock).toHaveBeenCalledTimes(1);
+		expect(crawlCrawlMock.mock.calls[0][0].provider.name).toBe("perplexity");
 	});
 });

@@ -17,6 +17,7 @@ import {
 	triggerCrawlTaskHandler,
 	triggerCrawlTaskInputSchema,
 	triggerCrawlTaskOutputSchema,
+	recordCrawlDispatchHandler,
 	updateCrawlHandler,
 	updateCrawlInputSchema,
 	updateCrawlOutputSchema,
@@ -45,11 +46,10 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 				provider,
 			});
 
-			await updateCrawlHandler({
+			await recordCrawlDispatchHandler({
 				input: {
 					id: crawlId,
 					triggerRunId: jobId,
-					status: "running",
 					startedAt: new Date(),
 				},
 				ctx,
@@ -122,11 +122,10 @@ export const promptQueryCrawlRouter = createTRPCRouter({
 						provider: input.provider,
 					});
 
-					await updateCrawlHandler({
+					await recordCrawlDispatchHandler({
 						input: {
 							id: crawlId,
 							triggerRunId: jobId,
-							status: "running",
 							startedAt: new Date(),
 						},
 						ctx,

@@ -8,9 +8,6 @@ import { useTRPC } from "@/app/_trpc/client";
 export type AnswerEngine =
 	inferRouterOutputs<AppRouter>["answerEngine"]["list"][number];
 
-export const RUNS_PAUSED_MESSAGE =
-	"Runs are paused right now while we fix our answer engines. Your existing results are still here.";
-
 /**
  * The query stays fresh for 30 seconds and refetches on that interval and on
  * window focus. Together with the worker's 30 second cache, a database edit
