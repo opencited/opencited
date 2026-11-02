@@ -25,6 +25,11 @@ const buttonVariants = cva(
 				sm: "h-8 rounded-sm px-3 text-xs",
 				lg: "h-10 rounded-sm px-8",
 				icon: "h-9 w-9",
+				/* Marketing surface (landing page). See DESIGN.md "Marketing surface". */
+				marketing:
+					"h-11 rounded-[10px] px-5 text-[15px] font-semibold focus-visible:ring-2 focus-visible:ring-marketing-accent focus-visible:ring-offset-2 focus-visible:ring-offset-marketing-paper",
+				"marketing-sm":
+					"h-9 rounded-[9px] px-3.5 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-marketing-accent focus-visible:ring-offset-2 focus-visible:ring-offset-marketing-paper",
 			},
 		},
 		defaultVariants: {

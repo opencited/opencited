@@ -31,7 +31,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-	"fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
+	"fixed z-50 gap-4 bg-background p-6 text-foreground shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out",
 	{
 		variants: {
 			side: {
@@ -56,7 +56,10 @@ const sheetVariants = cva(
 
 interface SheetContentProps
 	extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-		VariantProps<typeof sheetVariants> {}
+		VariantProps<typeof sheetVariants> {
+	/** Optional theme scope, e.g. a light marketing sheet inside a dark app. */
+	"data-theme"?: string;
+}
 
 const SheetContent = React.forwardRef<
 	React.ElementRef<typeof SheetPrimitive.Content>,

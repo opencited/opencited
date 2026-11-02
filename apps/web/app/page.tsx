@@ -1,8 +1,9 @@
-import { HomeScanPage } from "./components/home-scan-page";
-import { homeScanMetadata } from "./lib/home-scan-seo";
+import type { Metadata } from "next";
+import { LandingPage } from "./components/landing/landing-page";
+import { landingMetadata } from "./lib/landing-seo";
 
-export const metadata = homeScanMetadata;
+export const metadata: Metadata = landingMetadata;
 
 export default function Home() {
-	return <HomeScanPage />;
+	return <LandingPage />;
 }

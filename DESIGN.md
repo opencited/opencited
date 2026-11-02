@@ -15,6 +15,23 @@ colors:
   zinc-sidebar-accent: "#f1f5f9"
   zinc-sidebar-border: "#e2e8f0"
   zinc-sidebar-ring: "#3b82f6"
+  # Marketing surface only (see §6)
+  marketing-paper: "#fbfcfc"
+  marketing-ink: "#0f172a"
+  marketing-ink-soft: "#334155"
+  marketing-muted: "#475569"
+  marketing-soft: "#64748b"
+  marketing-hairline: "#94a3b8"
+  marketing-faint: "#cbd5e1"
+  marketing-rule: "#e2e8f0"
+  marketing-accent: "#059669"
+  marketing-accent-strong: "#047857"
+  marketing-accent-glow: "#10b981"
+  marketing-accent-highlight: "#d1fae5"
+  marketing-accent-wash: "#ecfdf5"
+  marketing-competitor: "#a8a29e"
+  marketing-competitor-strong: "#78716c"
+  marketing-competitor-wash: "#efedeb"
 typography:
   display:
     fontFamily: "Geist, ui-sans-serif, system-ui, sans-serif"
@@ -76,6 +93,11 @@ OpenCited's visual system is built for developers who treat answer engine optimi
 
 The aesthetic is **Steel and Paper** — cool zinc neutrals, crisp contrast, editorial precision. There is no saturated accent color carrying the brand. The monochrome palette is the brand. Depth comes from tonal layering and subtle borders, not from shadows or gradients. The system explicitly rejects the busy-dashboard aesthetic: no wall-of-metrics layouts, no generic blue AI-tool gradients, no enterprise data-viz bloat.
 
+Two surfaces share this system:
+
+- **The workspace** (`/app/*`): monochrome, dense, keyboard-first. The rules in §2–§5 apply verbatim.
+- **The marketing surface** (`/`): the landing page. It adds one emerald accent, hairlines, a dot grid, soft glows and illustrative motion. It is specified in §6 and never leaks into the app.
+
 **Key Characteristics:**
 - Monochrome zinc palette with no decorative color
 - Flat surfaces separated by hairline borders, not shadows
@@ -105,7 +127,7 @@ The palette is a single zinc neutral scale. No saturated accents. Contrast and h
 - **Sidebar Ring** (#3b82f6): Focus ring for sidebar navigation. The single blue in the entire system, reserved for keyboard focus only.
 
 ### Named Rules
-**The Monochrome Doctrine.** The system has no brand accent color. Zinc carries every surface. If you reach for a saturated color, you're solving the wrong problem — use weight, size, or spacing instead.
+**The Monochrome Doctrine.** The workspace has no brand accent color. Zinc carries every surface. If you reach for a saturated color inside the app, you're solving the wrong problem — use weight, size, or spacing instead. The landing page is the single exception, governed by §6.
 
 **The One Blue Rule.** #3b82f6 exists for one purpose: keyboard focus rings. Never use it for decoration, status, or emphasis.
 
@@ -194,7 +216,53 @@ The system is flat by default. Surfaces are separated by hairline borders (1px, 
 - **Trigger:** Transparent by default, muted foreground text. Active state gets paper background, foreground text, and subtle shadow.
 - **Transition:** All properties animate on state change.
 
-## 6. Do's and Don'ts
+## 6. Marketing Surface
+
+The landing page at `/` is the only surface allowed to use color. It sells the product; the signed-in workspace stays monochrome. The accent is a signal, not decoration: it marks the brand phrase in a headline, a mention, a citation, and small highlights. It never fills a large area.
+
+### Accent
+- **Emerald** (#059669): brand phrase in the headline, mention/citation marks, active states, small highlights.
+- **Emerald Deep** (#047857): hover and pressed states, and text on a tinted background.
+- **Emerald Glow** (#10b981): glow tints, halos and live dots.
+- **Emerald Highlight** (#d1fae5) / **Emerald Wash** (#ecfdf5): highlight fills and chip backgrounds.
+- **Competitor** (#a8a29e) / **Competitor Wash** (#efedeb): competitor marks. Muted stone, never red. A competitor is context, not an error.
+
+Primary buttons stay dark (zinc surface, inverse text). The accent never becomes a button background.
+
+### Neutrals and lines
+- **Paper** (#fbfcfc) for the landing canvas; pure white (#ffffff) for raised cards.
+- **Ink** (#0f172a) for headings, **Ink Soft** (#334155) for body, **Muted** (#475569) for secondary copy, **Soft** (#64748b) for captions.
+- **Hairlines:** 1.25px slate strokes for cards, connectors and icons (`--marketing-hairline-width`).
+- **Rules:** 1px slate-200 lines for section separators and card borders.
+- **Dot grid:** a faint radial dot grid (22px pitch, slate at 7.5% opacity) behind the hero and final CTA, masked with an ellipse so it fades out.
+- **Glows:** soft emerald radial glows behind hero visuals only. Clipped to their section so they can never cause horizontal scroll.
+
+### Typography
+Geist for UI and display. Geist Mono for eyebrows, captions, "SAMPLE DATA" tags and other machine-ish labels. On this surface mono also carries small uppercase captions — an explicit exception to The Mono-Only-When-Technical Rule.
+
+**Display (marketing):** 700 weight, -0.035em tracking on the H1 and -0.03em on H2s, leading 1.03–1.1. This is the deliberate exception to the workspace display spec in §3; the workspace stays 600/-0.02em. The 1.25 step rule applies to the global type scale, not to card title/body pairs.
+
+### Named Rules
+**The One Accent Rule.** One accent, emerald. No second hue on the marketing surface. Red belongs to the app's destructive actions and never appears here.
+
+**The Small-Area Rule.** Accent areas stay small: a phrase, a chip, a dot, a 1.25px underline. If an accent block is bigger than a button, it's wrong.
+
+**The Sample-Data Rule.** Every illustrative number, answer, brand and competitor is labelled sample data and uses the made-up brand (Acme CRM) and competitors (Northwind, Globex). No real brand is ever the subject.
+
+**The No-Invented-Proof Rule.** No testimonials, customer logos, user counts or benchmarks. The page may not promise what the product doesn't do: no scheduled or weekly runs, no absolute privacy guarantee, no license name, no pricing beyond "Free during beta".
+
+### Motion
+- Each scene **plays once** when it first scrolls into view, then holds its final frame. Scenes never loop.
+- A hairline **replay control** appears in the corner of the stage once a scene has finished. It resets to the start frame and plays the scene once more. The control has an `aria-label`, a visible focus ring, a hover state and appears only when the scene is finished.
+- Stop the clock off-screen and while `document.hidden`, but only while a scene is **mid-play**. When it comes back into view it resumes and finishes; it does not restart.
+- With `prefers-reduced-motion: reduce`, render each scene's **final static state** immediately, with no animation, and hide the replay control.
+- The pre-JS/SSR frame matches the animation's **start** state. For these scenes that start state is an empty, invisible stage, so nothing flashes or jumps when JS hydrates.
+- Reserve every stage's final size up front with a fixed aspect ratio per breakpoint. Target CLS ≈ 0.
+- Animate `transform`, `opacity` and SVG stroke properties only — never layout properties. Ease out with `--ease-out-quart` or `--ease-out-expo`. No bounce, no elastic.
+- Hairline icons run **once** when they enter the viewport; their first and last keyframes are the full icon.
+- Build scenes from SVG driven by a small rAF loop that ends at the scene's final frame. No video files, no stock footage.
+
+## 7. Do's and Don'ts
 
 ### Do:
 - **Do** use the zinc monochrome palette for all surfaces. Let lightness steps carry hierarchy, not hue.
@@ -206,8 +274,9 @@ The system is flat by default. Surfaces are separated by hairline borders (1px, 
 - **Do** use `@opencited/ui` components instead of raw HTML elements. Consistency is non-negotiable.
 
 ### Don't:
-- **Don't** add a saturated accent color. The monochrome palette is the brand. If you reach for color, use weight, size, or spacing instead.
-- **Don't** use decorative gradients. No gradient text, no gradient backgrounds, no gradient borders.
+- **Don't** add a saturated accent color to the workspace. The monochrome palette is the brand. If you reach for color in the app, use weight, size, or spacing instead. The landing page follows §6.
+- **Don't** carry the marketing accent, dot grid or glows into `/app/*` or any signed-in surface.
+- **Don't** use decorative gradients. No gradient text, no gradient backgrounds, no gradient borders. (Soft radial glows behind landing hero visuals are the only gradient-like treatment, and they are never applied to text or controls.)
 - **Don't** build busy dashboards with charts everywhere. Progressive disclosure over wall-of-metrics.
 - **Don't** use generic blue/gradient AI tool aesthetics. This is not a SaaS landing page template.
 - **Don't** use enterprise-y data visualizations. The interface should feel like a workspace, not a BI tool.
