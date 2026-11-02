@@ -3,6 +3,7 @@ import {
 	LANDING_CANONICAL_URL,
 	LANDING_DESCRIPTION,
 	LANDING_FAQ,
+	LANDING_OG_IMAGE,
 	LANDING_TITLE,
 	landingMetadata,
 } from "./landing-seo";
@@ -19,6 +20,11 @@ describe("landingMetadata", () => {
 
 	it("sets the production canonical URL", () => {
 		expect(landingMetadata.alternates?.canonical).toBe(LANDING_CANONICAL_URL);
+	});
+
+	it("references the static OG image with alt text", () => {
+		expect(LANDING_OG_IMAGE.url).toBe("/opengraph-image.png");
+		expect(LANDING_OG_IMAGE.alt).toContain("ChatGPT and Perplexity");
 	});
 
 	it("does not name a license", () => {
@@ -47,9 +53,8 @@ describe("LANDING_FAQ", () => {
 	it("does not promise scheduled or weekly runs", () => {
 		expect(everyAnswer.toLowerCase()).not.toContain("every week");
 		expect(everyAnswer.toLowerCase()).not.toContain("automatically");
-		expect(everyAnswer).toContain(
-			"Scheduled automatic runs are on the roadmap",
-		);
+		expect(everyAnswer.toLowerCase()).not.toContain("scheduled");
+		expect(everyAnswer).toContain("Runs are manual");
 	});
 
 	it("describes self-hosting from the README", () => {
@@ -73,5 +78,7 @@ describe("LANDING_FAQ", () => {
 		expect(everyAnswer.toLowerCase()).not.toContain("license");
 		expect(everyAnswer.toLowerCase()).not.toContain("100% private");
 		expect(everyAnswer.toLowerCase()).not.toContain("fully private");
+		expect(everyAnswer.toLowerCase()).not.toContain("never sell");
+		expect(everyAnswer.toLowerCase()).not.toContain("never share");
 	});
 });

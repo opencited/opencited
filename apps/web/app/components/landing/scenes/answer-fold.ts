@@ -15,7 +15,7 @@ import {
 } from "./engine";
 import type { SceneDefinition, SceneLayout } from "./use-scene";
 
-const QUERY = "What's the best CRM for a small agency?";
+const QUERY = "Best CRM for a small agency?";
 const DURATION = 11;
 
 const TEXT: readonly (readonly [string, SegmentKind])[] = [
@@ -123,7 +123,7 @@ function layout(mobile: boolean, canvas: SvgCanvas): AnswerLayout {
 	let chipX = 0;
 	let chipRow = 0;
 	const chips: SourceChipLayout[] = SOURCES.map((source) => {
-		const w = canvas.measure(source.domain, 10.5, 500, true) + 34;
+		const w = canvas.measure(source.domain, 11, 500, true) + 34;
 		if (chipX && chipX + w > cardWidth - 36) {
 			chipX = 0;
 			chipRow += 28;
@@ -286,7 +286,7 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 					{
 						class: "mono",
 						"font-size": 11,
-						fill: C.hairline,
+						fill: C.ink,
 						"text-anchor": "end",
 					},
 					group,
@@ -393,7 +393,7 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 			value,
 			x,
 			labelY,
-			{ class: "mono", "font-size": 8.5, fill: C.hairline },
+			{ class: "mono", "font-size": 11, fill: C.text },
 			target,
 		);
 
@@ -467,14 +467,14 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 		"+0",
 		columnX + 14,
 		valueY + 1,
-		{ "font-size": mobile ? 15 : 16, "font-weight": 650, fill: C.accent },
+		{ "font-size": mobile ? 15 : 16, "font-weight": 650, fill: C.accentStrong },
 		rowCell,
 	);
 	canvas.text(
 		"pts",
 		columnX + (mobile ? 40 : 42),
 		valueY,
-		{ "font-size": 10.5, fill: C.text },
+		{ "font-size": 11, fill: C.text },
 		rowCell,
 	);
 
@@ -502,11 +502,11 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 		"PERPLEXITY  ·  ANSWER",
 		contentX + 20,
 		contentY + 26,
-		{ class: "mono", "font-size": 9.5, fill: C.text },
+		{ class: "mono", "font-size": 11, fill: C.text },
 		header,
 	);
 
-	const tagWidth = canvas.measure("SAMPLE DATA", 8.5, 500, true) + 14;
+	const tagWidth = canvas.measure("SAMPLE DATA", 11, 500, true) + 14;
 	const cardTag = canvas.el("g", {}, root);
 	const tagX = card.x + card.w - 16 - tagWidth;
 	const tagY = card.y + 13;
@@ -522,8 +522,8 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 		tagY + 11.5,
 		{
 			class: "mono",
-			"font-size": 8.5,
-			fill: C.hairline,
+			"font-size": 11,
+			fill: C.text,
 			"text-anchor": "middle",
 		},
 		cardTag,
@@ -589,7 +589,7 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 				y - 0.5,
 				{
 					class: "mono",
-					"font-size": 9.5,
+					"font-size": 11,
 					fill: C.text,
 					"text-anchor": "middle",
 				},
@@ -661,8 +661,8 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 		sourcesY + 4,
 		{
 			class: "mono",
-			"font-size": 9.5,
-			fill: C.hairline,
+			"font-size": 11,
+			fill: C.text,
 		},
 		content,
 	);
@@ -692,8 +692,8 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 			y + 15,
 			{
 				class: "mono",
-				"font-size": 9.5,
-				fill: C.hairline,
+				"font-size": 11,
+				fill: C.text,
 				"text-anchor": "middle",
 			},
 			group,
@@ -702,7 +702,7 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 			chip.domain,
 			x + 24,
 			y + 15,
-			{ class: "mono", "font-size": 10.5, "font-weight": 500, fill: C.text },
+			{ class: "mono", "font-size": 11, "font-weight": 500, fill: C.text },
 			group,
 		);
 		return { group, fill, box, markerText, domainText, x, y, w: chip.w };
@@ -746,8 +746,8 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 		rowTagY + 11.5,
 		{
 			class: "mono",
-			"font-size": 8.5,
-			fill: C.hairline,
+			"font-size": 11,
+			fill: C.text,
 			"text-anchor": "middle",
 		},
 		rowTag,
@@ -809,7 +809,7 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 				"PERPLEXITY",
 				14,
 				4,
-				{ class: "mono", "font-size": 9.5, fill: C.text },
+				{ class: "mono", "font-size": 11, fill: C.text },
 				group,
 			);
 		},
@@ -867,8 +867,8 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 						0,
 						{
 							class: "mono",
-							"font-size": 9.5,
-							fill: C.accent,
+							"font-size": 11,
+							fill: C.accentStrong,
 							"text-anchor": "middle",
 						},
 						group,
@@ -879,7 +879,7 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 						0,
 						{
 							class: "mono",
-							"font-size": 10.5,
+							"font-size": 11,
 							"font-weight": 500,
 							fill: C.accentStrong,
 						},
@@ -912,7 +912,7 @@ function build(canvas: SvgCanvas, layout: AnswerLayout) {
 						-0.5,
 						{
 							class: "mono",
-							"font-size": 9.5,
+							"font-size": 11,
 							fill: C.accentStrong,
 							"text-anchor": "middle",
 						},

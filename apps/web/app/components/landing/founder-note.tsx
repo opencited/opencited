@@ -8,10 +8,6 @@ export function FounderNote() {
 				<figure className="relative mx-auto max-w-[760px] rounded-[22px] border border-marketing-rule bg-white px-6 pb-7 pt-9 md:px-12 md:pb-10 md:pt-11">
 					<div
 						aria-hidden="true"
-						className="pointer-events-none absolute inset-0 rounded-[22px] bg-[radial-gradient(400px_120px_at_20%_0%,rgba(16,185,129,0.10),transparent_70%)]"
-					/>
-					<div
-						aria-hidden="true"
 						className="absolute -top-[18px] left-6 grid size-9 place-items-center rounded-full border border-marketing-rule bg-marketing-paper md:left-11"
 					>
 						<svg

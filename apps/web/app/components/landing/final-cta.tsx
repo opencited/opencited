@@ -12,10 +12,9 @@ export function FinalCta() {
 
 			<LandingContainer>
 				<h2 className="mx-auto text-balance text-[clamp(30px,4vw,46px)] font-bold leading-[1.08] tracking-[-0.03em] text-marketing-ink">
-					See what AI tells
-					<br className="hidden md:inline" /> your buyers{" "}
-					<span className="whitespace-nowrap text-marketing-accent">
-						about you.
+					Your buyers are already asking. <br className="hidden md:inline" />
+					<span className="text-marketing-accent">
+						See what the answers say.
 					</span>
 				</h2>
 				<p className="mx-auto mt-3.5 max-w-[560px] text-[17px] leading-relaxed text-marketing-muted">

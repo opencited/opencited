@@ -39,7 +39,7 @@ export function LandingFaq() {
 									<span className="absolute h-[1.25px] w-2.5 rotate-90 bg-marketing-ink-soft transition-transform duration-200 ease-[var(--ease-out-quart)] group-open:rotate-0" />
 								</span>
 							</summary>
-							<p className="pb-6 pr-10 text-[15.5px] leading-[1.65] text-marketing-muted">
+							<p className="max-w-[65ch] pb-6 pr-10 text-[15.5px] leading-[1.65] text-marketing-muted">
 								{item.answer}
 							</p>
 						</details>

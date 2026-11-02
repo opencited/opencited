@@ -13,11 +13,11 @@ export function ReportPreview() {
 			<LandingContainer>
 				<Eyebrow>Report preview</Eyebrow>
 				<SectionHeading className="mx-auto">
-					Run every question on every engine without doing it by hand.
+					Run every question on ChatGPT and Perplexity without doing it by hand.
 				</SectionHeading>
 				<SectionLead className="mx-auto">
-					See each buyer question against each engine at a glance, then follow
-					your AI Visibility Score as the answers change.
+					See each buyer question against each live engine at a glance, then
+					follow your AI Visibility Score as the answers change.
 				</SectionLead>
 			</LandingContainer>
 

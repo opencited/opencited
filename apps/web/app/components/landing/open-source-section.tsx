@@ -1,4 +1,4 @@
-import { Button } from "@opencited/ui";
+import { Button, Card } from "@opencited/ui";
 import {
 	DataStaysYoursIcon,
 	OpenSourceIcon,
@@ -17,23 +17,23 @@ import {
 const CARDS = [
 	{
 		icon: OpenSourceIcon,
-		title: "Open source on GitHub",
-		body: null,
+		title: "Open source",
+		body: "Read every line before you run it.",
 	},
 	{
 		icon: SelfHostIcon,
 		title: "Self-hostable",
-		body: null,
+		body: "Run the web app and worker on your own stack.",
 	},
 	{
 		icon: DataStaysYoursIcon,
 		title: "Your data stays yours",
-		body: "Your project data is private to your workspace and never sold or shared.",
+		body: "Your workspace data is private to your team. Queries go to the engines you choose.",
 	},
 	{
 		icon: RealEnginesIcon,
 		title: "Real engines, not simulations",
-		body: null,
+		body: "ChatGPT and Perplexity, not synthetic answers.",
 	},
 ] as const;
 
@@ -71,20 +71,19 @@ export function OpenSourceSection() {
 					{CARDS.map((card) => {
 						const Icon = card.icon;
 						return (
-							<div
+							<Card
 								key={card.title}
-								className="flex flex-col items-center rounded-[18px] landing-hairline border-marketing-rule bg-white px-3 pb-5 pt-5 md:px-[22px] md:pb-6 md:pt-6"
+								variant="marketing"
+								className="flex h-full flex-col items-center px-3 pb-5 pt-5 md:px-[22px] md:pb-6 md:pt-6"
 							>
 								<Icon />
 								<h3 className="mt-4 text-sm font-semibold leading-snug tracking-[-0.01em] text-marketing-ink md:text-[15px]">
 									{card.title}
 								</h3>
-								{card.body ? (
-									<p className="mt-2 text-[13px] leading-relaxed text-marketing-muted md:text-[13.5px]">
-										{card.body}
-									</p>
-								) : null}
-							</div>
+								<p className="mt-2 text-[13px] leading-relaxed text-marketing-muted md:text-[13.5px]">
+									{card.body}
+								</p>
+							</Card>
 						);
 					})}
 				</div>

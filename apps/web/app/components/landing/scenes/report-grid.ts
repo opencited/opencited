@@ -84,8 +84,8 @@ function layout(mobile: boolean): ReportLayout {
 		W: 345,
 		H: cardY + 180 + 4,
 		questionFontSize: 12,
-		columns: [218, 278],
-		soonColumns: [328],
+		columns: [204, 272],
+		soonColumns: [332],
 		headerY: 22,
 		rows,
 		rowHeight: 40,
@@ -199,7 +199,7 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 			layout.headerY + 14,
 			{
 				class: "mono",
-				"font-size": 10,
+				"font-size": 11,
 				fill: C.text,
 				"text-anchor": "middle",
 			},
@@ -233,8 +233,8 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 				layout.headerY + 4,
 				{
 					class: "mono",
-					"font-size": 8.5,
-					fill: C.hairline,
+					"font-size": 11,
+					fill: C.text,
 					"text-anchor": "middle",
 				},
 				group,
@@ -257,8 +257,8 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 				layout.headerY + 14,
 				{
 					class: "mono",
-					"font-size": 9.5,
-					fill: C.hairline,
+					"font-size": 11,
+					fill: C.text,
 					"text-anchor": "middle",
 				},
 				group,
@@ -293,7 +293,7 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 			String(index + 1).padStart(2, "0"),
 			0,
 			rowY + 4,
-			{ class: "mono", "font-size": mobile ? 9 : 10, fill: C.hairline },
+			{ class: "mono", "font-size": 11, fill: C.text },
 			group,
 		);
 		const question = canvas.text(
@@ -424,10 +424,10 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 		"AI VISIBILITY SCORE",
 		contentX,
 		card.y + 30,
-		{ class: "mono", "font-size": 9.5, fill: C.text },
+		{ class: "mono", "font-size": 11, fill: C.text },
 		cardContent,
 	);
-	const tagWidth = canvas.measure("SAMPLE DATA", 8.5, 500, true) + 14;
+	const tagWidth = canvas.measure("SAMPLE DATA", 11, 500, true) + 14;
 	const tagX = card.x + card.w - 18 - tagWidth;
 	canvas.stroke(
 		"path",
@@ -441,8 +441,8 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 		card.y + 29,
 		{
 			class: "mono",
-			"font-size": 8.5,
-			fill: C.hairline,
+			"font-size": 11,
+			fill: C.text,
 			"text-anchor": "middle",
 		},
 		cardContent,
@@ -468,7 +468,18 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 		numberY,
 		{
 			"font-size": 13,
-			fill: C.hairline,
+			fill: C.text,
+		},
+		cardContent,
+	);
+	canvas.text(
+		"PEER-RELATIVE",
+		contentX,
+		numberY + 18,
+		{
+			class: "mono",
+			"font-size": 11,
+			fill: C.text,
 		},
 		cardContent,
 	);
@@ -541,10 +552,10 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 		C.accent,
 	);
 	canvas.text(
-		mobile ? "8 WEEKS" : "LAST 8 WEEKS",
+		mobile ? "8 RUNS" : "LAST 8 RUNS",
 		sparkStartX,
 		sparkBottomY + 22,
-		{ class: "mono", "font-size": 8.5, fill: C.hairline },
+		{ class: "mono", "font-size": 11, fill: C.text },
 		cardContent,
 	);
 
@@ -553,7 +564,7 @@ function build(canvas: SvgCanvas, layout: ReportLayout) {
 		const deltaX = mobile
 			? contentX
 			: card.x + card.w - 22 - canvas.measure("+17 pts", 12.5, 600) - 13;
-		const deltaY = mobile ? numberY + 22 : numberY - 4;
+		const deltaY = mobile ? numberY + 38 : numberY - 4;
 		canvas.stroke(
 			"path",
 			{ d: `M${deltaX},${deltaY - 1} l4.5,-6.5 l4.5,6.5` },

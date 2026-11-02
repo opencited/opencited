@@ -28,10 +28,14 @@ export type SceneDefinition<L extends SceneLayout> = {
 export type SceneControls = {
 	/** True once the scene has reached its final frame. */
 	finished: boolean;
+	/** True when the visitor paused the scene while it was playing. */
+	paused: boolean;
 	/** True when the visitor asked for reduced motion; no replay control. */
 	reducedMotion: boolean;
 	/** Reset to the start frame and play once again. No-op with reduced motion. */
 	replay: () => void;
+	/** Pause or resume the current play. No-op after the scene has finished. */
+	togglePaused: () => void;
 };
 
 type Phase = "idle" | "playing" | "done";
@@ -58,8 +62,10 @@ export function useScene<L extends SceneLayout>(
 	stageRef: RefObject<HTMLDivElement | null>,
 ): SceneControls {
 	const [finished, setFinished] = useState(false);
+	const [paused, setPaused] = useState(false);
 	const [reducedMotion, setReducedMotion] = useState(false);
 	const replayRef = useRef<() => void>(() => {});
+	const togglePauseRef = useRef<() => void>(() => {});
 
 	useEffect(() => {
 		const svg = svgRef.current;
@@ -80,6 +86,7 @@ export function useScene<L extends SceneLayout>(
 		let frameId = 0;
 		let lastTimestamp: number | null = null;
 		let onScreen = false;
+		let userPaused = false;
 		let disposed = false;
 
 		const drawAt = (time: number) => {
@@ -113,9 +120,11 @@ export function useScene<L extends SceneLayout>(
 
 		const finish = () => {
 			phase = "done";
+			userPaused = false;
 			stop();
 			drawAt(scene.finalTime);
 			if (!disposed) {
+				setPaused(false);
 				setFinished(true);
 			}
 		};
@@ -137,6 +146,7 @@ export function useScene<L extends SceneLayout>(
 			if (
 				frameId ||
 				motionQuery.matches ||
+				userPaused ||
 				!onScreen ||
 				document.hidden ||
 				phase !== "playing"
@@ -159,11 +169,28 @@ export function useScene<L extends SceneLayout>(
 			stop();
 			lastTimestamp = null;
 			phase = "playing";
+			userPaused = false;
+			setPaused(false);
 			setFinished(false);
 			drawAt(0);
 			start();
 		};
 		replayRef.current = replay;
+
+		const togglePaused = () => {
+			if (disposed || motionQuery.matches || phase !== "playing") {
+				return;
+			}
+			userPaused = !userPaused;
+			if (userPaused) {
+				stop();
+				setPaused(true);
+				return;
+			}
+			setPaused(false);
+			start();
+		};
+		togglePauseRef.current = togglePaused;
 
 		const observer = new IntersectionObserver(
 			(entries) => {
@@ -198,6 +225,8 @@ export function useScene<L extends SceneLayout>(
 			if (motionQuery.matches) {
 				stop();
 				phase = "done";
+				userPaused = false;
+				setPaused(false);
 				drawAt(scene.finalTime);
 				if (!disposed) {
 					setFinished(false);
@@ -238,6 +267,7 @@ export function useScene<L extends SceneLayout>(
 			layoutQuery.removeEventListener("change", onLayoutChange);
 			motionQuery.removeEventListener("change", onMotionChange);
 			replayRef.current = () => {};
+			togglePauseRef.current = () => {};
 		};
 	}, [scene, svgRef, stageRef]);
 
@@ -245,5 +275,9 @@ export function useScene<L extends SceneLayout>(
 		replayRef.current();
 	}, []);
 
-	return { finished, reducedMotion, replay };
+	const togglePaused = useCallback(() => {
+		togglePauseRef.current();
+	}, []);
+
+	return { finished, paused, reducedMotion, replay, togglePaused };
 }

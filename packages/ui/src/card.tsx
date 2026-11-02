@@ -10,6 +10,9 @@ const cardVariants = cva(
 				default: "border-border/60",
 				dashed: "border-dashed border-border/60",
 				destructive: "border-destructive/50 bg-destructive/10",
+				/* Marketing surface (landing page). See DESIGN.md §6. */
+				marketing:
+					"rounded-[18px] border-[1.25px] border-marketing-rule bg-white shadow-none",
 			},
 		},
 		defaultVariants: {

@@ -8,6 +8,13 @@ export const LANDING_TITLE =
 export const LANDING_DESCRIPTION =
 	"OpenCited runs your buyers' questions on ChatGPT and Perplexity and shows where you're mentioned, cited, or losing out to competitors.";
 
+export const LANDING_OG_IMAGE = {
+	url: "/opengraph-image.png",
+	width: 1200,
+	height: 630,
+	alt: "OpenCited — see what AI tells your buyers about you. Runs your buyers' questions on ChatGPT and Perplexity and shows where you're mentioned, cited, or losing out to competitors. Free during beta.",
+};
+
 export const landingMetadata: Metadata = {
 	metadataBase: new URL(LANDING_CANONICAL_URL),
 	title: LANDING_TITLE,
@@ -21,11 +28,13 @@ export const landingMetadata: Metadata = {
 		siteName: "OpenCited",
 		title: LANDING_TITLE,
 		description: LANDING_DESCRIPTION,
+		images: [LANDING_OG_IMAGE],
 	},
 	twitter: {
 		card: "summary_large_image",
 		title: LANDING_TITLE,
 		description: LANDING_DESCRIPTION,
+		images: [LANDING_OG_IMAGE],
 	},
 };
 
@@ -52,7 +61,7 @@ export const LANDING_FAQ: readonly LandingFaqItem[] = [
 	{
 		question: "How often do my questions run?",
 		answer:
-			"Whenever you want. Run one question or all of them from your dashboard in a click, and OpenCited keeps every result so you can see how the answers change over time. Scheduled automatic runs are on the roadmap.",
+			"Whenever you want. Runs are manual: start one question or all of them from your dashboard in a click, and OpenCited keeps every result so you can see how the answers change over time.",
 	},
 	{
 		question: "What's the difference between a mention and a citation?",
@@ -62,7 +71,7 @@ export const LANDING_FAQ: readonly LandingFaqItem[] = [
 	{
 		question: "Is my data private?",
 		answer:
-			"Your project data is private to your workspace, and we never sell or share it. Because OpenCited is open source, you can read exactly what it stores, or run it yourself and keep everything on your own servers.",
+			"Your project data is private to your workspace. Queries are sent to the engines you choose; because OpenCited is open source, you can read exactly what it stores, or run it yourself and keep everything on your own servers.",
 	},
 	{
 		question: "How much does it cost?",

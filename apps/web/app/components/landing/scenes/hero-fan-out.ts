@@ -134,7 +134,7 @@ function layout(mobile: boolean, canvas: SvgCanvas): HeroLayout {
 			let chipX = 0;
 			let chipRow = 0;
 			const chips: ChipLayout[] = answer.sources.map(([domain, mine]) => {
-				const width = canvas.measure(domain, 10, 500, true) + 30;
+				const width = canvas.measure(domain, 11, 500, true) + 30;
 				if (chipX && chipX + width > cardWidth - 32) {
 					chipX = 0;
 					chipRow += 1;
@@ -358,7 +358,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 		"BUYER QUESTION",
 		query.x + 2,
 		query.y - 10,
-		{ class: "mono", "font-size": 9.5, fill: C.hairline },
+		{ class: "mono", "font-size": 11, fill: C.text },
 		queryGroup,
 	);
 	const queryBox = canvas.stroke(
@@ -551,8 +551,8 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 			engine.cy + 3.5,
 			{
 				class: "mono",
-				"font-size": 9,
-				fill: C.hairline,
+				"font-size": 11,
+				fill: C.text,
 				"text-anchor": "middle",
 			},
 			group,
@@ -586,14 +586,14 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 			`${answer.engine.toUpperCase()}  ·  ANSWER`,
 			card.x + 16,
 			card.y + 24,
-			{ class: "mono", "font-size": 9.5, fill: C.text },
+			{ class: "mono", "font-size": 11, fill: C.text },
 			group,
 		);
 		const queryCaption = canvas.text(
 			`\u201C${QUERY}\u201D`,
 			card.x + card.w - 16,
 			card.y + 24,
-			{ "font-size": 11, fill: C.hairline, "text-anchor": "end" },
+			{ "font-size": 11, fill: C.text, "text-anchor": "end" },
 			group,
 		);
 		if (mobile) {
@@ -675,7 +675,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 			"SOURCES",
 			card.x + 16,
 			chipTop - 6,
-			{ class: "mono", "font-size": 9.5, fill: C.hairline },
+			{ class: "mono", "font-size": 11, fill: C.text },
 			group,
 		);
 		const chips: ChipNode[] = card.chips.map((sourceChip) => {
@@ -712,7 +712,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 				sourceChip.domain,
 				x + 22,
 				chipY + 14.5,
-				{ class: "mono", "font-size": 10, "font-weight": 500, fill: C.text },
+				{ class: "mono", "font-size": 11, "font-weight": 500, fill: C.text },
 				chipGroup,
 			);
 			return {
@@ -776,10 +776,10 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 		"REPORT",
 		reportX + 16,
 		reportY + 24,
-		{ class: "mono", "font-size": 9.5, fill: C.text },
+		{ class: "mono", "font-size": 11, fill: C.text },
 		reportGroup,
 	);
-	const tagWidth = canvas.measure("SAMPLE DATA", 8.5, 500, true) + 14;
+	const tagWidth = canvas.measure("SAMPLE DATA", 11, 500, true) + 14;
 	const reportTag = canvas.el("g", {}, reportGroup);
 	canvas.stroke(
 		"path",
@@ -801,8 +801,8 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 		reportY + 23.5,
 		{
 			class: "mono",
-			"font-size": 8.5,
-			fill: C.hairline,
+			"font-size": 11,
+			fill: C.text,
 			"text-anchor": "middle",
 		},
 		reportTag,
@@ -825,7 +825,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 				`\u201C${QUERY}\u201D`,
 				reportX + 16,
 				reportY + 46,
-				{ "font-size": 11, fill: C.hairline },
+				{ "font-size": 11, fill: C.text },
 				reportGroup,
 			);
 
@@ -896,7 +896,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 		gauge.cy + 28,
 		{
 			class: "mono",
-			"font-size": 8.5,
+			"font-size": 11,
 			fill: C.text,
 			"text-anchor": "middle",
 		},
@@ -908,7 +908,30 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 		gauge.cy + 40,
 		{
 			class: "mono",
-			"font-size": 8.5,
+			"font-size": 11,
+			fill: C.text,
+			"text-anchor": "middle",
+		},
+		reportGroup,
+	);
+	canvas.text(
+		"/100",
+		gauge.cx + 29,
+		gauge.cy + 14,
+		{
+			class: "mono",
+			"font-size": 11,
+			fill: C.text,
+		},
+		reportGroup,
+	);
+	canvas.text(
+		"PEER-RELATIVE · 0–100",
+		gauge.cx,
+		gauge.cy + 64,
+		{
+			class: "mono",
+			"font-size": 11,
 			fill: C.text,
 			"text-anchor": "middle",
 		},
@@ -982,7 +1005,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 				class: "mono",
 				"font-size": 12.5,
 				"font-weight": 500,
-				fill: C.hairline,
+				fill: C.ink,
 				"text-anchor": "end",
 			},
 			group,
@@ -1014,7 +1037,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 
 	let competitorChipX = chipX;
 	const competitorChips = ["Northwind", "Globex"].map((name) => {
-		const width = canvas.measure(name, 10.5, 500) + 18;
+		const width = canvas.measure(name, 11, 500) + 18;
 		const x = competitorChipX;
 		competitorChipX += width + 6;
 		const group = canvas.el("g", {}, reportGroup);
@@ -1028,7 +1051,7 @@ function build(canvas: SvgCanvas, layout: HeroLayout) {
 			x + width / 2,
 			chipY + 13.8,
 			{
-				"font-size": 10.5,
+				"font-size": 11,
 				"font-weight": 500,
 				fill: C.competitorStrong,
 				"text-anchor": "middle",

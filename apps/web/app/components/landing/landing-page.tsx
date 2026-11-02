@@ -17,10 +17,21 @@ export function LandingPage() {
 			<div
 				data-theme="light"
 				style={{ colorScheme: "light" }}
-				className="min-h-screen overflow-x-clip bg-marketing-paper text-marketing-ink"
+				className="landing-page relative min-h-screen overflow-x-clip bg-marketing-paper text-marketing-ink"
 			>
+				<style>{`
+					html:has(.landing-page) body {
+						background-color: var(--color-marketing-paper);
+					}
+				`}</style>
+				<a
+					href="#main"
+					className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-sm focus:bg-marketing-paper focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-marketing-ink focus:ring-2 focus:ring-marketing-accent focus:ring-offset-2 focus:ring-offset-marketing-paper"
+				>
+					Skip to content
+				</a>
 				<LandingNav />
-				<main>
+				<main id="main" className="scroll-mt-20">
 					<LandingHero />
 					<HowItWorks />
 					<ReportSection />

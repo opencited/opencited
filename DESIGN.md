@@ -240,6 +240,8 @@ Primary buttons stay dark (zinc surface, inverse text). The accent never becomes
 ### Typography
 Geist for UI and display. Geist Mono for eyebrows, captions, "SAMPLE DATA" tags and other machine-ish labels. On this surface mono also carries small uppercase captions — an explicit exception to The Mono-Only-When-Technical Rule.
 
+**Display (marketing):** 700 weight, -0.035em tracking on the H1 and -0.03em on H2s, leading 1.03–1.1. This is the deliberate exception to the workspace display spec in §3; the workspace stays 600/-0.02em. The 1.25 step rule applies to the global type scale, not to card title/body pairs.
+
 ### Named Rules
 **The One Accent Rule.** One accent, emerald. No second hue on the marketing surface. Red belongs to the app's destructive actions and never appears here.
 

@@ -12,7 +12,7 @@ export function LandingFooter() {
 					href={GITHUB_REPOSITORY_URL}
 					target="_blank"
 					rel="noreferrer"
-					className="inline-flex items-center gap-2 rounded-sm transition-colors hover:text-marketing-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marketing-accent focus-visible:ring-offset-2"
+					className="inline-flex items-center gap-2 rounded-sm py-3 transition-colors hover:text-marketing-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marketing-accent focus-visible:ring-offset-2"
 				>
 					<svg
 						width="18"

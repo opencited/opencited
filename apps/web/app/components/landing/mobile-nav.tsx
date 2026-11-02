@@ -34,19 +34,24 @@ export function MobileNav() {
 				aria-label="Open menu"
 				className={cn(
 					buttonVariants({ variant: "ghost", size: "icon" }),
-					"min-[860px]:hidden",
+					"relative min-[860px]:hidden before:absolute before:-inset-1 before:content-[''] focus-visible:ring-2 focus-visible:ring-marketing-accent focus-visible:ring-offset-2 focus-visible:ring-offset-marketing-paper",
 				)}
 			>
 				<Menu aria-hidden="true" />
 			</SheetTrigger>
-			<SheetContent side="right" className="w-[19rem]">
+			<SheetContent
+				side="right"
+				data-theme="light"
+				style={{ colorScheme: "light" }}
+				className="w-[19rem] [&>button]:size-11 [&>button]:grid [&>button]:place-items-center"
+			>
 				<SheetHeader>
 					<SheetTitle className="sr-only">OpenCited menu</SheetTitle>
 					<SheetDescription className="sr-only">
 						Landing page sections and account links.
 					</SheetDescription>
 				</SheetHeader>
-				<nav aria-label="Landing sections" className="mt-8 flex flex-col">
+				<nav aria-label="Landing sections" className="mt-12 flex flex-col">
 					{LANDING_NAV_LINKS.map((link) => (
 						<SheetClose asChild key={link.href}>
 							<Link

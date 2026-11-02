@@ -17,55 +17,58 @@ export function LandingHero() {
 			/>
 
 			<LandingContainer>
-				<div className="text-center">
-					<h1 className="text-balance text-[clamp(36px,5vw,58px)] font-bold leading-[1.03] tracking-[-0.035em] text-marketing-ink">
-						See what AI tells
-						<br className="hidden md:inline" /> your buyers{" "}
-						<span className="whitespace-nowrap text-marketing-accent">
-							about you.
-						</span>
-					</h1>
-					<p className="mx-auto mt-4 max-w-[610px] text-[clamp(15.5px,1.5vw,18px)] leading-[1.55] text-marketing-muted">
-						OpenCited runs your buyers' questions on ChatGPT and Perplexity and
-						shows where you're mentioned, cited, or losing out to competitors.
-					</p>
-
-					<div className="mt-6 flex flex-col items-center justify-center gap-1.5 sm:flex-row sm:gap-2">
-						<GetStartedLink
-							size="marketing"
-							className="w-full max-w-[345px] sm:w-auto"
-						>
-							Get started
-							<span aria-hidden="true" className="text-marketing-accent-glow">
-								→
+				<div className="lg:grid lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start lg:gap-12 xl:block">
+					<div className="text-center lg:text-left xl:text-center">
+						<h1 className="text-balance text-[clamp(36px,5vw,58px)] font-bold leading-[1.03] tracking-[-0.035em] text-marketing-ink">
+							See what AI tells
+							<br className="hidden md:inline" /> your buyers{" "}
+							<span className="whitespace-nowrap text-marketing-accent">
+								about you.
 							</span>
-						</GetStartedLink>
-						<Button
-							asChild
-							variant="ghost"
-							size="marketing"
-							className="w-full max-w-[345px] sm:w-auto"
-						>
-							<Link href="#preview">
-								See a sample report <span aria-hidden="true">↓</span>
-							</Link>
-						</Button>
+						</h1>
+						<p className="mx-auto mt-4 max-w-[610px] text-pretty text-[clamp(15.5px,1.5vw,18px)] leading-[1.55] text-marketing-muted lg:mx-0 xl:mx-auto">
+							OpenCited runs your buyers' questions on ChatGPT and Perplexity
+							and shows where you're mentioned, cited, or losing out to
+							competitors.
+						</p>
+
+						<div className="mt-6 flex flex-col items-center justify-center gap-1.5 sm:flex-row sm:gap-2 lg:justify-start xl:justify-center">
+							<GetStartedLink
+								size="marketing"
+								className="w-full max-w-[345px] sm:w-auto"
+							>
+								Get started
+								<span aria-hidden="true" className="text-marketing-accent-glow">
+									→
+								</span>
+							</GetStartedLink>
+							<Button
+								asChild
+								variant="ghost"
+								size="marketing"
+								className="w-full max-w-[345px] sm:w-auto"
+							>
+								<Link href="#preview">
+									See a sample report <span aria-hidden="true">↓</span>
+								</Link>
+							</Button>
+						</div>
+
+						<p className="mt-3.5 inline-flex items-center gap-1.5 font-mono text-xs leading-none tracking-[0.04em] text-marketing-soft">
+							<span
+								aria-hidden="true"
+								className="size-1.5 rounded-full bg-marketing-accent-glow ring-[3px] ring-marketing-accent-highlight"
+							/>
+							Free during beta
+						</p>
 					</div>
 
-					<p className="mt-3.5 inline-flex items-center gap-1.5 font-mono text-xs leading-none tracking-[0.04em] text-marketing-soft">
-						<span
-							aria-hidden="true"
-							className="size-1.5 rounded-full bg-marketing-accent-glow ring-[3px] ring-marketing-accent-highlight"
-						/>
-						Free during beta
-					</p>
+					<HeroStage
+						label="Line drawing: one buyer question is sent to ChatGPT and Perplexity, both answers come back with the brand, cited sources and competitors highlighted, and the marks add up into a report with a sample AI Visibility Score. Sample data."
+						caption="Illustrative example · made-up brand (Acme CRM) and competitors · sample data"
+						stageClassName="mx-auto mt-10 aspect-[345/783] max-w-[345px] sm:max-w-[440px] lg:mx-0 lg:mt-0 xl:mx-auto xl:mt-10 xl:aspect-[1080/400] xl:max-w-[1080px]"
+					/>
 				</div>
-
-				<HeroStage
-					label="Line drawing: one buyer question is sent to ChatGPT and Perplexity, both answers come back with the brand, cited sources and competitors highlighted, and the marks add up into a report with a sample AI Visibility Score. Sample data."
-					caption="Illustrative example · made-up brand (Acme CRM) and competitors · sample data"
-					stageClassName="mx-auto mt-10 aspect-[345/783] max-w-[345px] sm:max-w-[440px] xl:aspect-[1080/400] xl:max-w-[1080px]"
-				/>
 			</LandingContainer>
 		</section>
 	);

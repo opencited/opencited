@@ -26,8 +26,13 @@ export function LandingNav() {
 				</div>
 
 				<div className="flex items-center gap-2">
-					<AccountLink className="hidden sm:inline-flex" />
-					<GetStartedLink size="marketing-sm">Get started</GetStartedLink>
+					<AccountLink className="relative hidden before:absolute before:inset-x-0 before:-inset-y-1 before:content-[''] sm:inline-flex" />
+					<GetStartedLink
+						size="marketing-sm"
+						className="relative before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']"
+					>
+						Get started
+					</GetStartedLink>
 					<MobileNav />
 				</div>
 			</nav>
