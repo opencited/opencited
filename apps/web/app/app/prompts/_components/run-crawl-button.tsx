@@ -124,6 +124,7 @@ export function RunCrawlButton({
 					variant="outline"
 					size="sm"
 					onClick={handleClick}
+					onKeyDown={(e) => e.stopPropagation()}
 					disabled={!canRun}
 					className="gap-2 run-crawl-btn"
 				>

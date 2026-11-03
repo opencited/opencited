@@ -50,6 +50,7 @@ export function AnswerEnginePicker({
 	}
 
 	function onGroupKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+		event.stopPropagation();
 		if (event.key === "ArrowRight" || event.key === "ArrowDown") {
 			event.preventDefault();
 			moveEnabled(1);
