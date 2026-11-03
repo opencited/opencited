@@ -51,6 +51,29 @@ export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
 	});
 });
 
+// Signed-in org member, with or without a domain project. Used by onboarding
+// before the first project row exists. Everything else stays on
+// orgProtectedProcedure, which still requires the project.
+export const orgOnlyProcedure = publicProcedure.use(async ({ ctx, next }) => {
+	if (!ctx.userId) {
+		throw new TRPCError({ code: "UNAUTHORIZED" });
+	}
+
+	const { orgId } = await auth();
+	if (!orgId) {
+		throw new TRPCError({
+			code: "UNAUTHORIZED",
+			message: "Organization not found",
+		});
+	}
+
+	return next({
+		ctx: {
+			orgId,
+		} as const,
+	});
+});
+
 export const orgProtectedProcedure = publicProcedure.use(
 	async ({ ctx, next }) => {
 		const { orgId } = await auth();

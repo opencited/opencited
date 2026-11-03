@@ -6,6 +6,7 @@ import {
 	ThemeProvider,
 	Toaster,
 } from "@opencited/ui";
+import { TRPCError } from "@trpc/server";
 import { redirect } from "next/navigation";
 import { TRPCReactProvider } from "../_trpc/client";
 import { AppSidebar } from "../components/app-sidebar";
@@ -28,7 +29,14 @@ export default async function ProtectedLayout({
 		redirect("/onboarding");
 	}
 
-	const domainProject = await trpc.domainProject.get();
+	let domainProject: Awaited<ReturnType<typeof trpc.domainProject.get>> = null;
+	try {
+		domainProject = await trpc.domainProject.get();
+	} catch (error) {
+		if (!(error instanceof TRPCError) || error.code !== "NOT_FOUND") {
+			throw error;
+		}
+	}
 
 	if (!domainProject) {
 		redirect("/onboarding");

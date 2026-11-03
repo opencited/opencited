@@ -1,9 +1,7 @@
-import { eq, count } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
 import {
 	createTRPCRouter,
+	orgOnlyProcedure,
 	orgProtectedProcedure,
-	publicProcedure,
 } from "../trpc";
 import {
 	createDomainProjectHandler,
@@ -24,20 +22,31 @@ import {
 	updateDomainProjectInputSchema,
 	deleteDomainProjectInputSchema,
 } from "@opencited/actions";
-import { domainProjectTable } from "@opencited/db";
+import { TRPCError } from "@trpc/server";
 
 export const domainProjectRouter = createTRPCRouter({
-	create: orgProtectedProcedure
+	create: orgOnlyProcedure
 		.input(createDomainProjectInputSchema)
 		.output(createDomainProjectOutputSchema)
 		.mutation(async ({ ctx, input }) => {
+			const existing = await getDomainProjectHandler({
+				ctx,
+				clerkOrganizationId: ctx.orgId,
+			});
+			if (existing) {
+				throw new TRPCError({
+					code: "CONFLICT",
+					message: "Domain project already exists for this organization",
+				});
+			}
+
 			return createDomainProjectHandler({
 				input: { ...input, clerkOrganizationId: ctx.orgId },
 				ctx,
 			});
 		}),
 
-	get: orgProtectedProcedure
+	get: orgOnlyProcedure
 		.output(getDomainProjectOutputSchema)
 		.query(async ({ ctx }) => {
 			return getDomainProjectHandler({ ctx, clerkOrganizationId: ctx.orgId });
@@ -50,17 +59,12 @@ export const domainProjectRouter = createTRPCRouter({
 			return listDomainProjectHandler({ ctx, clerkOrganizationId: ctx.orgId });
 		}),
 
-	hasDomainProject: publicProcedure.query(async ({ ctx }) => {
-		const { orgId } = await auth();
-		if (!orgId) {
-			return false;
-		}
-		const result = await ctx.db
-			.select({ count: count() })
-			.from(domainProjectTable)
-			.where(eq(domainProjectTable.clerkOrganizationId, orgId))
-			.limit(1);
-		return (result[0]?.count ?? 0) > 0;
+	hasDomainProject: orgOnlyProcedure.query(async ({ ctx }) => {
+		const project = await getDomainProjectHandler({
+			ctx,
+			clerkOrganizationId: ctx.orgId,
+		});
+		return project != null;
 	}),
 
 	update: orgProtectedProcedure
@@ -84,7 +88,7 @@ export const domainProjectRouter = createTRPCRouter({
 			});
 		}),
 
-	discoverSitemaps: orgProtectedProcedure
+	discoverSitemaps: orgOnlyProcedure
 		.input(discoverSitemapsInputSchema)
 		.output(discoverSitemapsOutputSchema)
 		.mutation(async ({ ctx, input }) => {

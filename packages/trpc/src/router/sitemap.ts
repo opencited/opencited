@@ -1,4 +1,8 @@
-import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
+import {
+	createTRPCRouter,
+	orgOnlyProcedure,
+	orgProtectedProcedure,
+} from "../trpc";
 import {
 	sitemapCreateHandler,
 	sitemapGetHandler,
@@ -71,7 +75,7 @@ export const sitemapRouter = createTRPCRouter({
 			return sitemapCrawlHandler({ input, ctx });
 		}),
 
-	preview: orgProtectedProcedure
+	preview: orgOnlyProcedure
 		.input(sitemapPreviewInputSchema)
 		.output(sitemapPreviewOutputSchema)
 		.mutation(async ({ ctx, input }) => {

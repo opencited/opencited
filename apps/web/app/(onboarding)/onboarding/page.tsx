@@ -4,6 +4,7 @@ import { CreateOrganization } from "@clerk/nextjs";
 import { OnboardingWizard } from "./_components/onboarding-wizard";
 import { trpc } from "@/app/_trpc/server";
 import { TooltipProvider } from "@opencited/ui";
+import { TRPCError } from "@trpc/server";
 
 export default async function OnboardingPage() {
 	const { userId, orgId } = await auth();
@@ -24,7 +25,14 @@ export default async function OnboardingPage() {
 		);
 	}
 
-	const domainProject = await trpc.domainProject.get();
+	let domainProject: Awaited<ReturnType<typeof trpc.domainProject.get>> = null;
+	try {
+		domainProject = await trpc.domainProject.get();
+	} catch (error) {
+		if (!(error instanceof TRPCError) || error.code !== "NOT_FOUND") {
+			throw error;
+		}
+	}
 
 	if (domainProject) {
 		redirect("/app/dashboard");
