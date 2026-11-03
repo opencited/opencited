@@ -222,17 +222,17 @@ export default function PromptsPage() {
 					<QueryCell
 						query={promptsQuery}
 						loading={
-							<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+							<div className="grid min-w-0 gap-3 md:grid-cols-2 min-[1440px]:grid-cols-3">
 								{[1, 2, 3].map((i) => (
-									<Card key={i}>
-										<div className="flex items-center gap-3 px-5 pt-3 pb-1.5">
+									<Card key={i} className="min-w-0">
+										<div className="flex items-center gap-3 px-4 pt-3 pb-1.5">
 											<Skeleton className="h-3 w-16" />
 											<Skeleton className="h-3 w-20" />
 										</div>
-										<CardHeader className="pb-1 pt-1">
+										<CardHeader className="px-4 pb-1 pt-1">
 											<Skeleton className="h-4 w-3/4" />
 										</CardHeader>
-										<CardContent className="pt-0 pb-4 mt-auto">
+										<CardContent className="px-4 pt-0 pb-4 mt-auto">
 											<div className="flex items-center justify-end">
 												<Skeleton className="h-8 w-20 rounded-sm" />
 											</div>
@@ -284,13 +284,13 @@ export default function PromptsPage() {
 							}
 
 							return (
-								<div className="grid gap-3 p-4 sm:p-0 md:grid-cols-2 lg:grid-cols-3">
+								<div className="grid min-w-0 gap-3 p-4 sm:p-0 md:grid-cols-2 min-[1440px]:grid-cols-3">
 									{prompts.map((prompt, _index) => {
 										return (
 											<Card
 												key={prompt.id}
 												data-prompt-id={prompt.id}
-												className="group focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm flex flex-col"
+												className="group min-w-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none cursor-pointer transition-shadow hover:shadow-sm flex flex-col"
 												onClick={() => {
 													setSelectedPromptId(prompt.id);
 													setPromptToView({
@@ -316,7 +316,7 @@ export default function PromptsPage() {
 												role="button"
 												aria-label={`View prompt: ${prompt.query}`}
 											>
-												<div className="flex items-center justify-between px-5 pt-3 pb-1.5 text-xs text-muted-foreground">
+												<div className="flex items-center justify-between px-4 pt-3 pb-1.5 text-xs text-muted-foreground">
 													<div className="flex items-center gap-2.5">
 														<div className="flex items-center gap-1">
 															<Calendar className="h-3 w-3" />
@@ -334,13 +334,13 @@ export default function PromptsPage() {
 														)}
 													</div>
 												</div>
-												<CardHeader className="pb-1 pt-1">
+												<CardHeader className="px-4 pb-1 pt-1">
 													<CardTitle className="text-sm font-medium leading-relaxed line-clamp-3">
 														{prompt.query}
 													</CardTitle>
 												</CardHeader>
-												<CardContent className="pt-0 pb-4 mt-auto">
-													<div className="flex items-center justify-between">
+												<CardContent className="px-4 pt-0 pb-4 mt-auto">
+													<div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
 														<div className="flex items-center gap-1">
 															<Button
 																variant="ghost"
