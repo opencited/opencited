@@ -1,16 +1,17 @@
-import { auth } from "@clerk/nextjs/server";
 import { ClerkProvider } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import {
 	SidebarInset,
 	SidebarProvider,
 	ThemeProvider,
 	Toaster,
 } from "@opencited/ui";
+import { TRPCError } from "@trpc/server";
 import { redirect } from "next/navigation";
 import { TRPCReactProvider } from "../_trpc/client";
-import { AppSidebar } from "../components/app-sidebar";
 import { trpc } from "../_trpc/server";
 import { ActiveCrawlIndicatorWrapper } from "../components/active-crawl-indicator-wrapper";
+import { AppSidebar } from "../components/app-sidebar";
 import { DomainProjectProvider } from "../components/domain-project-provider";
 
 export default async function ProtectedLayout({
@@ -28,7 +29,14 @@ export default async function ProtectedLayout({
 		redirect("/onboarding");
 	}
 
-	const domainProject = await trpc.domainProject.get();
+	let domainProject: Awaited<ReturnType<typeof trpc.domainProject.get>> = null;
+	try {
+		domainProject = await trpc.domainProject.get();
+	} catch (error) {
+		if (!(error instanceof TRPCError) || error.code !== "NOT_FOUND") {
+			throw error;
+		}
+	}
 
 	if (!domainProject) {
 		redirect("/onboarding");

@@ -1,32 +1,36 @@
-import { createTRPCRouter, orgProtectedProcedure } from "../trpc";
 import {
-	sitemapCreateHandler,
-	sitemapGetHandler,
-	sitemapListHandler,
-	sitemapDeleteHandler,
-	sitemapUrlAddHandler,
 	sitemapCrawlHandler,
-	sitemapPreviewHandler,
-	sitemapUrlListHandler,
-	sitemapUrlGetCountHandler,
-	sitemapCreateInputSchema,
-	sitemapCreateOutputSchema,
-	sitemapGetInputSchema,
-	sitemapGetOutputSchema,
-	sitemapListInputSchema,
-	sitemapListOutputSchema,
-	sitemapDeleteInputSchema,
-	sitemapDeleteOutputSchema,
-	sitemapUrlAddInputSchema,
-	sitemapUrlAddOutputSchema,
 	sitemapCrawlInputSchema,
 	sitemapCrawlOutputSchema,
+	sitemapCreateHandler,
+	sitemapCreateInputSchema,
+	sitemapCreateOutputSchema,
+	sitemapDeleteHandler,
+	sitemapDeleteInputSchema,
+	sitemapDeleteOutputSchema,
+	sitemapGetHandler,
+	sitemapGetInputSchema,
+	sitemapGetOutputSchema,
+	sitemapListHandler,
+	sitemapListInputSchema,
+	sitemapListOutputSchema,
+	sitemapPreviewHandler,
 	sitemapPreviewInputSchema,
 	sitemapPreviewOutputSchema,
+	sitemapUrlAddHandler,
+	sitemapUrlAddInputSchema,
+	sitemapUrlAddOutputSchema,
+	sitemapUrlGetCountHandler,
+	sitemapUrlGetCountOutputSchema,
+	sitemapUrlListHandler,
 	sitemapUrlListInputSchema,
 	sitemapUrlListOutputSchema,
-	sitemapUrlGetCountOutputSchema,
 } from "@opencited/actions";
+import {
+	createTRPCRouter,
+	orgOnlyProcedure,
+	orgProtectedProcedure,
+} from "../trpc";
 
 export const sitemapRouter = createTRPCRouter({
 	create: orgProtectedProcedure
@@ -71,7 +75,7 @@ export const sitemapRouter = createTRPCRouter({
 			return sitemapCrawlHandler({ input, ctx });
 		}),
 
-	preview: orgProtectedProcedure
+	preview: orgOnlyProcedure
 		.input(sitemapPreviewInputSchema)
 		.output(sitemapPreviewOutputSchema)
 		.mutation(async ({ ctx, input }) => {

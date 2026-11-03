@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
-import { TRPCError, initTRPC } from "@trpc/server";
-import { eq } from "drizzle-orm";
-import { ZodError } from "zod";
 import { baseActionContextSchema } from "@opencited/actions";
 import { type Db, domainProjectTable, getFreshDbInstance } from "@opencited/db";
+import { initTRPC, TRPCError } from "@trpc/server";
+import { eq } from "drizzle-orm";
+import { ZodError } from "zod";
 
 export type Context = {
 	userId: string | null;
@@ -47,6 +47,29 @@ export const protectedProcedure = publicProcedure.use(({ ctx, next }) => {
 	return next({
 		ctx: {
 			userId: ctx.userId,
+		} as const,
+	});
+});
+
+// Signed-in org member, with or without a domain project. Used by onboarding
+// before the first project row exists. Everything else stays on
+// orgProtectedProcedure, which still requires the project.
+export const orgOnlyProcedure = publicProcedure.use(async ({ ctx, next }) => {
+	if (!ctx.userId) {
+		throw new TRPCError({ code: "UNAUTHORIZED" });
+	}
+
+	const { orgId } = await auth();
+	if (!orgId) {
+		throw new TRPCError({
+			code: "UNAUTHORIZED",
+			message: "Organization not found",
+		});
+	}
+
+	return next({
+		ctx: {
+			orgId,
 		} as const,
 	});
 });
