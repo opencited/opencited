@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useTRPC } from "@/app/_trpc/client";
@@ -146,6 +146,13 @@ export function OnboardingWizard() {
 		}),
 	);
 
+	const createdProjectRef = useRef<Awaited<
+		ReturnType<typeof createMutation.mutateAsync>
+	> | null>(null);
+	const sitemapIdByUrlRef = useRef(new Map<string, string>());
+	const crawledSitemapUrlsRef = useRef(new Set<string>());
+	const triggeredSitemapIdsRef = useRef(new Set<string>());
+
 	const validateDomain = (value: string): boolean => {
 		const cleaned = value.replace(/^https?:\/\//, "").replace(/\/$/, "");
 		const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-_.]*\.[a-zA-Z]{2,}$/;
@@ -287,30 +294,52 @@ export function OnboardingWizard() {
 				.replace(/\/$/, "");
 			const faviconUrl = `https://www.google.com/s2/favicons?domain=${cleanedDomain}&sz=32`;
 
-			const domainProject = await createMutation.mutateAsync({
-				domain: cleanedDomain,
-				logoUrl: faviconUrl,
-			});
+			let domainProject = createdProjectRef.current;
+			if (!domainProject) {
+				domainProject = await createMutation.mutateAsync({
+					domain: cleanedDomain,
+					logoUrl: faviconUrl,
+				});
+				createdProjectRef.current = domainProject;
+			}
 
 			const createdSitemapIds: string[] = [];
 
 			for (const sitemapUrl of selectedSitemapUrls) {
-				const source = getSourceForUrl(sitemapUrl);
-				const sitemap = await sitemapCreateMutation.mutateAsync({
-					domainProjectId: domainProject.id,
-					url: sitemapUrl,
-					source,
-				});
+				if (crawledSitemapUrlsRef.current.has(sitemapUrl)) {
+					const existingId = sitemapIdByUrlRef.current.get(sitemapUrl);
+					if (existingId) {
+						createdSitemapIds.push(existingId);
+					}
+					continue;
+				}
+
+				let sitemapId = sitemapIdByUrlRef.current.get(sitemapUrl);
+				if (!sitemapId) {
+					const source = getSourceForUrl(sitemapUrl);
+					const sitemap = await sitemapCreateMutation.mutateAsync({
+						domainProjectId: domainProject.id,
+						url: sitemapUrl,
+						source,
+					});
+					sitemapId = sitemap.id;
+					sitemapIdByUrlRef.current.set(sitemapUrl, sitemapId);
+				}
 
 				await crawlMutation.mutateAsync({
-					sitemapId: sitemap.id,
+					sitemapId,
 					sitemapUrl,
 				});
 
-				createdSitemapIds.push(sitemap.id);
+				crawledSitemapUrlsRef.current.add(sitemapUrl);
+				createdSitemapIds.push(sitemapId);
 			}
 
 			for (const sitemapId of createdSitemapIds) {
+				if (triggeredSitemapIdsRef.current.has(sitemapId)) {
+					continue;
+				}
+				triggeredSitemapIdsRef.current.add(sitemapId);
 				triggerSitemapCrawlMutation.mutate({ sitemapId });
 			}
 

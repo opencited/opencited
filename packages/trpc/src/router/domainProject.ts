@@ -1,28 +1,28 @@
 import {
-	createDomainProjectHandler,
-	createDomainProjectInputSchema,
-	createDomainProjectOutputSchema,
-	deleteDomainProjectHandler,
-	deleteDomainProjectInputSchema,
-	deleteDomainProjectOutputSchema,
-	discoverSitemapsHandler,
-	discoverSitemapsInputSchema,
-	discoverSitemapsOutputSchema,
-	getDomainProjectHandler,
-	getDomainProjectOutputSchema,
-	listDomainProjectHandler,
-	listDomainProjectInputSchema,
-	listDomainProjectOutputSchema,
-	updateDomainProjectHandler,
-	updateDomainProjectInputSchema,
-	updateDomainProjectOutputSchema,
-} from "@opencited/actions";
-import { TRPCError } from "@trpc/server";
-import {
 	createTRPCRouter,
 	orgOnlyProcedure,
 	orgProtectedProcedure,
 } from "../trpc";
+import {
+	createDomainProjectHandler,
+	createDomainProjectOutputSchema,
+	getDomainProjectHandler,
+	getDomainProjectOutputSchema,
+	listDomainProjectHandler,
+	listDomainProjectOutputSchema,
+	updateDomainProjectHandler,
+	updateDomainProjectOutputSchema,
+	deleteDomainProjectHandler,
+	deleteDomainProjectOutputSchema,
+	discoverSitemapsHandler,
+	discoverSitemapsOutputSchema,
+	createDomainProjectInputSchema,
+	discoverSitemapsInputSchema,
+	listDomainProjectInputSchema,
+	updateDomainProjectInputSchema,
+	deleteDomainProjectInputSchema,
+} from "@opencited/actions";
+import { TRPCError } from "@trpc/server";
 
 export const domainProjectRouter = createTRPCRouter({
 	create: orgOnlyProcedure

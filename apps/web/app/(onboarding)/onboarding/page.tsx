@@ -1,10 +1,10 @@
-import { CreateOrganization } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { CreateOrganization } from "@clerk/nextjs";
+import { OnboardingWizard } from "./_components/onboarding-wizard";
+import { trpc } from "@/app/_trpc/server";
 import { TooltipProvider } from "@opencited/ui";
 import { TRPCError } from "@trpc/server";
-import { redirect } from "next/navigation";
-import { trpc } from "@/app/_trpc/server";
-import { OnboardingWizard } from "./_components/onboarding-wizard";
 
 export default async function OnboardingPage() {
 	const { userId, orgId } = await auth();

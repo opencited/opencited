@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
-import { baseActionContextSchema } from "@opencited/actions";
-import { type Db, domainProjectTable, getFreshDbInstance } from "@opencited/db";
-import { initTRPC, TRPCError } from "@trpc/server";
+import { TRPCError, initTRPC } from "@trpc/server";
 import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
+import { baseActionContextSchema } from "@opencited/actions";
+import { type Db, domainProjectTable, getFreshDbInstance } from "@opencited/db";
 
 export type Context = {
 	userId: string | null;
