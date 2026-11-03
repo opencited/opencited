@@ -171,11 +171,19 @@ function computePerBrandPerEngineScore(
 	};
 }
 
+function engineCountsTowardScore(
+	engine: string,
+	includedEngines: ReadonlySet<string> | undefined,
+): boolean {
+	return includedEngines === undefined || includedEngines.has(engine);
+}
+
 function computeTrend(
 	crawls: ScoredCrawl[],
 	targetBrandId: string,
 	minCrawlsPerEngine: number,
 	winsorisePercentile: number,
+	includedEngines: ReadonlySet<string> | undefined,
 ): TrendPoint[] {
 	const trend: TrendPoint[] = [];
 	const now = new Date();
@@ -193,7 +201,9 @@ function computeTrend(
 		const byEngine = groupByEngine(cumulativeCrawls);
 		const engineScores: number[] = [];
 
-		for (const [_engine, engineCrawls] of byEngine) {
+		for (const [engine, engineCrawls] of byEngine) {
+			if (!engineCountsTowardScore(engine, includedEngines)) continue;
+
 			const targetCrawls = engineCrawls.filter(
 				(c) => c.brandId === targetBrandId,
 			);
@@ -236,6 +246,9 @@ export function aggregateVisibilityScores(
 		options?.minCrawlsPerEngine ?? COLD_START_MIN_CRAWLS;
 	const winsorisePercentile =
 		options?.winsorisePercentile ?? WINSORISE_PERCENTILE;
+	const includedEngines = options?.includedEngines
+		? new Set(options.includedEngines)
+		: undefined;
 
 	const byEngine = groupByEngine(crawls);
 	const perBrandPerEngineScores: PerBrandPerEngineScore[] = [];
@@ -261,10 +274,16 @@ export function aggregateVisibilityScores(
 		}
 	}
 
+	const scoresInHeadline = includedEngines
+		? perBrandPerEngineScores.filter((score) =>
+				includedEngines.has(score.engine),
+			)
+		: perBrandPerEngineScores;
+
 	let crossEngineScore: number | null = null;
-	if (perBrandPerEngineScores.length > 0) {
-		const total = perBrandPerEngineScores.reduce((sum, s) => sum + s.score, 0);
-		crossEngineScore = Math.round(total / perBrandPerEngineScores.length);
+	if (scoresInHeadline.length > 0) {
+		const total = scoresInHeadline.reduce((sum, s) => sum + s.score, 0);
+		crossEngineScore = Math.round(total / scoresInHeadline.length);
 	}
 
 	const trend = computeTrend(
@@ -272,6 +291,7 @@ export function aggregateVisibilityScores(
 		targetBrandId,
 		minCrawlsPerEngine,
 		winsorisePercentile,
+		includedEngines,
 	);
 
 	return {

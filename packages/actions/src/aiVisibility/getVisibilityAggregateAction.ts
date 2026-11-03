@@ -1,17 +1,18 @@
-import { eq, desc, inArray, and } from "drizzle-orm";
-import { z } from "zod";
-import { baseActionContextSchema } from "../context";
 import {
-	promptQueryCrawlTable,
-	crawlVisibilityScoreTable,
+	competitorTable,
 	crawlBrandMentionTable,
 	crawlReferenceTable,
-	competitorTable,
+	crawlVisibilityScoreTable,
+	promptQueryCrawlTable,
 } from "@opencited/db";
 import {
 	aggregateVisibilityScores,
 	type ScoredCrawl,
 } from "@opencited/score-actions";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
+import { getAnswerEnginesAction, selectEnginesForScore } from "../answerEngine";
+import { baseActionContextSchema } from "../context";
 
 export const getVisibilityAggregateInputSchema = z.object({
 	domainProjectId: z.string(),
@@ -21,6 +22,10 @@ export const getVisibilityAggregateOutputSchema = z.object({
 	perBrandPerEngineScores: z.array(
 		z.object({
 			engine: z.string(),
+			displayName: z.string(),
+			paused: z.boolean(),
+			disabledReason: z.string().nullable(),
+			includedInScore: z.boolean(),
 			mentionScoreNorm: z.number(),
 			positionScoreNorm: z.number(),
 			citationScoreNorm: z.number(),
@@ -30,6 +35,7 @@ export const getVisibilityAggregateOutputSchema = z.object({
 		}),
 	),
 	crossEngineScore: z.number().nullable(),
+	scoreIncludesPausedEngines: z.boolean(),
 	trend: z.array(
 		z.object({
 			date: z.string(),
@@ -132,6 +138,7 @@ export const getVisibilityAggregateAction = async (params: {
 		return {
 			perBrandPerEngineScores: [],
 			crossEngineScore: null,
+			scoreIncludesPausedEngines: false,
 			trend: [],
 			totalCompletedCrawls: 0,
 			activeCompetitorCount: 0,
@@ -141,34 +148,36 @@ export const getVisibilityAggregateAction = async (params: {
 
 	const crawlIds = allCrawls.map((c) => c.id);
 
-	const [allScores, allMentions, allSources, competitors] = await Promise.all([
-		ctx.db
-			.select()
-			.from(crawlVisibilityScoreTable)
-			.where(inArray(crawlVisibilityScoreTable.crawlId, crawlIds)),
-		ctx.db
-			.select()
-			.from(crawlBrandMentionTable)
-			.where(inArray(crawlBrandMentionTable.crawlId, crawlIds)),
-		ctx.db
-			.select()
-			.from(crawlReferenceTable)
-			.where(
-				and(
-					inArray(crawlReferenceTable.crawlId, crawlIds),
-					eq(crawlReferenceTable.kind, "citation"),
+	const [allScores, allMentions, allSources, competitors, engines] =
+		await Promise.all([
+			ctx.db
+				.select()
+				.from(crawlVisibilityScoreTable)
+				.where(inArray(crawlVisibilityScoreTable.crawlId, crawlIds)),
+			ctx.db
+				.select()
+				.from(crawlBrandMentionTable)
+				.where(inArray(crawlBrandMentionTable.crawlId, crawlIds)),
+			ctx.db
+				.select()
+				.from(crawlReferenceTable)
+				.where(
+					and(
+						inArray(crawlReferenceTable.crawlId, crawlIds),
+						eq(crawlReferenceTable.kind, "citation"),
+					),
 				),
-			),
-		ctx.db
-			.select()
-			.from(competitorTable)
-			.where(
-				and(
-					eq(competitorTable.domainProjectId, input.domainProjectId),
-					eq(competitorTable.active, true),
+			ctx.db
+				.select()
+				.from(competitorTable)
+				.where(
+					and(
+						eq(competitorTable.domainProjectId, input.domainProjectId),
+						eq(competitorTable.active, true),
+					),
 				),
-			),
-	]);
+			getAnswerEnginesAction({ input: {}, ctx }),
+		]);
 
 	const scoresByCrawlId = new Map<string, ScoreRow>();
 	for (const score of allScores) {
@@ -227,19 +236,56 @@ export const getVisibilityAggregateAction = async (params: {
 		}
 	}
 
-	const result = aggregateVisibilityScores(scoredCrawls, "target");
+	const { includedEngines, scoreIncludesPausedEngines } =
+		selectEnginesForScore(engines);
+	const includedEngineSet = includedEngines
+		? new Set(includedEngines)
+		: undefined;
+
+	const result = aggregateVisibilityScores(scoredCrawls, "target", {
+		includedEngines,
+	});
+
+	const engineByKey = new Map<string, (typeof engines)[number]>(
+		engines.map((engine) => [engine.key, engine]),
+	);
+	const perBrandPerEngineScores = result.perBrandPerEngineScores.map(
+		(score) => {
+			const engine = engineByKey.get(score.engine);
+			const paused = engine ? !engine.enabled : false;
+			const includedInScore = scoreIncludesPausedEngines
+				? true
+				: (includedEngineSet?.has(score.engine) ?? false);
+			return {
+				...score,
+				displayName: engine?.displayName ?? score.engine,
+				paused,
+				disabledReason: paused ? (engine?.disabledReason ?? null) : null,
+				includedInScore,
+			};
+		},
+	);
 
 	const crawlsPerEngine = new Map<string, number>();
 	for (const crawl of allCrawls) {
 		const engine = crawl.provider ?? "unknown";
+		if (
+			!scoreIncludesPausedEngines &&
+			includedEngineSet &&
+			!includedEngineSet.has(engine)
+		) {
+			continue;
+		}
 		crawlsPerEngine.set(engine, (crawlsPerEngine.get(engine) ?? 0) + 1);
 	}
 	const maxCrawlsPerEngine =
 		crawlsPerEngine.size > 0 ? Math.max(...crawlsPerEngine.values()) : 0;
 
 	return {
-		perBrandPerEngineScores: result.perBrandPerEngineScores,
+		perBrandPerEngineScores,
 		crossEngineScore: result.crossEngineScore,
+		scoreIncludesPausedEngines:
+			scoreIncludesPausedEngines && result.crossEngineScore !== null,
 		trend: result.trend,
 		totalCompletedCrawls: allCrawls.length,
 		activeCompetitorCount: competitors.length,

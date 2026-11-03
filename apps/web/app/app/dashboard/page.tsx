@@ -86,6 +86,9 @@ export default function DashboardPage() {
 							<div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-[360px_200px]">
 								<VisibilityScoreCard
 									crossEngineScore={aggregate.crossEngineScore}
+									scoreIncludesPausedEngines={
+										aggregate.scoreIncludesPausedEngines
+									}
 									perBrandPerEngineScores={aggregate.perBrandPerEngineScores}
 									trend={aggregate.trend}
 									totalCompletedCrawls={aggregate.totalCompletedCrawls}

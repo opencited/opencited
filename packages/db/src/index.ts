@@ -15,6 +15,7 @@ export const getFreshDbInstance = () => {
 export type Db = ReturnType<typeof getFreshDbInstance>;
 export const dbSchema = z.custom<Db>();
 
+export * from "./schema/answerEngine";
 export * from "./schema/domainProject";
 export * from "./schema/sitemap";
 export * from "./schema/sitemapUrl";

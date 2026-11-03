@@ -19,10 +19,11 @@ import {
 } from "@opencited/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, ExternalLink } from "lucide-react";
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { useState } from "react";
 import { useTRPC } from "@/app/_trpc/client";
+import { AnswerEngineLabel } from "@/app/components/answer-engine-label";
 import { PromptQueryCrawlStatusBadge } from "@/app/components/prompt-query-crawl-status-badge";
 import { QueryCell } from "@/app/components/query-cell";
 import { TimeAgo } from "@/app/components/time-ago";
@@ -354,9 +355,9 @@ export function CrawlDetailSheet({
 														<p className="text-xs text-muted-foreground mb-1">
 															Provider
 														</p>
-														<p className="text-sm font-medium">
-															{data.provider ?? "N/A"}
-														</p>
+														<div className="text-sm font-medium">
+															<AnswerEngineLabel provider={data.provider} />
+														</div>
 													</CardContent>
 												</Card>
 												<Card>

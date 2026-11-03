@@ -1,23 +1,27 @@
 "use client";
 
 import {
+	Button,
 	EntityCard,
 	EntityCardContent,
 	EntityCardHeader,
 	EntityCardTitle,
 	EntityCardValue,
-	Button,
 	Progress,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
 } from "@opencited/ui";
+import Link from "next/link";
 import {
 	Area,
 	AreaChart,
+	Tooltip as ChartTooltip,
+	ResponsiveContainer,
 	XAxis,
 	YAxis,
-	Tooltip,
-	ResponsiveContainer,
 } from "recharts";
-import Link from "next/link";
 import { ScoreExplainerTooltip } from "@/app/components/score-explainer-tooltip";
 
 const COLD_START_MIN_CRAWLS = 3;
@@ -37,6 +41,10 @@ function averageSubScores(
 
 interface PerBrandPerEngineScore {
 	engine: string;
+	displayName: string;
+	paused: boolean;
+	disabledReason: string | null;
+	includedInScore: boolean;
 	mentionScoreNorm: number;
 	positionScoreNorm: number;
 	citationScoreNorm: number;
@@ -52,6 +60,7 @@ interface TrendPoint {
 
 interface VisibilityScoreCardProps {
 	crossEngineScore: number | null;
+	scoreIncludesPausedEngines: boolean;
 	perBrandPerEngineScores: PerBrandPerEngineScore[];
 	trend: TrendPoint[];
 	totalCompletedCrawls: number;
@@ -133,7 +142,7 @@ function Sparkline({ data }: { data: TrendPoint[] }) {
 						width={0}
 						domain={["auto", "auto"]}
 					/>
-					<Tooltip
+					<ChartTooltip
 						content={<CustomTooltip />}
 						cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
 					/>
@@ -152,27 +161,59 @@ function Sparkline({ data }: { data: TrendPoint[] }) {
 	);
 }
 
-function EngineBar({ engine, score }: { engine: string; score: number }) {
+function EngineBar({ engine }: { engine: PerBrandPerEngineScore }) {
+	const reasonId = `engine-paused-${engine.engine}`;
+	const pausedLabel = engine.includedInScore
+		? "Paused"
+		: "Paused · not in score";
+
 	return (
-		<div className="flex items-center gap-3">
-			<span className="text-xs text-muted-foreground w-20 truncate font-mono">
-				{engine}
-			</span>
-			<div className="flex-1 h-1.5 bg-muted rounded-sm overflow-hidden">
-				<div
-					className="h-full bg-foreground transition-[width] duration-300 ease-out"
-					style={{ width: `${score}%` }}
-				/>
+		<div className={engine.paused ? "opacity-60" : undefined}>
+			<div className="mb-1 flex items-center gap-2">
+				<span className="truncate text-xs text-muted-foreground">
+					{engine.displayName}
+				</span>
+				{engine.paused ? (
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<button
+								type="button"
+								aria-describedby={reasonId}
+								className="text-xs text-muted-foreground"
+							>
+								{pausedLabel}
+							</button>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p className="max-w-xs text-xs">
+								{engine.disabledReason ??
+									"This engine is temporarily unavailable."}
+							</p>
+						</TooltipContent>
+					</Tooltip>
+				) : null}
 			</div>
-			<span className="text-xs font-medium w-8 text-right tabular-nums">
-				{score}
+			<span id={reasonId} className="sr-only">
+				{engine.disabledReason}
 			</span>
+			<div className="flex items-center gap-3">
+				<div className="h-1.5 flex-1 overflow-hidden rounded-sm bg-muted">
+					<div
+						className="h-full bg-foreground transition-[width] duration-300 ease-out"
+						style={{ width: `${engine.score}%` }}
+					/>
+				</div>
+				<span className="w-8 text-right text-xs font-medium tabular-nums">
+					{engine.score}
+				</span>
+			</div>
 		</div>
 	);
 }
 
 export function VisibilityScoreCard({
 	crossEngineScore,
+	scoreIncludesPausedEngines,
 	perBrandPerEngineScores,
 	trend,
 	totalCompletedCrawls,
@@ -231,6 +272,9 @@ export function VisibilityScoreCard({
 	if (crossEngineScore === null) {
 		const progress = Math.min(maxCrawlsPerEngine, COLD_START_MIN_CRAWLS);
 		const progressPercent = (progress / COLD_START_MIN_CRAWLS) * 100;
+		const pausedEngines = perBrandPerEngineScores.filter(
+			(engine) => engine.paused,
+		);
 
 		return (
 			<EntityCard size="md">
@@ -253,10 +297,23 @@ export function VisibilityScoreCard({
 							<Progress value={progressPercent} className="h-1.5" />
 						</div>
 					</div>
+					{pausedEngines.length > 0 ? (
+						<div className="space-y-2">
+							<TooltipProvider>
+								{pausedEngines.map((engine) => (
+									<EngineBar key={engine.engine} engine={engine} />
+								))}
+							</TooltipProvider>
+						</div>
+					) : null}
 				</EntityCardContent>
 			</EntityCard>
 		);
 	}
+
+	const includedScores = perBrandPerEngineScores.filter(
+		(engine) => engine.includedInScore,
+	);
 
 	return (
 		<EntityCard size="md">
@@ -267,26 +324,26 @@ export function VisibilityScoreCard({
 							iconSize="sm"
 							composite={crossEngineScore}
 							subScores={
-								perBrandPerEngineScores.length > 0
+								includedScores.length > 0
 									? {
 											mention: averageSubScores(
-												perBrandPerEngineScores,
+												includedScores,
 												"mentionScoreNorm",
 											),
 											position: averageSubScores(
-												perBrandPerEngineScores,
+												includedScores,
 												"positionScoreNorm",
 											),
 											citation: averageSubScores(
-												perBrandPerEngineScores,
+												includedScores,
 												"citationScoreNorm",
 											),
 											sentiment: averageSubScores(
-												perBrandPerEngineScores,
+												includedScores,
 												"sentimentScoreNorm",
 											),
 											coMention: averageSubScores(
-												perBrandPerEngineScores,
+												includedScores,
 												"coMentionScoreNorm",
 											),
 										}
@@ -300,21 +357,25 @@ export function VisibilityScoreCard({
 					<EntityCardTitle>AI Visibility Score</EntityCardTitle>
 				</EntityCardHeader>
 				<EntityCardValue size="lg">{crossEngineScore}</EntityCardValue>
+				{scoreIncludesPausedEngines ? (
+					<p className="mt-2 text-xs text-muted-foreground">
+						Every answer engine is paused, so this score includes runs from
+						paused engines.
+					</p>
+				) : null}
 
 				<div className="mt-5 space-y-4">
 					<div>
 						<p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
 							Per-engine breakdown
 						</p>
-						<div className="space-y-2">
-							{perBrandPerEngineScores.map((engine) => (
-								<EngineBar
-									key={engine.engine}
-									engine={engine.engine}
-									score={engine.score}
-								/>
-							))}
-						</div>
+						<TooltipProvider>
+							<div className="space-y-2">
+								{perBrandPerEngineScores.map((engine) => (
+									<EngineBar key={engine.engine} engine={engine} />
+								))}
+							</div>
+						</TooltipProvider>
 					</div>
 
 					<div>

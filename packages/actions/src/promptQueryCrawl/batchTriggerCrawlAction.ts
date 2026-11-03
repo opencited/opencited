@@ -1,12 +1,13 @@
-import { desc, inArray } from "drizzle-orm";
-import { z } from "zod";
-import { baseActionContextSchema } from "../context";
 import {
+	crawlProviderEnum,
 	promptQueryCrawlTable,
 	promptQueryTable,
-	crawlProviderEnum,
 } from "@opencited/db";
 import type { InferSelectModel } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
+import { assertEngineEnabled } from "../answerEngine";
+import { baseActionContextSchema } from "../context";
 
 export const batchTriggerCrawlTaskInputSchema = z.object({
 	promptQueryIds: z
@@ -28,6 +29,8 @@ export const batchTriggerCrawlTaskAction = async (params: {
 }) => {
 	const { input, ctx } = { ...params };
 
+	await assertEngineEnabled(ctx, input.provider);
+
 	// Fetch all prompt queries
 	const promptQueries = await ctx.db
 		.select()
@@ -38,19 +41,24 @@ export const batchTriggerCrawlTaskAction = async (params: {
 		throw new Error("Some prompt queries were not found");
 	}
 
-	// Check for concurrent runs on each prompt
+	// Latest crawl per prompt for this engine only.
 	const existingCrawls = await ctx.db
 		.select()
 		.from(promptQueryCrawlTable)
-		.where(inArray(promptQueryCrawlTable.promptQueryId, input.promptQueryIds))
+		.where(
+			and(
+				inArray(promptQueryCrawlTable.promptQueryId, input.promptQueryIds),
+				eq(promptQueryCrawlTable.provider, input.provider),
+			),
+		)
 		.orderBy(desc(promptQueryCrawlTable.createdAt));
 
+	const seenPromptIds = new Set<string>();
 	const activePromptIds = new Set<string>();
 	for (const crawl of existingCrawls) {
-		if (
-			(crawl.status === "running" || crawl.status === "pending") &&
-			!activePromptIds.has(crawl.promptQueryId)
-		) {
+		if (seenPromptIds.has(crawl.promptQueryId)) continue;
+		seenPromptIds.add(crawl.promptQueryId);
+		if (crawl.status === "running" || crawl.status === "pending") {
 			activePromptIds.add(crawl.promptQueryId);
 		}
 	}

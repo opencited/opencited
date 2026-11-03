@@ -10,6 +10,7 @@ export * from "./competitor";
 export * from "./aiVisibility";
 export * from "./dashboard";
 export * from "./ai";
+export * from "./answerEngine";
 export * from "./proxyConfig";
 export * from "./promptTemplate";
 export * from "./crawlIntake";

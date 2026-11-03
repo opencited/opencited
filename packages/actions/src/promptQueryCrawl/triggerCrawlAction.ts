@@ -1,12 +1,13 @@
-import { eq, desc } from "drizzle-orm";
-import { z } from "zod";
-import { baseActionContextSchema } from "../context";
 import {
+	crawlProviderEnum,
 	promptQueryCrawlSelectSchema,
 	promptQueryCrawlTable,
 	promptQueryTable,
-	crawlProviderEnum,
 } from "@opencited/db";
+import { and, desc, eq } from "drizzle-orm";
+import { z } from "zod";
+import { assertEngineEnabled } from "../answerEngine";
+import { baseActionContextSchema } from "../context";
 
 export const triggerCrawlTaskInputSchema = z.object({
 	promptQueryId: z.string().min(1, "Prompt query is required"),
@@ -27,11 +28,19 @@ export const triggerCrawlTaskAction = async (params: {
 }) => {
 	const { input, ctx } = params;
 
-	// Check for concurrent runs
+	await assertEngineEnabled(ctx, input.provider);
+
+	// Latest crawl for this prompt and this engine. A stuck run on another
+	// engine must not block this one.
 	const existingCrawl = await ctx.db
 		.select()
 		.from(promptQueryCrawlTable)
-		.where(eq(promptQueryCrawlTable.promptQueryId, input.promptQueryId))
+		.where(
+			and(
+				eq(promptQueryCrawlTable.promptQueryId, input.promptQueryId),
+				eq(promptQueryCrawlTable.provider, input.provider),
+			),
+		)
 		.orderBy(desc(promptQueryCrawlTable.createdAt))
 		.limit(1);
 

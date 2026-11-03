@@ -1,22 +1,3 @@
-import { eq, and } from "drizzle-orm";
-import type { LanguageModel } from "ai";
-import { z } from "zod";
-import {
-	FORMULA_VERSION,
-	PROMPT_VERSION,
-	SENTIMENT_SCORE_MAP,
-	SUB_SCORE_WEIGHTS,
-	callSentimentJudge,
-	computeVisibilityScore,
-} from "@opencited/score-actions";
-import type {
-	BrandMention,
-	CrawlCitation,
-	SentimentJudgeResult,
-	TargetBrand,
-	VisibilityScoreResult,
-} from "@opencited/score-actions";
-import { baseActionContextSchema } from "../context";
 import {
 	crawlBrandMentionTable,
 	crawlReferenceTable,
@@ -24,7 +5,26 @@ import {
 	domainProjectTable,
 	promptQueryCrawlTable,
 } from "@opencited/db";
+import type {
+	BrandMention,
+	CrawlCitation,
+	SentimentJudgeResult,
+	TargetBrand,
+	VisibilityScoreResult,
+} from "@opencited/score-actions";
+import {
+	callSentimentJudge,
+	computeVisibilityScore,
+	FORMULA_VERSION,
+	PROMPT_VERSION,
+	SENTIMENT_SCORE_MAP,
+	SUB_SCORE_WEIGHTS,
+} from "@opencited/score-actions";
+import type { LanguageModel } from "ai";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import { createProvider } from "../ai/provider";
+import { baseActionContextSchema } from "../context";
 
 type ScoreRow = typeof crawlVisibilityScoreTable.$inferSelect;
 
@@ -175,7 +175,9 @@ export const computeVisibilityScoreInternal = async (
 
 	const computed: VisibilityScoreResult = computeVisibilityScore({
 		crawlContent: crawl.content ?? "",
-		crawlProvider: crawl.provider ?? "perplexity",
+		// Provider is not used to decide availability. Missing values stay
+		// engine-neutral so a disabled engine is never assumed.
+		crawlProvider: crawl.provider ?? "unknown",
 		crawlCitations,
 		brandMentions,
 		targetBrand,

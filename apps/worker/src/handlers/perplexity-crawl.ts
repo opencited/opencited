@@ -21,6 +21,7 @@ import {
 	setStickyProxy,
 } from "../lib/proxy-resolution";
 import { rateLimit } from "../lib/rate-limit";
+import { readAnswerEngines } from "../lib/answer-engine-availability";
 import { env } from "../env";
 
 function adaptLogger(
@@ -48,6 +49,32 @@ export async function handleCrawlJob(
 	} = job.data;
 
 	await withDb(async (db) => {
+		let engines = await readAnswerEngines(db);
+		let engine = engines.find((candidate) => candidate.key === provider);
+		if (!engine?.enabled) {
+			engines = await readAnswerEngines(db, { fresh: true });
+			engine = engines.find((candidate) => candidate.key === provider);
+		}
+		if (!engine?.enabled) {
+			const displayName = engine?.displayName ?? provider;
+			const reason =
+				engine?.disabledReason ?? "This engine is temporarily unavailable.";
+			await failCrawlAction({
+				input: {
+					crawlId: promptQueryCrawlId,
+					error: `Skipped: ${displayName} is disabled. ${reason}`,
+					promptQueryId,
+				},
+				ctx: { db, userId: null, isAuthenticated: false },
+			});
+			logger.info("Skipped crawl because the answer engine is disabled", {
+				provider,
+				crawlId: promptQueryCrawlId,
+				reason,
+			});
+			return;
+		}
+
 		const crawlContext = await getCrawlContextAction({
 			input: { promptQueryId },
 			ctx: { db, userId: null, isAuthenticated: false },

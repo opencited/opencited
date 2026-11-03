@@ -91,6 +91,12 @@ export type ScoredCrawl = z.infer<typeof scoredCrawlSchema>;
 export const aggregateOptionsSchema = z.object({
 	minCrawlsPerEngine: z.number().int().min(1).optional(),
 	winsorisePercentile: z.number().min(0).max(0.5).optional(),
+	/**
+	 * Engines that count toward crossEngineScore and the trend.
+	 * Per-engine scores are still returned for every engine with history.
+	 * Omit the field to include every engine.
+	 */
+	includedEngines: z.array(z.string()).optional(),
 });
 export type AggregateOptions = z.infer<typeof aggregateOptionsSchema>;
 

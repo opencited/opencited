@@ -1,18 +1,85 @@
 "use client";
 
-import { useState } from "react";
+import {
+	Button,
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	Spinner,
+} from "@opencited/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useTRPC } from "@/app/_trpc/client";
-import { Button, Spinner } from "@opencited/ui";
-import { useConfirmation } from "@/app/hooks/use-confirmation";
 import { useActiveCrawls } from "@/app/hooks/use-active-crawls";
 import {
-	CRAWL_PROVIDER_OPTIONS,
-	defaultCrawlProvider,
-	type CrawlProviderId,
-} from "./crawl-providers";
+	type AnswerEngine,
+	useAnswerEngines,
+} from "@/app/hooks/use-answer-engines";
+import { useConfirmation } from "@/app/hooks/use-confirmation";
 
-import { toast } from "sonner";
+function stopCardActivation(event: React.SyntheticEvent) {
+	event.stopPropagation();
+}
+
+function PromptEngineSelect({
+	engines,
+	value,
+	onChange,
+}: {
+	engines: AnswerEngine[];
+	value: AnswerEngine["key"] | null;
+	onChange: (key: AnswerEngine["key"]) => void;
+}) {
+	const orderedEngines = [...engines].sort(
+		(a, b) => a.sortOrder - b.sortOrder || a.key.localeCompare(b.key),
+	);
+
+	return (
+		<Select
+			value={value ?? ""}
+			onValueChange={(next) => {
+				const engine = orderedEngines.find((item) => item.key === next);
+				if (!engine?.enabled) return;
+				onChange(engine.key);
+			}}
+		>
+			<SelectTrigger
+				aria-label="Answer engine"
+				className="h-8 w-[120px] shrink-0 px-2 text-xs"
+			>
+				<SelectValue placeholder="Engine" />
+			</SelectTrigger>
+			<SelectContent position="item-aligned" className="w-[260px]">
+				{orderedEngines.map((engine) =>
+					engine.enabled ? (
+						<SelectItem key={engine.key} value={engine.key}>
+							{engine.displayName}
+						</SelectItem>
+					) : (
+						<SelectItem
+							key={engine.key}
+							value={engine.key}
+							disabled
+							className="whitespace-normal data-[disabled]:opacity-100"
+						>
+							<span className="flex w-full max-w-[220px] flex-col gap-0.5 py-0.5 text-left">
+								<span>{`${engine.displayName} · Unavailable`}</span>
+								{engine.disabledReason ? (
+									<span className="text-xs leading-snug text-muted-foreground">
+										{engine.disabledReason}
+									</span>
+								) : null}
+							</span>
+						</SelectItem>
+					),
+				)}
+			</SelectContent>
+		</Select>
+	);
+}
 
 interface RunCrawlButtonProps {
 	promptQueryId: string;
@@ -26,9 +93,12 @@ export function RunCrawlButton({
 	const trpc = useTRPC();
 	const queryClient = useQueryClient();
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [selectedProvider, setSelectedProvider] =
-		useState<CrawlProviderId>(defaultCrawlProvider);
+	const [selectedProvider, setSelectedProvider] = useState<
+		AnswerEngine["key"] | null
+	>(null);
 	const { confirm, dialog } = useConfirmation();
+	const { engines, defaultEngine, allEnginesDisabled, query } =
+		useAnswerEngines();
 
 	const { activeCrawls } = useActiveCrawls({
 		domainProjectId,
@@ -37,6 +107,13 @@ export function RunCrawlButton({
 	const isRunning = activeCrawls.some(
 		(crawl) => crawl.promptQueryId === promptQueryId,
 	);
+
+	useEffect(() => {
+		if (!engines) return;
+		const selected = engines.find((engine) => engine.key === selectedProvider);
+		if (selected?.enabled) return;
+		setSelectedProvider(defaultEngine?.key ?? null);
+	}, [engines, selectedProvider, defaultEngine]);
 
 	const startCrawlMutation = useMutation(
 		trpc.promptQueryCrawl.start.mutationOptions({
@@ -65,9 +142,18 @@ export function RunCrawlButton({
 		}),
 	);
 
-	const handleClick = async (e: React.MouseEvent) => {
-		e.stopPropagation();
-		if (isRunning || isSubmitting) return;
+	const handleClick = async () => {
+		if (isRunning || isSubmitting || allEnginesDisabled || !selectedProvider) {
+			return;
+		}
+
+		const selected = engines?.find((engine) => engine.key === selectedProvider);
+		if (!selected?.enabled) {
+			toast.error("This engine is unavailable", {
+				description: selected?.disabledReason ?? undefined,
+			});
+			return;
+		}
 
 		const confirmed = await confirm({
 			title: "Run Crawl",
@@ -79,33 +165,39 @@ export function RunCrawlButton({
 		if (!confirmed) return;
 		startCrawlMutation.mutate({
 			promptQueryId,
-			provider: selectedProvider,
+			provider: selected.key,
 		});
 	};
 
+	const runsPaused = allEnginesDisabled || query.isError;
+	const canRun =
+		!isRunning &&
+		!isSubmitting &&
+		!runsPaused &&
+		selectedProvider !== null &&
+		!query.isLoading;
+
 	return (
 		<>
-			<div className="flex items-center gap-2">
-				<select
-					value={selectedProvider}
-					onClick={(e) => e.stopPropagation()}
-					onChange={(e) =>
-						setSelectedProvider(e.target.value as CrawlProviderId)
-					}
-					className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-				>
-					{CRAWL_PROVIDER_OPTIONS.map((opt) => (
-						<option key={opt.id} value={opt.id}>
-							{opt.label}
-						</option>
-					))}
-				</select>
+			<div
+				className="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2"
+				onClick={stopCardActivation}
+				onPointerDown={stopCardActivation}
+				onKeyDown={stopCardActivation}
+			>
+				{engines && engines.length > 0 ? (
+					<PromptEngineSelect
+						engines={engines}
+						value={selectedProvider}
+						onChange={setSelectedProvider}
+					/>
+				) : null}
 				<Button
 					variant="outline"
 					size="sm"
 					onClick={handleClick}
-					disabled={isRunning || isSubmitting}
-					className="gap-2 run-crawl-btn"
+					disabled={!canRun}
+					className="shrink-0 gap-2 run-crawl-btn"
 				>
 					{(isRunning || isSubmitting) && <Spinner className="h-3 w-3" />}
 					{isRunning || isSubmitting ? "Running..." : "Run Crawl"}

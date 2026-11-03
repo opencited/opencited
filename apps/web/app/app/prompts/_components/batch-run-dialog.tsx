@@ -1,30 +1,31 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTRPC } from "@/app/_trpc/client";
 import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-	DialogFooter,
+	Badge,
 	Button,
 	Checkbox,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
 	Input,
 	Spinner,
-	Badge,
 } from "@opencited/ui";
-import { Search, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { Loader2, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { useTRPC } from "@/app/_trpc/client";
+import { RunsPausedMessage } from "@/app/components/answer-engine-label";
+import { AnswerEnginePicker } from "@/app/components/answer-engine-picker";
 import { useActiveCrawls } from "@/app/hooks/use-active-crawls";
 import {
-	CRAWL_PROVIDER_OPTIONS,
-	defaultCrawlProvider,
-	type CrawlProviderId,
-} from "./crawl-providers";
+	type AnswerEngine,
+	useAnswerEngines,
+} from "@/app/hooks/use-answer-engines";
 
 interface BatchRunDialogProps {
 	open: boolean;
@@ -51,13 +52,23 @@ export function BatchRunDialog({
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(
 		() => new Set(prompts.map((p) => p.id)),
 	);
-	const [selectedProvider, setSelectedProvider] =
-		useState<CrawlProviderId>(defaultCrawlProvider);
+	const [selectedProvider, setSelectedProvider] = useState<
+		AnswerEngine["key"] | null
+	>(null);
+	const { engines, defaultEngine, allEnginesDisabled, query } =
+		useAnswerEngines();
 
 	const { activeCrawls } = useActiveCrawls({
 		domainProjectId,
 		enabled: open,
 	});
+
+	useEffect(() => {
+		if (!open || !engines) return;
+		const selected = engines.find((engine) => engine.key === selectedProvider);
+		if (selected?.enabled) return;
+		setSelectedProvider(defaultEngine?.key ?? null);
+	}, [open, engines, selectedProvider, defaultEngine]);
 
 	const activePromptIds = new Set(
 		activeCrawls.map((crawl) => crawl.promptQueryId),
@@ -117,11 +128,18 @@ export function BatchRunDialog({
 
 	const handleSubmit = async () => {
 		const ids = Array.from(selectedIds);
-		if (ids.length === 0) return;
+		if (ids.length === 0 || !selectedProvider) return;
+		const selected = engines?.find((engine) => engine.key === selectedProvider);
+		if (!selected?.enabled) {
+			toast.error("This engine is unavailable", {
+				description: selected?.disabledReason ?? undefined,
+			});
+			return;
+		}
 		try {
 			const data = await batchMutation.mutateAsync({
 				promptQueryIds: ids,
-				provider: selectedProvider,
+				provider: selected.key,
 			});
 			toast.success("Batch crawl started", {
 				description: `Running ${data.count} crawl${data.count === 1 ? "" : "s"} in background...`,
@@ -165,27 +183,17 @@ export function BatchRunDialog({
 					</DialogDescription>
 				</DialogHeader>
 
+				{allEnginesDisabled || query.isError ? <RunsPausedMessage /> : null}
+
 				<div className="flex items-center gap-3">
-					<label
-						htmlFor="batch-provider"
-						className="text-sm text-muted-foreground"
-					>
-						Provider
-					</label>
-					<select
-						id="batch-provider"
-						value={selectedProvider}
-						onChange={(e) =>
-							setSelectedProvider(e.target.value as CrawlProviderId)
-						}
-						className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-					>
-						{CRAWL_PROVIDER_OPTIONS.map((opt) => (
-							<option key={opt.id} value={opt.id}>
-								{opt.label}
-							</option>
-						))}
-					</select>
+					<span className="text-sm text-muted-foreground">Provider</span>
+					{engines && engines.length > 0 ? (
+						<AnswerEnginePicker
+							engines={engines}
+							value={selectedProvider}
+							onChange={setSelectedProvider}
+						/>
+					) : null}
 				</div>
 
 				<div className="relative">
@@ -267,7 +275,13 @@ export function BatchRunDialog({
 					</Button>
 					<Button
 						onClick={handleSubmit}
-						disabled={selectedCount === 0 || batchMutation.isPending}
+						disabled={
+							selectedCount === 0 ||
+							batchMutation.isPending ||
+							allEnginesDisabled ||
+							query.isError ||
+							selectedProvider === null
+						}
 					>
 						{batchMutation.isPending ? (
 							<>
