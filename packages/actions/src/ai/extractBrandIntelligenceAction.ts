@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { generateText, Output } from "ai";
+import { z } from "zod";
 import { createProvider } from "./provider";
 
 export const extractBrandIntelligenceInputSchema = z.object({
@@ -18,7 +18,10 @@ export const extractBrandIntelligenceInputSchema = z.object({
 
 export const aiBrandMentionSchema = z.object({
 	brandName: z.string().min(1),
-	brandUrl: z.string().nullable().optional(),
+	// Required (nullable) on purpose: Groq's strict structured outputs reject
+	// schemas where a property is optional because it cannot be omitted from
+	// the JSON Schema `required` array.
+	brandUrl: z.string().nullable(),
 	context: z.string().min(1),
 	mentionType: z.enum(["target", "competitor", "other"]),
 	position: z.number().int().positive(),

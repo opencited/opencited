@@ -1,11 +1,11 @@
-import { eq, and } from "drizzle-orm";
+import { crawlReferenceSelectSchema, crawlReferenceTable } from "@opencited/db";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
-import { crawlReferenceTable, crawlReferenceSelectSchema } from "@opencited/db";
 
 export const listCrawlSourcesInputSchema = z.object({
 	crawlId: z.string().min(1),
-	kind: z.enum(["citation", "inline-link"]).optional(),
+	kind: z.enum(["inline-link", "source-panel"]).optional(),
 });
 
 export const listCrawlSourcesOutputSchema = z.array(crawlReferenceSelectSchema);

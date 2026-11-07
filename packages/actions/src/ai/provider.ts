@@ -1,5 +1,5 @@
-import { createOpenAI } from "@ai-sdk/openai";
 import { groq } from "@ai-sdk/groq";
+import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
 import { env } from "../env";
 
@@ -62,12 +62,17 @@ export function createProvider(): {
 		const supportsStructuredOutputs = groqStructuredOutputsModels.has(
 			config.model,
 		);
+		// gpt-oss models are reasoning models and count reasoning tokens against
+		// the output budget. Low effort keeps that budget for the JSON payload
+		// and avoids empty `failed_generation` responses from Groq.
+		const isGptOss = config.model.startsWith("openai/gpt-oss-");
 		return {
 			model: groq(config.model),
 			providerOptions: {
 				groq: {
 					structuredOutputs: supportsStructuredOutputs,
 					strictJsonSchema: supportsStructuredOutputs,
+					...(isGptOss ? { reasoningEffort: "low" } : {}),
 				},
 			},
 		};

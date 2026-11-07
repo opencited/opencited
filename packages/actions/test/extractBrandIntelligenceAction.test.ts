@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
+import { z } from "zod";
 
 mock.module("@opentelemetry/api", () => ({
 	trace: {
@@ -133,6 +134,57 @@ describe("extractBrandIntelligenceOutputSchema — position is required per ment
 		expect(result.success).toBe(true);
 	});
 });
+
+describe("extractBrandIntelligenceOutputSchema — Groq strict structured outputs", () => {
+	it("requires every object property to be listed in `required`", () => {
+		assertEveryPropertyRequired(
+			z.toJSONSchema(extractBrandIntelligenceOutputSchema),
+		);
+	});
+
+	it("requires brandUrl but accepts null", () => {
+		const withoutBrandUrl = aiBrandMentionSchema.safeParse({
+			brandName: "Acme",
+			context: "Acme is mentioned here.",
+			mentionType: "competitor",
+			position: 1,
+		});
+		expect(withoutBrandUrl.success).toBe(false);
+
+		const withNullBrandUrl = aiBrandMentionSchema.safeParse({
+			brandName: "Acme",
+			brandUrl: null,
+			context: "Acme is mentioned here.",
+			mentionType: "competitor",
+			position: 1,
+		});
+		expect(withNullBrandUrl.success).toBe(true);
+	});
+});
+
+function assertEveryPropertyRequired(node: unknown, path = "$"): void {
+	if (Array.isArray(node)) {
+		for (const [index, item] of node.entries()) {
+			assertEveryPropertyRequired(item, `${path}[${index}]`);
+		}
+		return;
+	}
+
+	if (!node || typeof node !== "object") return;
+
+	const schema = node as Record<string, unknown>;
+	const properties = schema.properties;
+	if (properties && typeof properties === "object") {
+		const required = Array.isArray(schema.required) ? schema.required : [];
+		for (const key of Object.keys(properties)) {
+			expect(required, `${path}.${key} must be required`).toContain(key);
+		}
+	}
+
+	for (const [key, value] of Object.entries(schema)) {
+		assertEveryPropertyRequired(value, `${path}.${key}`);
+	}
+}
 
 describe("buildExtractionPrompt — position instructions", () => {
 	const baseInput = {

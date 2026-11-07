@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	Badge,
 	Button,
 	Select,
 	SelectContent,
@@ -8,8 +9,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 	Spinner,
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
 } from "@opencited/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useTRPC } from "@/app/_trpc/client";
@@ -53,29 +59,50 @@ function PromptEngineSelect({
 				<SelectValue placeholder="Engine" />
 			</SelectTrigger>
 			<SelectContent position="item-aligned" className="w-[260px]">
-				{orderedEngines.map((engine) =>
-					engine.enabled ? (
-						<SelectItem key={engine.key} value={engine.key}>
-							{engine.displayName}
-						</SelectItem>
-					) : (
-						<SelectItem
-							key={engine.key}
-							value={engine.key}
-							disabled
-							className="whitespace-normal data-[disabled]:opacity-100"
-						>
-							<span className="flex w-full max-w-[220px] flex-col gap-0.5 py-0.5 text-left">
-								<span>{`${engine.displayName} · Unavailable`}</span>
-								{engine.disabledReason ? (
-									<span className="text-xs leading-snug text-muted-foreground">
-										{engine.disabledReason}
+				<TooltipProvider delayDuration={0}>
+					{orderedEngines.map((engine) =>
+						engine.enabled ? (
+							<SelectItem key={engine.key} value={engine.key}>
+								{engine.displayName}
+							</SelectItem>
+						) : (
+							<SelectItem
+								key={engine.key}
+								value={engine.key}
+								disabled
+								className="data-[disabled]:cursor-default data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
+							>
+								<span className="flex w-full items-center justify-between gap-2">
+									<span className="flex min-w-0 items-center gap-2">
+										<span className="truncate text-muted-foreground">
+											{engine.displayName}
+										</span>
+										<Badge variant="secondary" size="sm">
+											Unavailable
+										</Badge>
 									</span>
-								) : null}
-							</span>
-						</SelectItem>
-					),
-				)}
+									{engine.disabledReason ? (
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<span className="absolute top-1/2 right-2 flex h-4 w-4 -translate-y-1/2 items-center justify-center text-muted-foreground">
+													<Info aria-hidden="true" className="h-3.5 w-3.5" />
+													<span className="sr-only">
+														{engine.disabledReason}
+													</span>
+												</span>
+											</TooltipTrigger>
+											<TooltipContent side="right">
+												<p className="max-w-xs text-xs">
+													{engine.disabledReason}
+												</p>
+											</TooltipContent>
+										</Tooltip>
+									) : null}
+								</span>
+							</SelectItem>
+						),
+					)}
+				</TooltipProvider>
 			</SelectContent>
 		</Select>
 	);

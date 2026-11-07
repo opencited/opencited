@@ -1,6 +1,3 @@
-import { eq, desc, inArray, and } from "drizzle-orm";
-import { z } from "zod";
-import { baseActionContextSchema } from "../context";
 import {
 	competitorTable,
 	crawlBrandMentionTable,
@@ -8,6 +5,9 @@ import {
 	promptQueryCrawlTable,
 	promptQueryTable,
 } from "@opencited/db";
+import { desc, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
+import { baseActionContextSchema } from "../context";
 
 export const getCompetitorDetailInputSchema = z.object({
 	competitorId: z.string(),
@@ -109,12 +109,7 @@ export const getCompetitorDetailAction = async (params: {
 	const sources: SourceRow[] = await ctx.db
 		.select()
 		.from(crawlReferenceTable)
-		.where(
-			and(
-				inArray(crawlReferenceTable.crawlId, crawlIds),
-				eq(crawlReferenceTable.kind, "citation"),
-			),
-		);
+		.where(inArray(crawlReferenceTable.crawlId, crawlIds));
 
 	const crawlMap = new Map<
 		string,

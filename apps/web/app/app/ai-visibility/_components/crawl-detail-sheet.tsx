@@ -53,18 +53,9 @@ export function CrawlDetailSheet({
 
 	const crawl = crawlQuery.data;
 
-	const sourcesQuery = useQuery({
+	const referencesQuery = useQuery({
 		...trpc.aiVisibility.listCrawlSources.queryOptions({
 			crawlId,
-			kind: "citation",
-		}),
-		enabled: open && activeTab === "sources",
-	});
-
-	const inlineLinksQuery = useQuery({
-		...trpc.aiVisibility.listCrawlSources.queryOptions({
-			crawlId,
-			kind: "inline-link",
 		}),
 		enabled: open && activeTab === "sources",
 	});
@@ -170,7 +161,7 @@ export function CrawlDetailSheet({
 
 						<TabsContent value="sources" className="mt-0">
 							<QueryCell
-								query={sourcesQuery}
+								query={referencesQuery}
 								loading={
 									<div className="py-8 text-center text-muted-foreground flex items-center justify-center gap-2">
 										<Spinner className="size-4" />
@@ -178,8 +169,14 @@ export function CrawlDetailSheet({
 									</div>
 								}
 								success={(data) => {
-									const inlineLinks = inlineLinksQuery.data ?? [];
-									const hasSources = data && data.length > 0;
+									const references = data ?? [];
+									const sources = references.filter(
+										(reference) => reference.kind !== "inline-link",
+									);
+									const inlineLinks = references.filter(
+										(reference) => reference.kind === "inline-link",
+									);
+									const hasSources = sources.length > 0;
 									const hasInlineLinks = inlineLinks.length > 0;
 
 									if (!hasSources && !hasInlineLinks) {
@@ -198,7 +195,7 @@ export function CrawlDetailSheet({
 														Websites cited by the AI as references
 													</p>
 													<DataList
-														items={data}
+														items={sources}
 														keyExtractor={(source) => source.id}
 														renderItem={(source) => (
 															<div className="space-y-2">

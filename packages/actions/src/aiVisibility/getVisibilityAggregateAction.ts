@@ -161,12 +161,7 @@ export const getVisibilityAggregateAction = async (params: {
 			ctx.db
 				.select()
 				.from(crawlReferenceTable)
-				.where(
-					and(
-						inArray(crawlReferenceTable.crawlId, crawlIds),
-						eq(crawlReferenceTable.kind, "citation"),
-					),
-				),
+				.where(inArray(crawlReferenceTable.crawlId, crawlIds)),
 			ctx.db
 				.select()
 				.from(competitorTable)

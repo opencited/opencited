@@ -1,14 +1,14 @@
+import {
+	competitorTable,
+	crawlBrandMentionTable,
+	crawlReferenceTable,
+	domainProjectTable,
+	promptQueryCrawlTable,
+	promptQueryTable,
+} from "@opencited/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { baseActionContextSchema } from "../context";
-import {
-	crawlReferenceTable,
-	crawlBrandMentionTable,
-	promptQueryCrawlTable,
-	promptQueryTable,
-	domainProjectTable,
-	competitorTable,
-} from "@opencited/db";
 
 export const citationSourceSchema = z.object({
 	domain: z.string().min(1),
@@ -96,7 +96,7 @@ export const saveStructuredCrawlDataAction = async (params: {
 
 	const sourcesToInsert = structured.citations.map((citation) => ({
 		crawlId,
-		kind: "citation" as const,
+		kind: "source-panel" as const,
 		domain: citation.domain,
 		url: citation.url,
 		title: citation.title,
