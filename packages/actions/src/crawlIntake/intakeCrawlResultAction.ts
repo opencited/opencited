@@ -1,12 +1,13 @@
-import { z } from "zod";
+import type { Db } from "@opencited/db";
 import type { Logger } from "@opencited/logger";
-import { baseActionContextSchema } from "../context";
-import { saveCrawlResultAction } from "../promptQueryCrawl/triggerCrawlAction";
-import { saveInlineLinksAction } from "../promptQueryCrawl/saveInlineLinksAction";
-import { updateCrawlAction } from "../promptQueryCrawl/updateCrawlAction";
+import { z } from "zod";
 import { extractBrandIntelligenceAction } from "../ai/extractBrandIntelligenceAction";
 import { saveBrandIntelligenceAction } from "../ai/saveBrandIntelligenceAction";
 import { computeVisibilityScoreAction } from "../aiVisibility/computeVisibilityScoreAction";
+import { baseActionContextSchema } from "../context";
+import { saveInlineLinksAction } from "../promptQueryCrawl/saveInlineLinksAction";
+import { saveCrawlResultAction } from "../promptQueryCrawl/triggerCrawlAction";
+import { updateCrawlAction } from "../promptQueryCrawl/updateCrawlAction";
 
 export const intakeCrawlResultInputSchema = z.object({
 	crawlId: z.string().min(1),
@@ -80,12 +81,33 @@ export type IntakeCrawlResultInput = z.infer<
 export type IntakeCrawlResultOutput = z.infer<
 	typeof intakeCrawlResultOutputSchema
 >;
+export type IntakeCrawlResultContext = z.infer<
+	typeof intakeCrawlResultContextSchema
+>;
 
-export const intakeCrawlResultAction = async (params: {
-	input: IntakeCrawlResultInput;
-	ctx: z.infer<typeof intakeCrawlResultContextSchema>;
-}): Promise<IntakeCrawlResultOutput> => {
-	const { input, ctx } = params;
+/**
+ * Runs one database phase with a handle that the caller controls. Workers
+ * pass a scoped runner so each phase opens and closes its own pool instead of
+ * holding an idle connection through the LLM call in the middle.
+ */
+export type CrawlIntakeDbRunner = <T>(fn: (db: Db) => Promise<T>) => Promise<T>;
+
+export type IntakeCrawlResultParams =
+	| {
+			input: IntakeCrawlResultInput;
+			ctx: IntakeCrawlResultContext;
+			dbRunner?: undefined;
+	  }
+	| {
+			input: IntakeCrawlResultInput;
+			ctx: Omit<IntakeCrawlResultContext, "db">;
+			dbRunner: CrawlIntakeDbRunner;
+	  };
+
+export const intakeCrawlResultAction = async (
+	params: IntakeCrawlResultParams,
+): Promise<IntakeCrawlResultOutput> => {
+	const { input } = params;
 	const {
 		crawlId,
 		promptQueryId,
@@ -96,6 +118,12 @@ export const intakeCrawlResultAction = async (params: {
 		crawlContext,
 		logger,
 	} = input;
+
+	const runDb: CrawlIntakeDbRunner =
+		params.dbRunner ??
+		((fn) => fn((params.ctx as IntakeCrawlResultContext).db as Db));
+
+	const withDb = (db: Db) => ({ ...params.ctx, db });
 
 	logger?.info("[intake] action start", {
 		crawlId,
@@ -108,21 +136,25 @@ export const intakeCrawlResultAction = async (params: {
 
 	const failedSteps: string[] = [];
 
-	await saveCrawlResultAction({
-		input: {
-			crawlId,
-			provider: result.provider,
-			content: result.content,
-			url: result.metadata.url,
-			title: result.metadata.title,
-			loadTimeMs,
-			timestamp: result.metadata.timestamp.toISOString(),
-			promptQueryId,
-		},
-		ctx,
-	});
+	await runDb(async (db) => {
+		await saveCrawlResultAction({
+			input: {
+				crawlId,
+				provider: result.provider,
+				content: result.content,
+				url: result.metadata.url,
+				title: result.metadata.title,
+				loadTimeMs,
+				timestamp: result.metadata.timestamp.toISOString(),
+				promptQueryId,
+			},
+			ctx: withDb(db),
+		});
 
-	if (result.structured) {
+		if (!result.structured) {
+			return;
+		}
+
 		const allInlineLinks = [
 			...result.structured.inlineLinks,
 			...result.structured.sourcePanelLinks,
@@ -137,7 +169,7 @@ export const intakeCrawlResultAction = async (params: {
 					inlineLinks: result.structured.inlineLinks,
 					sourcePanelLinks: result.structured.sourcePanelLinks,
 				},
-				ctx,
+				ctx: withDb(db),
 			});
 		}
 
@@ -151,10 +183,10 @@ export const intakeCrawlResultAction = async (params: {
 					sourceCount: allInlineLinks.length,
 					domainProjectId,
 				},
-				ctx,
+				ctx: withDb(db),
 			});
 		}
-	}
+	});
 
 	let sentimentRetryNeeded = false;
 
@@ -199,14 +231,16 @@ export const intakeCrawlResultAction = async (params: {
 			answerFormat: intelligence.answerFormat,
 		});
 
-		const saveResult = await saveBrandIntelligenceAction({
-			input: {
-				crawlId,
-				domainProjectId,
-				intelligence,
-			},
-			ctx,
-		});
+		const saveResult = await runDb((db) =>
+			saveBrandIntelligenceAction({
+				input: {
+					crawlId,
+					domainProjectId,
+					intelligence,
+				},
+				ctx: withDb(db),
+			}),
+		);
 
 		logger?.info("Brand intelligence saved", {
 			crawlId,
@@ -216,9 +250,16 @@ export const intakeCrawlResultAction = async (params: {
 		});
 
 		try {
+			// The score action runs its own short database phases through the
+			// runner, so the pool is closed while it waits on the sentiment
+			// judge.
 			const scoreResult = await computeVisibilityScoreAction({
 				input: { crawlId },
-				ctx,
+				ctx: {
+					userId: params.ctx.userId,
+					isAuthenticated: params.ctx.isAuthenticated,
+				},
+				dbRunner: runDb,
 			});
 
 			logger?.info("AI Visibility Score computed", {

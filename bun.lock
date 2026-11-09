@@ -154,6 +154,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@neondatabase/serverless": "catalog:",
+        "@opencited/logger": "workspace:*",
         "@t3-oss/env-core": "catalog:",
         "dotenv": "catalog:",
         "drizzle-orm": "catalog:",

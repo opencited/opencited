@@ -48,7 +48,7 @@ export async function handleCrawlJob(
 		provider,
 	} = job.data;
 
-	await withDb(async (db) => {
+	const engineState = await withDb(async (db) => {
 		let engines = await readAnswerEngines(db);
 		let engine = engines.find((candidate) => candidate.key === provider);
 		if (!engine?.enabled) {
@@ -67,155 +67,168 @@ export async function handleCrawlJob(
 				},
 				ctx: { db, userId: null, isAuthenticated: false },
 			});
-			logger.info("Skipped crawl because the answer engine is disabled", {
-				provider,
-				crawlId: promptQueryCrawlId,
-				reason,
-			});
-			return;
+			return { started: false as const, displayName, reason };
 		}
 
 		const crawlContext = await getCrawlContextAction({
 			input: { promptQueryId },
 			ctx: { db, userId: null, isAuthenticated: false },
 		});
+		return { started: true as const, crawlContext };
+	});
 
-		await rateLimit(provider);
-
-		const crawlLogger = adaptLogger(logger, {
-			jobId: job.id ?? undefined,
-			promptQueryCrawlId,
-			promptQueryId,
+	if (!engineState.started) {
+		logger.info("Skipped crawl because the answer engine is disabled", {
 			provider,
+			crawlId: promptQueryCrawlId,
+			reason: engineState.reason,
 		});
+		return;
+	}
 
-		const crawlerProvider = createProvider(provider, crawlLogger);
-		const crawler = new Crawler({ logger: crawlLogger });
+	const { crawlContext } = engineState;
 
-		try {
-			const startTime = Date.now();
+	await rateLimit(provider);
 
-			const { proxies, usedSticky } = await resolveProxies({
+	const crawlLogger = adaptLogger(logger, {
+		jobId: job.id ?? undefined,
+		promptQueryCrawlId,
+		promptQueryId,
+		provider,
+	});
+
+	const crawlerProvider = createProvider(provider, crawlLogger);
+	const crawler = new Crawler({ logger: crawlLogger });
+
+	try {
+		const startTime = Date.now();
+
+		const { proxies, usedSticky } = await withDb((db) =>
+			resolveProxies({
 				domainProjectId,
 				ctx: { db, userId: null, isAuthenticated: false },
 				redis,
 				logger,
-			});
+			}),
+		);
 
-			const result = await crawler
-				.crawl({
-					query,
-					provider: crawlerProvider,
-					browserOptions: {
-						headless: env.HEADLESS,
-						persist: false,
-					},
-					proxies,
-				})
-				.catch(async (err) => {
-					if (err instanceof AllProxiesFailedError && usedSticky) {
-						logger.warn(
-							"Sticky proxy failed — falling back to fresh proxy list",
-							{ lastFailureType: err.lastFailureType },
-						);
-						await clearStickyProxy(redis, domainProjectId);
-
-						const freshProxyList = await fetchProxyList(
-							env.THORDATA_PROXY_API_URL!,
-						);
-						const freshProxies = freshProxyList.map((p) => ({
-							server: `http://${p}`,
-						}));
-						logger.info("Retrying with fresh proxy list", {
-							proxyCount: freshProxies.length,
-						});
-
-						return crawler.crawl({
-							query,
-							provider: crawlerProvider,
-							browserOptions: { headless: true, persist: false },
-							proxies: freshProxies,
-						});
-					}
-					throw err;
-				});
-
-			const endTime = Date.now();
-
-			if (result.usedProxy) {
-				await setStickyProxy(redis, domainProjectId, result.usedProxy);
-				logger.info("Sticky proxy updated after successful crawl", {
-					server: result.usedProxy.server,
-				});
-			}
-
-			logger.info("Browser crawl completed", {
-				url: result.metadata.url,
-				title: result.metadata.title,
-				contentLength: result.content.length,
-				loadTimeMs: result.metadata.loadTimeMs,
-				inlineLinksCount: result.structured?.inlineLinks.length ?? 0,
-				sourcePanelLinksCount: result.structured?.sourcePanelLinks.length ?? 0,
-			});
-
-			const intakeResult = await intakeCrawlResultAction({
-				input: {
-					crawlId: promptQueryCrawlId,
-					promptQueryId,
-					domainProjectId: crawlContext.domainProjectId ?? domainProjectId,
-					query,
-					result,
-					loadTimeMs: endTime - startTime,
-					crawlContext: {
-						targetBrand: crawlContext.targetBrand,
-						targetDomain: crawlContext.targetDomain,
-						targetAliases: crawlContext.targetAliases,
-						knownCompetitors: crawlContext.knownCompetitors,
-					},
-					logger,
+		const result = await crawler
+			.crawl({
+				query,
+				provider: crawlerProvider,
+				browserOptions: {
+					headless: env.HEADLESS,
+					persist: false,
 				},
-				ctx: { db, userId: null, isAuthenticated: false },
+				proxies,
+			})
+			.catch(async (err) => {
+				if (err instanceof AllProxiesFailedError && usedSticky) {
+					logger.warn(
+						"Sticky proxy failed — falling back to fresh proxy list",
+						{ lastFailureType: err.lastFailureType },
+					);
+					await clearStickyProxy(redis, domainProjectId);
+
+					const freshProxyList = await fetchProxyList(
+						env.THORDATA_PROXY_API_URL!,
+					);
+					const freshProxies = freshProxyList.map((p) => ({
+						server: `http://${p}`,
+					}));
+					logger.info("Retrying with fresh proxy list", {
+						proxyCount: freshProxies.length,
+					});
+
+					return crawler.crawl({
+						query,
+						provider: crawlerProvider,
+						browserOptions: { headless: true, persist: false },
+						proxies: freshProxies,
+					});
+				}
+				throw err;
 			});
 
-			if (!intakeResult.success) {
-				logger.warn("Crawl intake completed with partial failures", {
-					crawlId: promptQueryCrawlId,
-					failedSteps: intakeResult.failedSteps,
-				});
-			}
+		const endTime = Date.now();
 
-			if (intakeResult.sentimentRetryNeeded) {
-				await dispatch("sentiment-retry", {
-					crawlId: promptQueryCrawlId,
-					promptQueryCrawlId,
-					domainProjectId: crawlContext.domainProjectId ?? domainProjectId,
-				});
-				logger.info("Sentiment retry enqueued", {
-					crawlId: promptQueryCrawlId,
-				});
-			}
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
+		if (result.usedProxy) {
+			await setStickyProxy(redis, domainProjectId, result.usedProxy);
+			logger.info("Sticky proxy updated after successful crawl", {
+				server: result.usedProxy.server,
+			});
+		}
 
-			await clearStickyProxy(redis, domainProjectId);
-			logger.info("Sticky proxy cleared after crawl failure");
+		logger.info("Browser crawl completed", {
+			url: result.metadata.url,
+			title: result.metadata.title,
+			contentLength: result.content.length,
+			loadTimeMs: result.metadata.loadTimeMs,
+			inlineLinksCount: result.structured?.inlineLinks.length ?? 0,
+			sourcePanelLinksCount: result.structured?.sourcePanelLinks.length ?? 0,
+		});
 
-			logger.error("Crawl task failed", {
-				error: errorMessage,
+		const intakeResult = await intakeCrawlResultAction({
+			input: {
+				crawlId: promptQueryCrawlId,
+				promptQueryId,
+				domainProjectId: crawlContext.domainProjectId ?? domainProjectId,
+				query,
+				result,
+				loadTimeMs: endTime - startTime,
+				crawlContext: {
+					targetBrand: crawlContext.targetBrand,
+					targetDomain: crawlContext.targetDomain,
+					targetAliases: crawlContext.targetAliases,
+					knownCompetitors: crawlContext.knownCompetitors,
+				},
+				logger,
+			},
+			// Intake runs its database phases through `withDb`, so no pool is
+			// held open through the LLM extraction in between.
+			ctx: { userId: null, isAuthenticated: false },
+			dbRunner: withDb,
+		});
+
+		if (!intakeResult.success) {
+			logger.warn("Crawl intake completed with partial failures", {
+				crawlId: promptQueryCrawlId,
+				failedSteps: intakeResult.failedSteps,
+			});
+		}
+
+		if (intakeResult.sentimentRetryNeeded) {
+			await dispatch("sentiment-retry", {
+				crawlId: promptQueryCrawlId,
+				promptQueryCrawlId,
+				domainProjectId: crawlContext.domainProjectId ?? domainProjectId,
+			});
+			logger.info("Sentiment retry enqueued", {
 				crawlId: promptQueryCrawlId,
 			});
+		}
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
 
-			await failCrawlAction({
+		await clearStickyProxy(redis, domainProjectId);
+		logger.info("Sticky proxy cleared after crawl failure");
+
+		logger.error("Crawl task failed", {
+			error: errorMessage,
+			crawlId: promptQueryCrawlId,
+		});
+
+		await withDb((db) =>
+			failCrawlAction({
 				input: {
 					crawlId: promptQueryCrawlId,
 					error: errorMessage,
 					promptQueryId,
 				},
 				ctx: { db, userId: null, isAuthenticated: false },
-			});
+			}),
+		);
 
-			throw error;
-		}
-	});
+		throw error;
+	}
 }

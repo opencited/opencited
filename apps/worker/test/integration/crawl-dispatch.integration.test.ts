@@ -230,6 +230,14 @@ describe("handleCrawlJob with chatgpt provider", () => {
 		expect(callArgs.input.result.content).toBe(mockCrawlResult.content);
 	});
 
+	it("gives intake a db runner instead of an open pool", async () => {
+		await handleCrawlJob(makeJob(), makeLogger(), makeRedis());
+
+		const callArgs = intakeCrawlResultMock.mock.calls[0][0];
+		expect(typeof callArgs.dbRunner).toBe("function");
+		expect(callArgs.ctx).not.toHaveProperty("db");
+	});
+
 	it("intakeCrawlResultAction receives correct CrawlResult shape", async () => {
 		await handleCrawlJob(makeJob(), makeLogger(), makeRedis());
 

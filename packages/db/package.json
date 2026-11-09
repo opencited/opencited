@@ -19,6 +19,7 @@
 		"tsc": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@opencited/logger": "workspace:*",
 		"drizzle-orm": "catalog:",
 		"@neondatabase/serverless": "catalog:",
 		"dotenv": "catalog:",

@@ -2,6 +2,7 @@ import {
 	crawlBrandMentionTable,
 	crawlReferenceTable,
 	crawlVisibilityScoreTable,
+	type Db,
 	domainProjectTable,
 	promptQueryCrawlTable,
 } from "@opencited/db";
@@ -54,6 +55,23 @@ type CrawlRow = typeof promptQueryCrawlTable.$inferSelect;
 type DomainProjectRow = typeof domainProjectTable.$inferSelect;
 type MentionRow = typeof crawlBrandMentionTable.$inferSelect;
 type SourceRow = typeof crawlReferenceTable.$inferSelect;
+type VisibilityScoreRowValues = typeof crawlVisibilityScoreTable.$inferInsert;
+
+/**
+ * Runs one database phase with a handle that the caller controls. Workers
+ * pass a scoped runner so each phase opens and closes its own pool instead of
+ * holding an idle connection through the sentiment LLM call in the middle.
+ */
+export type VisibilityScoreDbRunner = <T>(
+	fn: (db: Db) => Promise<T>,
+) => Promise<T>;
+
+interface VisibilityScoreInputs {
+	crawl: CrawlRow;
+	targetBrand: TargetBrand;
+	brandMentions: BrandMention[];
+	crawlCitations: CrawlCitation[];
+}
 
 function parseAliases(value: unknown): string[] {
 	if (Array.isArray(value)) {
@@ -62,58 +80,28 @@ function parseAliases(value: unknown): string[] {
 	return [];
 }
 
-const modelName = (() => {
-	try {
-		return process.env.LLM_MODEL ?? "unknown-model";
-	} catch {
-		return "unknown-model";
-	}
-})();
-
-const { model: moduleModel, providerOptions: rawProviderOptions } =
-	createProvider();
-const moduleProviderOptions = rawProviderOptions as
-	| Record<string, Record<string, unknown>>
-	| undefined;
-
-const moduleSentimentCache = new Map<string, SentimentJudgeResult>();
-
-export interface ComputeVisibilityScoreInternalParams {
-	input: z.infer<typeof computeVisibilityScoreInputSchema>;
-	ctx: z.infer<typeof computeVisibilityScoreContextSchema>;
-	model?: LanguageModel;
-	providerOptions?: Record<string, Record<string, unknown>>;
-	sentimentCache?: Map<string, SentimentJudgeResult>;
-	now?: () => Date;
-}
-
-export const computeVisibilityScoreInternal = async (
-	params: ComputeVisibilityScoreInternalParams,
-): Promise<z.infer<typeof computeVisibilityScoreOutputSchema>> => {
-	const { input, ctx } = params;
-	const model = params.model ?? moduleModel;
-	const providerOptions = params.providerOptions ?? moduleProviderOptions;
-	const sentimentCache = params.sentimentCache ?? moduleSentimentCache;
-	const now = params.now ?? (() => new Date());
-
-	const crawls: CrawlRow[] = await ctx.db
+async function loadVisibilityScoreInputs(
+	db: Db,
+	crawlId: string,
+): Promise<VisibilityScoreInputs> {
+	const crawls: CrawlRow[] = await db
 		.select()
 		.from(promptQueryCrawlTable)
-		.where(eq(promptQueryCrawlTable.id, input.crawlId))
+		.where(eq(promptQueryCrawlTable.id, crawlId))
 		.limit(1);
 
 	if (crawls.length === 0) {
-		throw new Error(`Crawl not found: ${input.crawlId}`);
+		throw new Error(`Crawl not found: ${crawlId}`);
 	}
 	const crawl = crawls[0];
 	if (!crawl) {
-		throw new Error(`Crawl not found: ${input.crawlId}`);
+		throw new Error(`Crawl not found: ${crawlId}`);
 	}
 	if (!crawl.domainProjectId) {
-		throw new Error(`Crawl has no domainProjectId: ${input.crawlId}`);
+		throw new Error(`Crawl has no domainProjectId: ${crawlId}`);
 	}
 
-	const projects: DomainProjectRow[] = await ctx.db
+	const projects: DomainProjectRow[] = await db
 		.select()
 		.from(domainProjectTable)
 		.where(eq(domainProjectTable.id, crawl.domainProjectId))
@@ -133,10 +121,10 @@ export const computeVisibilityScoreInternal = async (
 		aliases: parseAliases(project.aliases),
 	};
 
-	const mentionRows: MentionRow[] = await ctx.db
+	const mentionRows: MentionRow[] = await db
 		.select()
 		.from(crawlBrandMentionTable)
-		.where(eq(crawlBrandMentionTable.crawlId, input.crawlId));
+		.where(eq(crawlBrandMentionTable.crawlId, crawlId));
 
 	const brandMentions: BrandMention[] = mentionRows.map((m: MentionRow) => ({
 		brandName: m.brandName,
@@ -145,10 +133,10 @@ export const computeVisibilityScoreInternal = async (
 		brandUrl: m.brandUrl ?? undefined,
 	}));
 
-	const sourceRows: SourceRow[] = await ctx.db
+	const sourceRows: SourceRow[] = await db
 		.select()
 		.from(crawlReferenceTable)
-		.where(eq(crawlReferenceTable.crawlId, input.crawlId));
+		.where(eq(crawlReferenceTable.crawlId, crawlId));
 
 	const crawlCitations: CrawlCitation[] = sourceRows
 		.filter(
@@ -163,7 +151,102 @@ export const computeVisibilityScoreInternal = async (
 			isCompetitorDomain: s.isCompetitorDomain ?? undefined,
 		}));
 
-	const sentimentResult = await callSentimentJudge(
+	return { crawl, targetBrand, brandMentions, crawlCitations };
+}
+
+async function writeVisibilityScoreRow(
+	db: Db,
+	rowValues: VisibilityScoreRowValues,
+): Promise<void> {
+	const existing = await db
+		.select({ crawlId: crawlVisibilityScoreTable.crawlId })
+		.from(crawlVisibilityScoreTable)
+		.where(
+			and(
+				eq(crawlVisibilityScoreTable.crawlId, rowValues.crawlId),
+				eq(crawlVisibilityScoreTable.formulaVersion, rowValues.formulaVersion),
+			),
+		)
+		.limit(1);
+
+	if (existing.length > 0) {
+		await db
+			.update(crawlVisibilityScoreTable)
+			.set(rowValues)
+			.where(eq(crawlVisibilityScoreTable.crawlId, rowValues.crawlId));
+	} else {
+		await db.insert(crawlVisibilityScoreTable).values(rowValues);
+	}
+}
+
+const modelName = (() => {
+	try {
+		return process.env.LLM_MODEL ?? "unknown-model";
+	} catch {
+		return "unknown-model";
+	}
+})();
+
+const { model: moduleModel, providerOptions: rawProviderOptions } =
+	createProvider();
+const moduleProviderOptions = rawProviderOptions as
+	| Record<string, Record<string, unknown>>
+	| undefined;
+
+const moduleSentimentCache = new Map<string, SentimentJudgeResult>();
+
+type ComputeVisibilityScoreContext = z.infer<
+	typeof computeVisibilityScoreContextSchema
+>;
+
+type ComputeVisibilityScoreBaseParams = {
+	input: z.infer<typeof computeVisibilityScoreInputSchema>;
+	model?: LanguageModel;
+	providerOptions?: Record<string, Record<string, unknown>>;
+	sentimentCache?: Map<string, SentimentJudgeResult>;
+	sentimentJudge?: typeof callSentimentJudge;
+	now?: () => Date;
+};
+
+type ScopedComputeVisibilityScoreParams = {
+	ctx: Omit<ComputeVisibilityScoreContext, "db">;
+	dbRunner: VisibilityScoreDbRunner;
+};
+
+type UnscopedComputeVisibilityScoreParams = {
+	ctx: ComputeVisibilityScoreContext;
+	dbRunner?: undefined;
+};
+
+export type ComputeVisibilityScoreInternalParams =
+	ComputeVisibilityScoreBaseParams &
+		(ScopedComputeVisibilityScoreParams | UnscopedComputeVisibilityScoreParams);
+
+export type ComputeVisibilityScoreActionParams = {
+	input: z.infer<typeof computeVisibilityScoreInputSchema>;
+} & (ScopedComputeVisibilityScoreParams | UnscopedComputeVisibilityScoreParams);
+
+export const computeVisibilityScoreInternal = async (
+	params: ComputeVisibilityScoreInternalParams,
+): Promise<z.infer<typeof computeVisibilityScoreOutputSchema>> => {
+	const { input } = params;
+	const model = params.model ?? moduleModel;
+	const providerOptions = params.providerOptions ?? moduleProviderOptions;
+	const sentimentCache = params.sentimentCache ?? moduleSentimentCache;
+	const sentimentJudge = params.sentimentJudge ?? callSentimentJudge;
+	const now = params.now ?? (() => new Date());
+
+	const runDb: VisibilityScoreDbRunner =
+		params.dbRunner ??
+		((fn) => fn((params.ctx as ComputeVisibilityScoreContext).db as Db));
+
+	// Load everything the judge needs in one short scope, then close it before
+	// waiting on the LLM.
+	const { crawl, targetBrand, brandMentions, crawlCitations } = await runDb(
+		(db) => loadVisibilityScoreInputs(db, input.crawlId),
+	);
+
+	const sentimentResult = await sentimentJudge(
 		{
 			content: crawl.content ?? "",
 			brandName: targetBrand.name,
@@ -208,25 +291,9 @@ export const computeVisibilityScoreInternal = async (
 		computedAt,
 	};
 
-	const existing = await ctx.db
-		.select({ crawlId: crawlVisibilityScoreTable.crawlId })
-		.from(crawlVisibilityScoreTable)
-		.where(
-			and(
-				eq(crawlVisibilityScoreTable.crawlId, input.crawlId),
-				eq(crawlVisibilityScoreTable.formulaVersion, computed.formulaVersion),
-			),
-		)
-		.limit(1);
-
-	if (existing.length > 0) {
-		await ctx.db
-			.update(crawlVisibilityScoreTable)
-			.set(rowValues)
-			.where(eq(crawlVisibilityScoreTable.crawlId, input.crawlId));
-	} else {
-		await ctx.db.insert(crawlVisibilityScoreTable).values(rowValues);
-	}
+	// Write the score in a fresh short scope so no pool stays open after the
+	// judge call either.
+	await runDb((db) => writeVisibilityScoreRow(db, rowValues));
 
 	return {
 		row: {
@@ -245,17 +312,15 @@ export const computeVisibilityScoreInternal = async (
 	};
 };
 
-export const computeVisibilityScoreAction = async (params: {
-	input: z.infer<typeof computeVisibilityScoreInputSchema>;
-	ctx: z.infer<typeof computeVisibilityScoreContextSchema>;
-}) => {
+export const computeVisibilityScoreAction = async (
+	params: ComputeVisibilityScoreActionParams,
+) => {
 	return computeVisibilityScoreInternal(params);
 };
 
-export const computeVisibilityScoreHandler = async (params: {
-	input: z.infer<typeof computeVisibilityScoreInputSchema>;
-	ctx: z.infer<typeof computeVisibilityScoreContextSchema>;
-}) => {
+export const computeVisibilityScoreHandler = async (
+	params: ComputeVisibilityScoreActionParams,
+) => {
 	return computeVisibilityScoreAction(params);
 };
 
@@ -293,13 +358,32 @@ export const retrySentimentOutputSchema = z.object({
 
 export const retrySentimentContextSchema = baseActionContextSchema;
 
-export interface RetrySentimentInternalParams {
+type RetrySentimentContext = z.infer<typeof retrySentimentContextSchema>;
+
+type RetrySentimentBaseParams = {
 	input: z.infer<typeof retrySentimentInputSchema>;
-	ctx: z.infer<typeof retrySentimentContextSchema>;
 	model?: LanguageModel;
 	providerOptions?: Record<string, Record<string, unknown>>;
+	sentimentJudge?: typeof callSentimentJudge;
 	now?: () => Date;
-}
+};
+
+type ScopedRetrySentimentParams = {
+	ctx: Omit<RetrySentimentContext, "db">;
+	dbRunner: VisibilityScoreDbRunner;
+};
+
+type UnscopedRetrySentimentParams = {
+	ctx: RetrySentimentContext;
+	dbRunner?: undefined;
+};
+
+export type RetrySentimentInternalParams = RetrySentimentBaseParams &
+	(ScopedRetrySentimentParams | UnscopedRetrySentimentParams);
+
+export type RetrySentimentActionParams = {
+	input: z.infer<typeof retrySentimentInputSchema>;
+} & (ScopedRetrySentimentParams | UnscopedRetrySentimentParams);
 
 function recomputeComposite(
 	mention: number,
@@ -317,29 +401,31 @@ function recomputeComposite(
 	);
 }
 
-export const retrySentimentInternal = async (
-	params: RetrySentimentInternalParams,
-): Promise<z.infer<typeof retrySentimentOutputSchema>> => {
-	const { input, ctx } = params;
-	const model = params.model ?? moduleModel;
-	const providerOptions = params.providerOptions ?? moduleProviderOptions;
-	const now = params.now ?? (() => new Date());
+interface RetrySentimentInputs {
+	existing: ScoreRow;
+	crawl: CrawlRow;
+	brandName: string;
+}
 
-	const existingRows: ScoreRow[] = await ctx.db
+async function loadRetrySentimentInputs(
+	db: Db,
+	crawlId: string,
+	nowDate: Date,
+): Promise<RetrySentimentInputs> {
+	const existingRows: ScoreRow[] = await db
 		.select()
 		.from(crawlVisibilityScoreTable)
-		.where(eq(crawlVisibilityScoreTable.crawlId, input.crawlId))
+		.where(eq(crawlVisibilityScoreTable.crawlId, crawlId))
 		.limit(1);
 
 	if (existingRows.length === 0) {
-		throw new Error(`No score row to retry sentiment for: ${input.crawlId}`);
+		throw new Error(`No score row to retry sentiment for: ${crawlId}`);
 	}
 	const existing = existingRows[0];
 	if (!existing) {
-		throw new Error(`No score row to retry sentiment for: ${input.crawlId}`);
+		throw new Error(`No score row to retry sentiment for: ${crawlId}`);
 	}
 
-	const nowDate = now();
 	if (existing.sentimentLastAttemptAt) {
 		const elapsed =
 			nowDate.getTime() - existing.sentimentLastAttemptAt.getTime();
@@ -350,21 +436,21 @@ export const retrySentimentInternal = async (
 		}
 	}
 
-	const crawls: CrawlRow[] = await ctx.db
+	const crawls: CrawlRow[] = await db
 		.select()
 		.from(promptQueryCrawlTable)
-		.where(eq(promptQueryCrawlTable.id, input.crawlId))
+		.where(eq(promptQueryCrawlTable.id, crawlId))
 		.limit(1);
 
 	if (crawls.length === 0) {
-		throw new Error(`Crawl not found: ${input.crawlId}`);
+		throw new Error(`Crawl not found: ${crawlId}`);
 	}
 	const crawl = crawls[0];
 	if (!crawl?.domainProjectId) {
-		throw new Error(`Crawl missing domainProjectId: ${input.crawlId}`);
+		throw new Error(`Crawl missing domainProjectId: ${crawlId}`);
 	}
 
-	const projects: DomainProjectRow[] = await ctx.db
+	const projects: DomainProjectRow[] = await db
 		.select()
 		.from(domainProjectTable)
 		.where(eq(domainProjectTable.id, crawl.domainProjectId))
@@ -378,12 +464,47 @@ export const retrySentimentInternal = async (
 		throw new Error(`Domain project not found: ${crawl.domainProjectId}`);
 	}
 
-	const brandName = project.name ?? project.domain;
+	return {
+		existing,
+		crawl,
+		brandName: project.name ?? project.domain,
+	};
+}
+
+async function updateVisibilityScoreRow(
+	db: Db,
+	crawlId: string,
+	fields: Partial<VisibilityScoreRowValues>,
+): Promise<void> {
+	await db
+		.update(crawlVisibilityScoreTable)
+		.set(fields)
+		.where(eq(crawlVisibilityScoreTable.crawlId, crawlId));
+}
+
+export const retrySentimentInternal = async (
+	params: RetrySentimentInternalParams,
+): Promise<z.infer<typeof retrySentimentOutputSchema>> => {
+	const { input } = params;
+	const model = params.model ?? moduleModel;
+	const providerOptions = params.providerOptions ?? moduleProviderOptions;
+	const sentimentJudge = params.sentimentJudge ?? callSentimentJudge;
+	const now = params.now ?? (() => new Date());
+
+	const runDb: VisibilityScoreDbRunner =
+		params.dbRunner ??
+		((fn) => fn((params.ctx as RetrySentimentContext).db as Db));
+
+	// Load the row, crawl and brand in one short scope, then close it before
+	// waiting on the LLM.
+	const { existing, crawl, brandName } = await runDb((db) =>
+		loadRetrySentimentInputs(db, input.crawlId, now()),
+	);
 
 	// Fresh cache so the previous fallback entry isn't reused.
 	const freshCache = new Map<string, SentimentJudgeResult>();
 
-	const sentimentResult = await callSentimentJudge(
+	const sentimentResult = await sentimentJudge(
 		{
 			content: crawl.content ?? "",
 			brandName,
@@ -405,10 +526,9 @@ export const retrySentimentInternal = async (
 			sentimentRetryCount: newRetryCount,
 			sentimentLastAttemptAt: computedAt,
 		};
-		await ctx.db
-			.update(crawlVisibilityScoreTable)
-			.set(updatedFields)
-			.where(eq(crawlVisibilityScoreTable.crawlId, input.crawlId));
+		await runDb((db) =>
+			updateVisibilityScoreRow(db, input.crawlId, updatedFields),
+		);
 
 		return {
 			row: {
@@ -456,10 +576,9 @@ export const retrySentimentInternal = async (
 		formulaVersion: FORMULA_VERSION,
 	};
 
-	await ctx.db
-		.update(crawlVisibilityScoreTable)
-		.set(updatedFields)
-		.where(eq(crawlVisibilityScoreTable.crawlId, input.crawlId));
+	await runDb((db) =>
+		updateVisibilityScoreRow(db, input.crawlId, updatedFields),
+	);
 
 	return {
 		row: {
@@ -480,16 +599,14 @@ export const retrySentimentInternal = async (
 	};
 };
 
-export const retrySentimentAction = async (params: {
-	input: z.infer<typeof retrySentimentInputSchema>;
-	ctx: z.infer<typeof retrySentimentContextSchema>;
-}) => {
+export const retrySentimentAction = async (
+	params: RetrySentimentActionParams,
+) => {
 	return retrySentimentInternal(params);
 };
 
-export const retrySentimentHandler = async (params: {
-	input: z.infer<typeof retrySentimentInputSchema>;
-	ctx: z.infer<typeof retrySentimentContextSchema>;
-}) => {
+export const retrySentimentHandler = async (
+	params: RetrySentimentActionParams,
+) => {
 	return retrySentimentAction(params);
 };

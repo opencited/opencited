@@ -6,13 +6,16 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { HonoAdapter } from "@bull-board/hono";
-import { createLogger, flush } from "@opencited/logger";
+import { defaultLogger, flush } from "@opencited/logger";
 import { handleCrawlJob } from "./handlers/perplexity-crawl";
 import { handleSentimentRetry } from "./handlers/sentiment-retry";
 import { handleScanMentionProbeJob } from "./handlers/scan-mention-probe";
 import { env } from "./env";
 
-const logger = createLogger();
+// Use the shared logger instance: `flush()` flushes the transports of
+// `defaultLogger`, and a separate `createLogger()` instance would buffer its
+// Axiom events in a client that never gets flushed.
+const logger = defaultLogger;
 
 const concurrency = env.WORKER_CONCURRENCY;
 const shutdownTimeoutMs = 30_000;
@@ -270,6 +273,42 @@ async function shutdown(signal: string) {
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
+
+const fatalFlushTimeoutMs = 5_000;
+
+async function handleFatalError(label: string, error: unknown): Promise<void> {
+	logger.error(label, {
+		error: error instanceof Error ? error.message : String(error),
+		stack: error instanceof Error ? error.stack : undefined,
+	});
+
+	// These handlers exit the process. After an uncaught exception or a
+	// rejection nobody is awaiting, the worker can no longer be trusted to
+	// finish the job it was running, and BullMQ would keep that job locked
+	// until it stalls. Flush first so the crash reaches Axiom, then exit
+	// non-zero and let the supervisor restart the process. The timeout stops
+	// a stuck Axiom request from keeping a dead worker alive.
+	try {
+		await Promise.race([
+			flush(),
+			new Promise<void>((resolve) => {
+				setTimeout(resolve, fatalFlushTimeoutMs);
+			}),
+		]);
+	} catch (flushError) {
+		console.error("[worker] failed to flush logs before exit", flushError);
+	}
+
+	process.exit(1);
+}
+
+process.once("uncaughtException", (error) => {
+	void handleFatalError("Uncaught exception", error);
+});
+
+process.once("unhandledRejection", (reason) => {
+	void handleFatalError("Unhandled rejection", reason);
+});
 
 serve({ fetch: app.fetch, port: env.WORKER_PORT }, (info) => {
 	logger.info("Worker dashboard listening", { port: info.port });
