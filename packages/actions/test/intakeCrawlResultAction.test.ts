@@ -23,21 +23,27 @@ const saveIntelligenceMock = mock(async () => ({
 	competitorsCreated: 0,
 	competitorsMatched: 0,
 }));
-const computeScoreMock = mock(async () => ({
-	row: {
-		crawlId: "crawl-1",
-		mentionScore: 100,
-		positionScore: 100,
-		citationScore: 0,
-		sentimentScore: 100,
-		coMentionScore: 25,
-		visibilityScore: 73,
-		formulaVersion: "v1.0.0",
-		computedAt: new Date(),
-	},
-	sentimentRetryNeeded: false,
-	sentimentRetryCount: 0,
-}));
+const computeScoreMock = mock(
+	async (_params: {
+		input: { crawlId: string };
+		ctx: Record<string, unknown>;
+		dbRunner?: unknown;
+	}) => ({
+		row: {
+			crawlId: "crawl-1",
+			mentionScore: 100,
+			positionScore: 100,
+			citationScore: 0,
+			sentimentScore: 100,
+			coMentionScore: 25,
+			visibilityScore: 73,
+			formulaVersion: "v1.0.0",
+			computedAt: new Date(),
+		},
+		sentimentRetryNeeded: false,
+		sentimentRetryCount: 0,
+	}),
+);
 
 mock.module("../src/promptQueryCrawl/triggerCrawlAction", () => ({
 	saveCrawlResultAction: saveCrawlResultMock,
@@ -60,12 +66,17 @@ mock.module("../src/ai/saveBrandIntelligenceAction", () => ({
 }));
 
 mock.module("../src/aiVisibility/computeVisibilityScoreAction", () => ({
+	...actualScoreActionModule,
 	computeVisibilityScoreAction: computeScoreMock,
 }));
 
-import { intakeCrawlResultAction } from "../src/crawlIntake/intakeCrawlResultAction";
-import type { IntakeCrawlResultInput } from "../src/crawlIntake/intakeCrawlResultAction";
 import type { Logger } from "@opencited/logger";
+import * as actualScoreActionModule from "../src/aiVisibility/computeVisibilityScoreAction";
+import type {
+	CrawlIntakeDbRunner,
+	IntakeCrawlResultInput,
+} from "../src/crawlIntake/intakeCrawlResultAction";
+import { intakeCrawlResultAction } from "../src/crawlIntake/intakeCrawlResultAction";
 
 const baseCtx = { userId: null, isAuthenticated: false, db: {} };
 
@@ -455,5 +466,43 @@ describe("intakeCrawlResultAction", () => {
 
 		expect(result.success).toBe(true);
 		expect(saveInlineLinksMock).not.toHaveBeenCalled();
+	});
+
+	it("runs each database phase through the provided db runner", async () => {
+		const order: string[] = [];
+		const runner: CrawlIntakeDbRunner = async (fn) => {
+			order.push("db:start");
+			try {
+				return await fn({ scoped: true } as never);
+			} finally {
+				order.push("db:end");
+			}
+		};
+
+		extractIntelligenceMock.mockImplementationOnce(async () => {
+			order.push("llm");
+			return {
+				brandMentions: [],
+				discoveredCompetitors: [],
+				answerFormat: "paragraph" as const,
+			};
+		});
+
+		const result = await intakeCrawlResultAction({
+			input: makeInput(),
+			ctx: { userId: null, isAuthenticated: false },
+			dbRunner: runner,
+		});
+
+		expect(result.success).toBe(true);
+		// The response save is one scope, then the LLM call runs with no scope
+		// open, then intelligence gets its own scope. The score action receives
+		// the runner, so it closes its own scopes around the sentiment judge
+		// instead of inheriting an outer scope here.
+		expect(order).toEqual(["db:start", "db:end", "llm", "db:start", "db:end"]);
+
+		const scoreArgs = computeScoreMock.mock.calls[0]?.[0];
+		expect(scoreArgs?.dbRunner).toBe(runner);
+		expect(scoreArgs?.ctx).not.toHaveProperty("db");
 	});
 });

@@ -1,17 +1,11 @@
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import ws from "ws";
 import { eq } from "drizzle-orm";
 import { promptTemplateTable } from "../src/schema/promptTemplate";
 import { promptTemplates } from "../src/prompt-templates";
-import { env } from "../src/env";
+import { getFreshDbInstanceWithPool } from "../src";
 
 async function syncTemplates() {
-	neonConfig.webSocketConstructor = ws;
-
-	const pool = new Pool({ connectionString: env.DATABASE_URL });
-	const db = drizzle({ client: pool, schema: {} });
+	const { db, pool } = getFreshDbInstanceWithPool();
 
 	console.log(`Syncing ${promptTemplates.length} prompt templates...`);
 
