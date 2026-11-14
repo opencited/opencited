@@ -74,6 +74,7 @@ COPY --from=builder /app/bun.lock ./bun.lock
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/worker ./apps/worker
+COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /root/.cache/camoufox /root/.cache/camoufox
 
 EXPOSE 3001

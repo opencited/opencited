@@ -1,6 +1,7 @@
+import { env as BrowserCrawlerEnv } from "@opencited/browser-crawler/env";
 import { createEnv } from "@t3-oss/env-core";
 import * as z from "zod";
-import { env as BrowserCrawlerEnv } from "@opencited/browser-crawler/env";
+import { DEFAULT_CRAWL_HEALTH_QUERY } from "./lib/crawl-health";
 
 export const env = createEnv({
 	server: {
@@ -20,6 +21,10 @@ export const env = createEnv({
 		PROXY_PASSWORD: z.string().optional(),
 		STICKY_PROXY_ENABLED: z.coerce.boolean().default(false),
 		CRAWL_RATE_LIMITS: z.string().optional().default("{}"),
+		/** Cron pattern (second precision) for the daily crawl health check. */
+		CRAWL_HEALTH_CHECK_CRON: z.string().default("0 0 6 * * *"),
+		CRAWL_HEALTH_CHECK_TZ: z.string().default("Asia/Kolkata"),
+		CRAWL_HEALTH_CHECK_QUERY: z.string().default(DEFAULT_CRAWL_HEALTH_QUERY),
 	},
 	runtimeEnv: process.env,
 	extends: [BrowserCrawlerEnv],

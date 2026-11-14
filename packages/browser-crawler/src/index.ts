@@ -1,78 +1,75 @@
 export {
-	openBrowser,
-	closeBrowser,
-	navigate,
-	takeSnapshot,
-	screenshot,
-	reload,
-	goBack,
-	goForward,
-} from "./browser";
-
-export { captureDebugInfo } from "./debug";
-export {
-	capturePageState,
-	probeSourcesCandidates,
-	waitForSourcesButton,
-	type DebugContext,
-	type SourceCandidate,
-} from "./debug-state";
-
-export {
-	click,
-	type,
-	press,
-	hover,
-	waitFor,
-	extractContent,
-	evaluate,
-	getHtml,
-	getText,
-	getClipboard,
-} from "./actions";
-
-export { Crawler } from "./crawler";
-export {
 	createLogger,
 	defaultLogger,
 	type Logger,
-	type LogLevel,
 	type LoggerContext,
+	type LogLevel,
 } from "@opencited/logger";
+export {
+	click,
+	evaluate,
+	extractContent,
+	getClipboard,
+	getHtml,
+	getText,
+	hover,
+	press,
+	type,
+	waitFor,
+} from "./actions";
+export {
+	closeBrowser,
+	goBack,
+	goForward,
+	navigate,
+	openBrowser,
+	reload,
+	screenshot,
+	takeSnapshot,
+} from "./browser";
+export { Crawler } from "./crawler";
+export { captureDebugInfo } from "./debug";
+export {
+	capturePageState,
+	type DebugContext,
+	probeSourcesCandidates,
+	type SourceCandidate,
+	waitForSourcesButton,
+} from "./debug-state";
 
 export {
-	CrawlerError,
-	AuthenticationError,
-	NavigationError,
-	ExtractionError,
 	AllProxiesFailedError,
+	AuthenticationError,
+	CrawlAbortedError,
+	CrawlerError,
 	classifyError,
+	ExtractionError,
+	type FailureType,
+	NavigationError,
 	shouldRotateProxy,
 	toErrorMessage,
-	type FailureType,
 } from "./errors";
-
-export { PerplexityProvider } from "./providers/perplexity";
-export { ChatGPTProvider } from "./providers/chatgpt";
-export { createProvider, providerRegistry } from "./providers/factory";
 export type {
-	CrawlerProvider,
 	AuthCredentials,
-	CrawlResult,
+	CrawlerProvider,
 	CrawlMetadata,
+	CrawlResult,
 	InlineLink,
 } from "./providers";
+export { ChatGPTProvider } from "./providers/chatgpt";
+export { createProvider, providerRegistry } from "./providers/factory";
+export { PerplexityProvider } from "./providers/perplexity";
 
 export type {
-	BrowserSession,
+	ActionResult,
 	BrowserOptions,
-	ProxyOptions,
-	SnapshotOptions,
+	BrowserSession,
 	ExtractContentOptions,
 	ExtractedContent,
-	LinkInfo,
 	ImageInfo,
-	SourceInfo,
+	LinkInfo,
 	PageMetadata,
-	ActionResult,
+	ProxyOptions,
+	SnapshotOptions,
+	SourceInfo,
 } from "./types";

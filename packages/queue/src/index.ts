@@ -1,14 +1,15 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
-import { jobs, type JobName, type JobPayload } from "./jobs";
 import { env } from "./env";
+import { type JobName, type JobPayload, jobs } from "./jobs";
 
-export { jobs, type JobName, type JobPayload } from "./jobs";
+export { dispatchCrawlHealthCheck } from "./dispatch-crawl-health-check";
 export {
 	dispatchCrawlJob,
 	getJobNameForProvider,
 } from "./dispatch-crawl-job";
 export { dispatchScanMentionProbe } from "./dispatch-scan-mention-probe";
+export { type JobName, type JobPayload, jobs } from "./jobs";
 
 const queues = new Map<string, Queue>();
 

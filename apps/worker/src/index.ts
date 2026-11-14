@@ -1,16 +1,23 @@
-import { Worker, Queue, QueueEvents } from "bullmq";
-import IORedis from "ioredis";
-import { Hono } from "hono";
-import { serve } from "@hono/node-server";
-import { serveStatic } from "@hono/node-server/serve-static";
 import { createBullBoard } from "@bull-board/api";
 import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
 import { HonoAdapter } from "@bull-board/hono";
+import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { defaultLogger, flush } from "@opencited/logger";
-import { handleCrawlJob } from "./handlers/perplexity-crawl";
-import { handleSentimentRetry } from "./handlers/sentiment-retry";
-import { handleScanMentionProbeJob } from "./handlers/scan-mention-probe";
+import { jobs } from "@opencited/queue";
+import { Queue, QueueEvents, Worker } from "bullmq";
+import { Hono } from "hono";
+import IORedis from "ioredis";
 import { env } from "./env";
+import { handleCrawlHealthCheck } from "./handlers/crawl-health-check";
+import { handleCrawlJob } from "./handlers/perplexity-crawl";
+import { handleScanMentionProbeJob } from "./handlers/scan-mention-probe";
+import { handleSentimentRetry } from "./handlers/sentiment-retry";
+import type { CrawlHealthEngine } from "./lib/crawl-health";
+import {
+	CRAWL_HEALTH_CHECK_SCHEDULER_ID,
+	decideCrawlHealthSchedule,
+} from "./lib/crawl-health-schedule";
 
 // Use the shared logger instance: `flush()` flushes the transports of
 // `defaultLogger`, and a separate `createLogger()` instance would buffer its
@@ -33,6 +40,10 @@ const sentimentRetryQueue = new Queue("sentiment-retry", {
 });
 
 const scanMentionProbeQueue = new Queue("scan-mention-probe", {
+	connection: createRedisConnection(),
+});
+
+const crawlHealthCheckQueue = new Queue("crawl-health-check", {
 	connection: createRedisConnection(),
 });
 
@@ -81,6 +92,50 @@ function createRedisConnection(): IORedis {
 }
 
 const sharedRedis = createRedisConnection();
+
+const ACTIVE_CRAWL_POLL_INTERVAL_MS = 15_000;
+const ACTIVE_CRAWL_WAIT_TIMEOUT_MS = 20 * 60 * 1000;
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * The canary shares the provider rate budget with user crawls, so it waits for
+ * the matching crawl queue to drain before opening its browser. After 20
+ * minutes it runs anyway: missing a day is worse than overlapping one crawl.
+ */
+async function waitForEngineQueueIdle(
+	engine: CrawlHealthEngine,
+): Promise<void> {
+	const queue = engine === "chatgpt" ? chatgptCrawlQueue : perplexityCrawlQueue;
+	const deadline = Date.now() + ACTIVE_CRAWL_WAIT_TIMEOUT_MS;
+	let loggedActive = false;
+
+	while (Date.now() < deadline) {
+		const active = await queue.getActiveCount();
+		if (active === 0) return;
+
+		if (!loggedActive) {
+			logger.info("Crawl health check waiting for active crawl jobs", {
+				engine,
+				active,
+			});
+			loggedActive = true;
+		}
+
+		await sleep(
+			Math.min(
+				ACTIVE_CRAWL_POLL_INTERVAL_MS,
+				Math.max(0, deadline - Date.now()),
+			),
+		);
+	}
+
+	logger.warn("Crawl health check proceeding while crawl jobs are active", {
+		engine,
+	});
+}
 
 const worker = new Worker(
 	"perplexity-crawl",
@@ -133,6 +188,28 @@ const sentimentRetryWorker = new Worker(
 	{
 		connection: createRedisConnection(),
 		concurrency: 2,
+	},
+);
+
+const crawlHealthCheckWorker = new Worker(
+	"crawl-health-check",
+	async (job) => {
+		logger.info("Processing crawl health check", {
+			jobId: job.id,
+			data: job.data,
+		});
+		await handleCrawlHealthCheck(job, logger, {
+			waitForEngineIdle: waitForEngineQueueIdle,
+		});
+	},
+	{
+		// One Camoufox at a time for the canary. Engines run sequentially in
+		// the handler; this stops a manual run overlapping a scheduled run.
+		connection: createRedisConnection(),
+		concurrency: 1,
+		// Registration runs first so a restart cannot delete an overdue
+		// scheduled run before this worker starts processing.
+		autorun: false,
 	},
 );
 
@@ -201,6 +278,23 @@ scanMentionProbeWorker.on("error", (err) => {
 	logger.error("Scan mention probe worker error", { error: err.message });
 });
 
+crawlHealthCheckWorker.on("completed", async (job) => {
+	logger.info("Crawl health check: job completed", { jobId: job.id });
+	await flush();
+});
+
+crawlHealthCheckWorker.on("failed", async (job, err) => {
+	logger.error("Crawl health check: job failed", {
+		jobId: job?.id,
+		error: err.message,
+	});
+	await flush();
+});
+
+crawlHealthCheckWorker.on("error", (err) => {
+	logger.error("Crawl health check worker error", { error: err.message });
+});
+
 const app = new Hono();
 
 const serverAdapter = new HonoAdapter(serveStatic);
@@ -210,6 +304,7 @@ createBullBoard({
 		new BullMQAdapter(chatgptCrawlQueue),
 		new BullMQAdapter(sentimentRetryQueue),
 		new BullMQAdapter(scanMentionProbeQueue),
+		new BullMQAdapter(crawlHealthCheckQueue),
 	],
 	serverAdapter,
 });
@@ -250,6 +345,7 @@ async function shutdown(signal: string) {
 			chatgptWorker.close(),
 			sentimentRetryWorker.close(),
 			scanMentionProbeWorker.close(),
+			crawlHealthCheckWorker.close(),
 			queueEvents.close(),
 			chatgptQueueEvents.close(),
 			sentimentRetryQueueEvents.close(),
@@ -257,6 +353,7 @@ async function shutdown(signal: string) {
 			chatgptCrawlQueue.close(),
 			sentimentRetryQueue.close(),
 			scanMentionProbeQueue.close(),
+			crawlHealthCheckQueue.close(),
 			sharedRedis.quit(),
 			flush(),
 		]);
@@ -308,6 +405,91 @@ process.once("uncaughtException", (error) => {
 
 process.once("unhandledRejection", (reason) => {
 	void handleFatalError("Unhandled rejection", reason);
+});
+
+/**
+ * BullMQ 5.56's `upsertJobScheduler` computes the next cron time from now and
+ * deletes the previous delayed job. Calling it on every startup therefore
+ * drops an overdue 06:00 run when the worker restarts at 06:30. Leave an
+ * unchanged scheduler alone so its delayed job survives the restart. Only a
+ * missing or changed schedule is rewritten, and a changed schedule with an
+ * overdue run gets one deterministic catch-up job.
+ */
+async function registerCrawlHealthCheckSchedule(): Promise<void> {
+	try {
+		const existing = await crawlHealthCheckQueue.getJobScheduler(
+			CRAWL_HEALTH_CHECK_SCHEDULER_ID,
+		);
+		// The scheduler can survive while its delayed job is deleted (Bull
+		// Board). Re-upsert in that case so the next run actually exists.
+		const nextJobExists =
+			typeof existing?.next === "number"
+				? Boolean(
+						await crawlHealthCheckQueue.getJob(
+							`repeat:${CRAWL_HEALTH_CHECK_SCHEDULER_ID}:${existing.next}`,
+						),
+					)
+				: false;
+		const decision = decideCrawlHealthSchedule({
+			existing,
+			pattern: env.CRAWL_HEALTH_CHECK_CRON,
+			tz: env.CRAWL_HEALTH_CHECK_TZ,
+			now: Date.now(),
+			nextJobExists,
+		});
+
+		if (decision.action === "upsert") {
+			await crawlHealthCheckQueue.upsertJobScheduler(
+				CRAWL_HEALTH_CHECK_SCHEDULER_ID,
+				{
+					pattern: env.CRAWL_HEALTH_CHECK_CRON,
+					tz: env.CRAWL_HEALTH_CHECK_TZ,
+				},
+				{
+					name: "crawl-health-check",
+					data: { trigger: "schedule" },
+					opts: jobs["crawl-health-check"].options,
+				},
+			);
+			logger.info("Crawl health check schedule updated", {
+				cron: env.CRAWL_HEALTH_CHECK_CRON,
+				tz: env.CRAWL_HEALTH_CHECK_TZ,
+			});
+		} else {
+			logger.info("Crawl health check schedule unchanged", {
+				cron: env.CRAWL_HEALTH_CHECK_CRON,
+				tz: env.CRAWL_HEALTH_CHECK_TZ,
+				next: existing?.next ?? null,
+			});
+		}
+
+		if (decision.catchUpJobId) {
+			await crawlHealthCheckQueue.add(
+				"crawl-health-check",
+				{ trigger: "schedule" },
+				{
+					...jobs["crawl-health-check"].options,
+					jobId: decision.catchUpJobId,
+				},
+			);
+			logger.warn("Enqueued crawl health check catch-up run", {
+				jobId: decision.catchUpJobId,
+				previousNext: existing?.next ?? null,
+			});
+		}
+	} catch (error) {
+		logger.error("Failed to schedule crawl health check", {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+}
+
+void registerCrawlHealthCheckSchedule().finally(() => {
+	void crawlHealthCheckWorker.run().catch((error) => {
+		logger.error("Crawl health check worker failed to start", {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	});
 });
 
 serve({ fetch: app.fetch, port: env.WORKER_PORT }, (info) => {
