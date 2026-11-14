@@ -1,19 +1,19 @@
-import { openBrowser, closeBrowser } from "./browser";
-import { captureDebugInfo } from "./debug";
-import type { BrowserSession, BrowserOptions, ProxyOptions } from "./types";
-import type { CrawlerProvider } from "./providers/base";
-import type { CrawlResult, AuthCredentials } from "./providers/types";
 import type { Logger } from "@opencited/logger";
 import { defaultLogger } from "@opencited/logger";
+import { closeBrowser, openBrowser } from "./browser";
+import { captureDebugInfo } from "./debug";
 import {
-	CrawlerError,
-	AuthenticationError,
-	NavigationError,
-	ExtractionError,
 	AllProxiesFailedError,
-	shouldRotateProxy,
+	AuthenticationError,
+	CrawlerError,
+	ExtractionError,
 	type FailureType,
+	NavigationError,
+	shouldRotateProxy,
 } from "./errors";
+import type { CrawlerProvider } from "./providers/base";
+import type { AuthCredentials, CrawlResult } from "./providers/types";
+import type { BrowserOptions, BrowserSession, ProxyOptions } from "./types";
 
 const BACKOFF_BASE_MS = 5_000;
 const BACKOFF_MAX_MS = 60_000;
@@ -103,6 +103,7 @@ export class Crawler {
 			const result = await this.safeExtractResult(options.provider, session);
 
 			result.query = options.query;
+			result.attemptCount = 1;
 
 			this.logger.info(`✅ Crawl completed successfully`);
 
@@ -234,6 +235,7 @@ export class Crawler {
 
 						result = await this.safeExtractResult(options.provider, session);
 						result.query = options.query;
+						result.attemptCount = totalAttempts;
 						result.usedProxy = proxy;
 
 						this.logger.info(

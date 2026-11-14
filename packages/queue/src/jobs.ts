@@ -1,6 +1,6 @@
-import { z } from "zod";
-import type { DefaultJobOptions } from "bullmq";
 import { crawlProviderEnum } from "@opencited/db";
+import type { DefaultJobOptions } from "bullmq";
+import { z } from "zod";
 
 export interface JobDefinition<T extends z.ZodType> {
 	payload: T;
@@ -63,6 +63,19 @@ export const jobs = {
 				type: "exponential",
 				delay: 2000,
 			},
+		},
+	},
+	"crawl-health-check": {
+		// Daily browser canary. It stops after the raw CrawlResult, so it never
+		// writes user crawl rows or spends LLM credits. Crawler already rotates
+		// proxies inside one attempt, so retrying the whole daily job would only
+		// duplicate browsers and delay the alert.
+		payload: z.object({
+			trigger: z.enum(["schedule", "manual"]),
+			engines: z.array(crawlProviderEnum).min(1).optional(),
+		}),
+		options: {
+			attempts: 1,
 		},
 	},
 } satisfies Record<string, JobDefinition<z.ZodType>>;

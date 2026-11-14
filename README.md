@@ -160,6 +160,7 @@ bun run dev --filter=web
 | `bun run lint` | Lint and auto-fix with Biome |
 | `bun run format` | Format with Biome |
 | `bun run commit` | Create a commit with Commitizen |
+| `bun run crawl-health-check` | Enqueue a manual daily crawl health check on the worker |
 | `docker compose up redis` | Start Valkey (Redis) for background jobs |
 
 ## Self-Hosting Guide
@@ -276,6 +277,9 @@ curl http://localhost:3001/health
 | `PROXY_USERNAME` | Proxy authentication username | Optional |
 | `PROXY_PASSWORD` | Proxy authentication password | Optional |
 | `STICKY_PROXY_ENABLED` | Reuse last successful proxy for faster crawls | `true` |
+| `CRAWL_HEALTH_CHECK_CRON` | Daily canary cron (second precision, Asia/Kolkata by default) | `0 0 6 * * *` |
+| `CRAWL_HEALTH_CHECK_TZ` | Timezone for the canary schedule | `Asia/Kolkata` |
+| `CRAWL_HEALTH_CHECK_QUERY` | Fixed, brand-neutral query used by the canary | `What is the best CRM for small business?` |
 
 **Proxy hierarchy:** Crawls use proxies in this order:
 1. Custom proxy config (set per domainProject in UI settings) — supports batch list or API URL
@@ -290,6 +294,10 @@ The worker exposes:
 
 - **Health check**: `GET /health` — Returns Redis connectivity status
 - **Bull Board**: `/admin/queues` — Web UI for inspecting job queues, statuses, and retrying failed jobs
+
+`GET /health` only pings Redis. For the daily browser canary that catches
+silent extraction failures, see
+[Crawl health check](apps/worker/README.md#daily-crawl-health-check).
 
 Use these endpoints with your monitoring system or reverse proxy.
 

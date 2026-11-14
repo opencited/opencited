@@ -6,6 +6,8 @@ export interface CrawlResult {
 	structured?: StructuredCrawlData;
 	/** The proxy that was used to successfully complete this crawl, if any. */
 	usedProxy?: import("../types").ProxyOptions;
+	/** Browser launch attempts spent before the crawl succeeded. */
+	attemptCount?: number;
 }
 
 export interface CrawlMetadata {
