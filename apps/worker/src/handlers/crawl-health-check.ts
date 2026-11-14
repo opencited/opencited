@@ -1,6 +1,7 @@
 import type { AnswerEngineAvailability } from "@opencited/actions";
 import {
 	AllProxiesFailedError,
+	CrawlAbortedError,
 	Crawler,
 	type CrawlResult,
 	createProvider,
@@ -39,13 +40,20 @@ import {
  */
 export const CRAWL_HEALTH_CHECK_ENGINE_TIMEOUT_MS = 8 * 60 * 1000;
 
+/**
+ * After a timeout aborts the crawl, wait this long for the browser to close
+ * and the crawl promise to settle before logging and moving to the next
+ * engine.
+ */
+export const CRAWL_HEALTH_CHECK_ABORT_GRACE_MS = 60 * 1000;
+
 export type CrawlHealthCheckJob = Job<JobPayload<"crawl-health-check">>;
 
 export interface CrawlHealthCheckEngineRunner {
 	crawl(args: {
 		query: string;
-		logger: Logger;
 		proxies: ProxyOptions[];
+		signal?: AbortSignal;
 	}): Promise<CrawlResult>;
 	classifyError(error: Error): FailureType;
 }
@@ -65,6 +73,7 @@ export interface CrawlHealthCheckDeps {
 	createRunner?: CrawlHealthCheckRunnerFactory;
 	flush?: () => Promise<void>;
 	perEngineTimeoutMs?: number;
+	abortGraceMs?: number;
 }
 
 interface EngineOutcome {
@@ -81,6 +90,7 @@ interface EngineOutcome {
 	proxySource: PublicScanProxySource;
 	proxyServer: string | null;
 	attemptCount: number;
+	zeroSourceRetry: boolean;
 	trigger: CrawlHealthTrigger;
 	skippedReason: string | null;
 }
@@ -99,25 +109,112 @@ function toErrorMessage(error: unknown): string {
 async function runWithTimeout<T>(
 	promise: Promise<T>,
 	timeoutMs: number,
+	onTimeout?: () => void,
 ): Promise<T> {
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
-	// The timeout wins the race but the crawl keeps running in the browser
-	// until its own provider timeout fires. Swallow that late rejection so it
-	// does not become an unhandled rejection in the worker.
+	// The timeout wins the race but the crawl keeps running until the abort
+	// listener closes its browser. Swallow a late rejection so it does not
+	// become an unhandled rejection in the worker.
 	promise.catch(() => {});
 
 	const timeout = new Promise<never>((_resolve, reject) => {
-		timer = setTimeout(
-			() => reject(new CrawlHealthCheckTimeoutError(timeoutMs)),
-			timeoutMs,
-		);
+		timer = setTimeout(() => {
+			onTimeout?.();
+			reject(new CrawlHealthCheckTimeoutError(timeoutMs));
+		}, timeoutMs);
 	});
 
 	try {
 		return await Promise.race([promise, timeout]);
 	} finally {
 		if (timer) clearTimeout(timer);
+	}
+}
+
+async function waitForSettlement(
+	promise: Promise<unknown>,
+	graceMs: number,
+): Promise<void> {
+	if (graceMs <= 0) return;
+
+	let timer: ReturnType<typeof setTimeout> | undefined;
+
+	const grace = new Promise<void>((resolve) => {
+		timer = setTimeout(resolve, graceMs);
+	});
+
+	try {
+		await Promise.race([
+			promise.then(
+				() => {},
+				() => {},
+			),
+			grace,
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
+}
+
+type CrawlAttemptOutcome =
+	| { kind: "success"; result: CrawlResult }
+	| {
+			kind: "error";
+			error: unknown;
+			timedOut: boolean;
+			attemptsMade: number;
+	  };
+
+async function runCrawlAttempt(args: {
+	runner: CrawlHealthCheckEngineRunner;
+	query: string;
+	proxies: ProxyOptions[];
+	timeoutMs: number;
+	abortGraceMs: number;
+}): Promise<CrawlAttemptOutcome> {
+	const controller = new AbortController();
+	let timedOut = false;
+	let crawlError: unknown;
+
+	const crawlPromise = (async () =>
+		args.runner.crawl({
+			query: args.query,
+			proxies: args.proxies,
+			signal: controller.signal,
+		}))().catch((error) => {
+		crawlError = error;
+		throw error;
+	});
+
+	try {
+		const result = await runWithTimeout(crawlPromise, args.timeoutMs, () => {
+			timedOut = true;
+			controller.abort();
+		});
+		return { kind: "success", result };
+	} catch (error) {
+		const isTimeout = timedOut || error instanceof CrawlHealthCheckTimeoutError;
+
+		if (isTimeout) {
+			if (!timedOut) {
+				timedOut = true;
+				controller.abort();
+			}
+			await waitForSettlement(crawlPromise, args.abortGraceMs);
+		}
+
+		return {
+			kind: "error",
+			error,
+			timedOut,
+			attemptsMade:
+				crawlError instanceof CrawlAbortedError
+					? crawlError.attemptsMade
+					: crawlError instanceof AllProxiesFailedError
+						? crawlError.proxiesAttempted
+						: 1,
+		};
 	}
 }
 
@@ -129,7 +226,7 @@ function defaultRunnerFactory(
 	const crawler = new Crawler({ logger });
 
 	return {
-		crawl: ({ query, proxies }) =>
+		crawl: ({ query, proxies, signal }) =>
 			crawler.crawl({
 				query,
 				provider,
@@ -138,6 +235,7 @@ function defaultRunnerFactory(
 					persist: false,
 				},
 				proxies,
+				signal,
 			}),
 		classifyError: (error) =>
 			error instanceof AllProxiesFailedError
@@ -187,6 +285,7 @@ async function checkEngine(args: {
 	rateLimit: (engine: CrawlHealthEngine) => Promise<void>;
 	createRunner: CrawlHealthCheckRunnerFactory;
 	perEngineTimeoutMs: number;
+	abortGraceMs: number;
 }): Promise<EngineOutcome> {
 	const startedAt = Date.now();
 	const base = {
@@ -195,6 +294,7 @@ async function checkEngine(args: {
 		proxySource: args.proxySource,
 		proxyUsed: false,
 		proxyServer: null,
+		zeroSourceRetry: false,
 		skippedReason: null,
 	};
 
@@ -245,64 +345,122 @@ async function checkEngine(args: {
 	}
 
 	const proxyUsed = proxies.length > 0;
+	// The Crawler rotates internally and does not report the proxy that failed
+	// last, so use the last resolved proxy as the best approximation, falling
+	// back to the first one.
+	const failedProxyServer = proxyUsed
+		? proxyServerLabel((proxies.at(-1) ?? proxies[0])?.server)
+		: null;
 	const engineLogger = args.logger.withContext({
 		engine: args.engine,
 		trigger: args.trigger,
 	});
 	const runner = args.createRunner(args.engine, engineLogger);
 
-	try {
-		const result = await runWithTimeout(
-			runner.crawl({
-				query: args.query,
-				logger: engineLogger,
-				proxies,
-			}),
-			args.perEngineTimeoutMs,
-		);
-		const classification = classifyCrawlResult(result);
-
-		return {
-			...base,
-			status: classification.status,
-			durationMs: Date.now() - startedAt,
-			contentLength: classification.contentLength,
-			sourcesCount: classification.sourcesCount,
-			inlineLinksCount: classification.inlineLinksCount,
-			sourcePanelLinksCount: classification.sourcePanelLinksCount,
-			error: classification.error,
-			failureType:
-				classification.status === "failed" ? "extraction_failed" : null,
-			proxyUsed,
-			proxyServer: proxyServerLabel(result.usedProxy?.server),
-			attemptCount: result.attemptCount ?? 1,
-		};
-	} catch (error) {
-		const isTimeout = error instanceof CrawlHealthCheckTimeoutError;
-		const failureType = isTimeout
+	const failureOutcome = (
+		attempt: Extract<CrawlAttemptOutcome, { kind: "error" }>,
+		zeroSourceRetry: boolean,
+	): EngineOutcome => ({
+		...base,
+		...nullCounts(),
+		status: "failed",
+		durationMs: Date.now() - startedAt,
+		error: attempt.timedOut ? "timeout" : toErrorMessage(attempt.error),
+		failureType: attempt.timedOut
 			? "timeout"
 			: runner.classifyError(
-					error instanceof Error ? error : new Error(toErrorMessage(error)),
-				);
+					attempt.error instanceof Error
+						? attempt.error
+						: new Error(toErrorMessage(attempt.error)),
+				),
+		proxyUsed,
+		proxyServer: failedProxyServer,
+		attemptCount: attempt.attemptsMade,
+		zeroSourceRetry,
+	});
 
-		return {
-			...base,
-			...nullCounts(),
-			status: "failed",
-			durationMs: Date.now() - startedAt,
-			error: isTimeout ? "timeout" : toErrorMessage(error),
-			failureType,
-			proxyUsed,
-			attemptCount:
-				error instanceof AllProxiesFailedError ? error.proxiesAttempted : 1,
-		};
+	const successOutcome = (
+		result: CrawlResult,
+		classification: ReturnType<typeof classifyCrawlResult>,
+		zeroSourceRetry: boolean,
+	): EngineOutcome => ({
+		...base,
+		status: classification.status,
+		durationMs: Date.now() - startedAt,
+		contentLength: classification.contentLength,
+		sourcesCount: classification.sourcesCount,
+		inlineLinksCount: classification.inlineLinksCount,
+		sourcePanelLinksCount: classification.sourcePanelLinksCount,
+		error: classification.error,
+		failureType:
+			classification.status === "failed" ? "extraction_failed" : null,
+		proxyUsed,
+		proxyServer: proxyServerLabel(result.usedProxy?.server),
+		attemptCount: result.attemptCount ?? 1,
+		zeroSourceRetry,
+	});
+
+	const firstAttempt = await runCrawlAttempt({
+		runner,
+		query: args.query,
+		proxies,
+		timeoutMs: args.perEngineTimeoutMs,
+		abortGraceMs: args.abortGraceMs,
+	});
+
+	if (firstAttempt.kind === "error") {
+		return failureOutcome(firstAttempt, false);
 	}
+
+	let result = firstAttempt.result;
+	let classification = classifyCrawlResult(result);
+
+	// About one in eight ChatGPT answers legitimately cites no sources. A
+	// single zero-source run is not enough to page someone, so retry once
+	// inside the same per-engine time budget. Only two zero-source runs are
+	// reported as degraded.
+	if (classification.status === "degraded") {
+		let rateLimited = false;
+		try {
+			await args.rateLimit(args.engine);
+			rateLimited = true;
+		} catch (error) {
+			engineLogger.warn(
+				"Crawl health check zero-source retry rate limit failed",
+				{
+					error: toErrorMessage(error),
+				},
+			);
+		}
+
+		const remainingMs = args.perEngineTimeoutMs - (Date.now() - startedAt);
+
+		if (rateLimited && remainingMs > 0) {
+			const retryAttempt = await runCrawlAttempt({
+				runner,
+				query: args.query,
+				proxies,
+				timeoutMs: remainingMs,
+				abortGraceMs: args.abortGraceMs,
+			});
+
+			if (retryAttempt.kind === "error") {
+				return failureOutcome(retryAttempt, true);
+			}
+
+			result = retryAttempt.result;
+			classification = classifyCrawlResult(result);
+			return successOutcome(result, classification, true);
+		}
+	}
+
+	return successOutcome(result, classification, false);
 }
 
 /**
  * Daily canary for the production browser crawl path. It stops after the raw
- * `CrawlResult`: no `intakeCrawlResultAction`, no LLM extraction, no scoring,
- * and no writes to prompt-query crawl rows. Axiom is the source of truth.
+ * `CrawlResult`: no crawl intake, no LLM extraction, no scoring, and no
+ * writes to prompt-query crawl rows. Axiom is the source of truth.
  */
 export async function handleCrawlHealthCheck(
 	job: CrawlHealthCheckJob,
@@ -326,6 +484,7 @@ export async function handleCrawlHealthCheck(
 	const flush = deps.flush ?? flushDefaultLogger;
 	const perEngineTimeoutMs =
 		deps.perEngineTimeoutMs ?? CRAWL_HEALTH_CHECK_ENGINE_TIMEOUT_MS;
+	const abortGraceMs = deps.abortGraceMs ?? CRAWL_HEALTH_CHECK_ABORT_GRACE_MS;
 
 	const proxySource = describeProxySource();
 	const statuses = new Map<CrawlHealthEngine, CrawlHealthStatus>(
@@ -339,7 +498,7 @@ export async function handleCrawlHealthCheck(
 	} catch (error) {
 		registryError = toErrorMessage(error);
 		logger.error("Crawl health check could not read answer engines", {
-			event: CRAWL_HEALTH_EVENT,
+			event: "crawl_health_check_registry_error",
 			error: registryError,
 			trigger,
 		});
@@ -359,6 +518,7 @@ export async function handleCrawlHealthCheck(
 			rateLimit,
 			createRunner,
 			perEngineTimeoutMs,
+			abortGraceMs,
 		});
 
 		statuses.set(engine, outcome.status);

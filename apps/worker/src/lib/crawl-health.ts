@@ -42,7 +42,9 @@ export function crawlHealthCounts(
 	const sourcePanelLinksCount = result.structured?.sourcePanelLinks.length ?? 0;
 
 	return {
-		contentLength: result.content.trim().length,
+		// The event reports the raw extraction size. Only the minimum-content
+		// check trims whitespace.
+		contentLength: result.content.length,
 		inlineLinksCount,
 		sourcePanelLinksCount,
 		sourcesCount: inlineLinksCount + sourcePanelLinksCount,
@@ -63,12 +65,13 @@ export function classifyCrawlResult(
 	result: CrawlResultContent,
 ): CrawlHealthClassification {
 	const counts = crawlHealthCounts(result);
+	const trimmedContentLength = result.content.trim().length;
 
-	if (counts.contentLength < MIN_CRAWL_HEALTH_CONTENT_CHARS) {
+	if (trimmedContentLength < MIN_CRAWL_HEALTH_CONTENT_CHARS) {
 		return {
 			...counts,
 			status: "failed",
-			error: `content_too_short: ${counts.contentLength} chars, need at least ${MIN_CRAWL_HEALTH_CONTENT_CHARS}`,
+			error: `content_too_short: ${trimmedContentLength} chars, need at least ${MIN_CRAWL_HEALTH_CONTENT_CHARS}`,
 		};
 	}
 

@@ -5,6 +5,7 @@ import { captureDebugInfo } from "./debug";
 import {
 	AllProxiesFailedError,
 	AuthenticationError,
+	CrawlAbortedError,
 	CrawlerError,
 	ExtractionError,
 	type FailureType,
@@ -25,8 +26,52 @@ function computeBackoff(cycle: number): number {
 	return Math.round(base + jitter);
 }
 
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(
+	ms: number,
+	signal?: AbortSignal,
+	attemptsMade = 0,
+): Promise<void> {
+	if (!signal) {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
+
+	throwIfAborted(signal, attemptsMade);
+
+	return new Promise<void>((resolve, reject) => {
+		const timer = setTimeout(() => {
+			signal.removeEventListener("abort", onAbort);
+			resolve();
+		}, ms);
+
+		const onAbort = () => {
+			clearTimeout(timer);
+			signal.removeEventListener("abort", onAbort);
+			reject(new CrawlAbortedError(attemptsMade));
+		};
+
+		signal.addEventListener("abort", onAbort, { once: true });
+	});
+}
+
+function throwIfAborted(
+	signal: AbortSignal | undefined,
+	attemptsMade: number,
+): void {
+	if (signal?.aborted) {
+		throw new CrawlAbortedError(attemptsMade);
+	}
+}
+
+export interface CrawlDependencies {
+	openBrowser?: (
+		options?: BrowserOptions,
+		logger?: Logger,
+	) => Promise<BrowserSession>;
+	closeBrowser?: (
+		session: BrowserSession,
+		userDataDir?: string,
+		logger?: Logger,
+	) => Promise<void>;
 }
 
 export interface CrawlOptions {
@@ -36,6 +81,11 @@ export interface CrawlOptions {
 	authCredentials?: AuthCredentials;
 	logger?: Logger;
 	proxies?: ProxyOptions[];
+	/**
+	 * Stops the crawl before the next cycle or attempt, and closes an open
+	 * browser session so in-flight Playwright calls reject.
+	 */
+	signal?: AbortSignal;
 	/**
 	 * Number of full proxy-rotation cycles to attempt before giving up.
 	 * Default: 2
@@ -50,9 +100,13 @@ export interface CrawlOptions {
 
 export class Crawler {
 	private logger: Logger;
+	private openBrowser: NonNullable<CrawlDependencies["openBrowser"]>;
+	private closeBrowser: NonNullable<CrawlDependencies["closeBrowser"]>;
 
-	constructor(options?: { logger?: Logger }) {
+	constructor(options?: { logger?: Logger; dependencies?: CrawlDependencies }) {
 		this.logger = options?.logger ?? defaultLogger;
+		this.openBrowser = options?.dependencies?.openBrowser ?? openBrowser;
+		this.closeBrowser = options?.dependencies?.closeBrowser ?? closeBrowser;
 	}
 
 	async crawl(options: CrawlOptions): Promise<CrawlResult> {
@@ -70,15 +124,33 @@ export class Crawler {
 			? (options.browserOptions?.userDataDir ?? "./.browser-data")
 			: undefined;
 
-		const session = await openBrowser(
+		throwIfAborted(options.signal, 0);
+		const attemptsMade = 1;
+
+		const session = await this.openBrowser(
 			{
 				...options.browserOptions,
 				userDataDir,
 			},
 			this.logger,
 		);
+		const closeSession = this.createSessionCloser(
+			options.provider,
+			session,
+			userDataDir,
+		);
+		const onAbort = () => {
+			void closeSession().catch((error) => {
+				this.logger.warn(
+					`Failed to close browser after abort: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			});
+		};
+		options.signal?.addEventListener("abort", onAbort, { once: true });
 
 		try {
+			throwIfAborted(options.signal, attemptsMade);
+
 			this.logger.info(
 				`🚀 Starting crawl with provider: ${options.provider.name}`,
 			);
@@ -109,6 +181,11 @@ export class Crawler {
 
 			return result;
 		} catch (error) {
+			if (error instanceof CrawlAbortedError) throw error;
+			if (options.signal?.aborted) {
+				throw new CrawlAbortedError(attemptsMade, error);
+			}
+
 			const failureType =
 				error instanceof Error
 					? options.provider.classifyError(error)
@@ -125,8 +202,8 @@ export class Crawler {
 			);
 			throw error;
 		} finally {
-			await options.provider.cleanup?.(session);
-			await closeBrowser(session, userDataDir, this.logger);
+			options.signal?.removeEventListener("abort", onAbort);
+			await closeSession();
 		}
 	}
 
@@ -150,12 +227,14 @@ export class Crawler {
 		let totalAttempts = 0;
 
 		for (let cycle = 0; cycle < retryCycles; cycle++) {
+			throwIfAborted(options.signal, totalAttempts);
+
 			if (cycle > 0) {
 				const backoffMs = computeBackoff(cycle - 1);
 				this.logger.info(
 					`⏳ Cycle ${cycle + 1}/${retryCycles}: waiting ${backoffMs}ms before retry`,
 				);
-				await sleep(backoffMs);
+				await sleep(backoffMs, options.signal, totalAttempts);
 			}
 
 			this.logger.info(`🔁 Cycle ${cycle + 1}/${retryCycles}`);
@@ -197,13 +276,17 @@ export class Crawler {
 						await options.provider.betweenPrompts?.(session, options.query);
 					}
 
+					throwIfAborted(options.signal, totalAttempts);
 					totalAttempts++;
 					this.logger.info(
 						`🌐 Proxy ${i + 1}/${proxies.length} attempt ${attempt + 1}: ${proxy.server}${isCanary && attempt === 0 ? " [canary]" : ""}`,
 					);
 
+					let closeSession: (() => Promise<void>) | undefined;
+					let onAbort: (() => void) | undefined;
+
 					try {
-						session = await openBrowser(
+						session = await this.openBrowser(
 							{
 								...options.browserOptions,
 								userDataDir,
@@ -211,6 +294,23 @@ export class Crawler {
 							},
 							this.logger,
 						);
+
+						closeSession = this.createSessionCloser(
+							options.provider,
+							session,
+							userDataDir,
+						);
+						onAbort = () => {
+							void closeSession?.().catch((error) => {
+								this.logger.warn(
+									`Failed to close browser after abort: ${error instanceof Error ? error.message : String(error)}`,
+								);
+							});
+						};
+						options.signal?.addEventListener("abort", onAbort, {
+							once: true,
+						});
+						throwIfAborted(options.signal, totalAttempts);
 
 						await this.safeNavigate(options.provider, session);
 
@@ -245,6 +345,11 @@ export class Crawler {
 						succeeded = true;
 						break;
 					} catch (error) {
+						if (error instanceof CrawlAbortedError) throw error;
+						if (options.signal?.aborted) {
+							throw new CrawlAbortedError(totalAttempts, error);
+						}
+
 						_attemptError = error;
 						failureType =
 							error instanceof Error
@@ -302,11 +407,16 @@ export class Crawler {
 							await options.provider.beforeRetry?.(session, error, attempt + 1);
 						}
 					} finally {
-						if (session) {
-							await options.provider.cleanup?.(session);
-							await closeBrowser(session, userDataDir, this.logger);
-							session = undefined;
+						if (onAbort) {
+							options.signal?.removeEventListener("abort", onAbort);
 						}
+						if (closeSession) {
+							await closeSession();
+						} else if (session) {
+							await options.provider.cleanup?.(session);
+							await this.closeBrowser(session, userDataDir, this.logger);
+						}
+						session = undefined;
 					}
 				}
 
@@ -317,6 +427,31 @@ export class Crawler {
 		}
 
 		throw new AllProxiesFailedError(totalAttempts, lastError, lastFailureType);
+	}
+
+	/**
+	 * Returns an idempotent closer so the abort listener and the `finally`
+	 * block can race safely: the provider cleanup runs once and the browser is
+	 * always closed, even if cleanup throws.
+	 */
+	private createSessionCloser(
+		provider: CrawlerProvider,
+		session: BrowserSession,
+		userDataDir: string | undefined,
+	): () => Promise<void> {
+		let closePromise: Promise<void> | undefined;
+
+		return () => {
+			closePromise ??= (async () => {
+				try {
+					await provider.cleanup?.(session);
+				} finally {
+					await this.closeBrowser(session, userDataDir, this.logger);
+				}
+			})();
+
+			return closePromise;
+		};
 	}
 
 	private async safeNavigate(

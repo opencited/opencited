@@ -28,11 +28,16 @@ What it does **not** do:
 | `CRAWL_HEALTH_CHECK_TZ` | `Asia/Kolkata` | Timezone for the cron |
 | `CRAWL_HEALTH_CHECK_QUERY` | `What is the best CRM for small business?` | Fixed, brand-neutral query |
 
-On startup the worker calls `upsertJobScheduler("crawl-health-check-daily", …)`,
-so restarts reuse one scheduler instead of creating duplicates. BullMQ stores
-the next run as a delayed job: if the worker is down at 06:00 IST, the job runs
-when the worker comes back up and the delayed job becomes due. Bull Board shows
-it under the `crawl-health-check` queue.
+On startup the worker reads `getJobScheduler("crawl-health-check-daily")`.
+When the cron pattern and timezone are unchanged it leaves the scheduler alone,
+so an overdue delayed job survives a restart — if the worker is down at 06:00
+IST and comes back at 06:30, it still runs that day. The scheduler is upserted
+only when it is missing or the pattern/timezone changed; that upsert replaces
+the previous delayed job, so a changed schedule with an already-overdue run
+also enqueues one deterministic catch-up job
+(`crawl-health-check-catchup-YYYY-MM-DD` in the configured timezone). The
+registration completes before the health-check worker starts processing. Bull
+Board shows the scheduler under the `crawl-health-check` queue.
 
 ### Run it manually
 
@@ -57,15 +62,20 @@ bun run crawl-health-check -- --local
 bun run crawl-health-check -- --engines=perplexity --local
 ```
 
-On EC2 after a deploy, the worker container already has the env file:
+On EC2 after a deploy, run it from the worker tmux session. The root script
+loads `.env.local` with dotenv-cli:
+
+```bash
+cd ~/opencited && bun run crawl-health-check -- --engines=chatgpt
+```
+
+Alternative: exec it inside the worker container, which already has the env
+file:
 
 ```bash
 docker compose --project-name opencited-worker \
   -f docker-compose.prod.yml exec worker \
   bun run scripts/crawl-health-check.ts --engines=chatgpt
-
-# or, if bun is installed on the VM and REDIS_URL is exported:
-bun run scripts/crawl-health-check.ts --engines=chatgpt
 ```
 
 ### Status rules
@@ -76,16 +86,25 @@ The classifier reads only the raw `CrawlResult`
 | Status | When |
 |---|---|
 | `ok` | No throw/timeout, trimmed content ≥ 80 chars, `sourcesCount > 0` |
-| `degraded` | Content ≥ 80 chars but `sourcesCount === 0` (the “no sources button found” case) |
+| `degraded` | Content ≥ 80 chars but both runs have `sourcesCount === 0` (the “no sources button found” case) |
 | `failed` | Throw, timeout, empty/short extraction (< 80 chars), or bot detection |
 | `skipped` | Engine is disabled in `answer_engine`, or not requested by a manual run |
 
-`sourcesCount = inlineLinks.length + sourcePanelLinks.length`. Each engine gets
-an 8-minute wall-clock timeout and one `Crawler.crawl` call (the Crawler rotates
-proxies internally). Engines run sequentially, one Camoufox at a time. If the
-matching user-crawl queue has active jobs, the canary waits and polls every 15s
-for up to 20 minutes, then runs anyway. It calls `rateLimit(engine)` and
-`resolveProxiesForPublicScan()` (ThorData / `PROXY_SERVER`, no sticky keys).
+`sourcesCount = inlineLinks.length + sourcePanelLinks.length`.
+`contentLength` is the raw `result.content.length`; only the 80-character floor
+trims surrounding whitespace.
+
+Each engine gets an 8-minute wall-clock budget. A `Crawler.crawl` call rotates
+proxies internally. If the first result is `degraded`, the engine is crawled
+once more within the same budget (after another `rateLimit(engine)`); the event
+reports `degraded` only if both runs have zero sources, otherwise it reports
+the second result. On timeout the handler aborts the crawl, which closes the
+open Camoufox session and stops further proxy attempts, then waits up to 60s
+for the crawl to settle before logging and moving on. Engines run sequentially,
+one Camoufox at a time. If the matching user-crawl queue has active jobs, the
+canary waits and polls every 15s for up to 20 minutes, then runs anyway. It
+calls `rateLimit(engine)` and `resolveProxiesForPublicScan()` (ThorData /
+`PROXY_SERVER`, no sticky keys).
 
 The worker flushes the Axiom transport after every engine and once after the
 daily summary.
@@ -100,7 +119,7 @@ Per engine — `message: "crawl_health_check"` (level: `info` for ok/skipped,
 ```text
 event, engine, status, durationMs, contentLength, sourcesCount,
 inlineLinksCount, sourcePanelLinksCount, error, failureType, proxyUsed,
-proxySource, proxyServer, attemptCount, trigger, skippedReason
+proxySource, proxyServer, attemptCount, zeroSourceRetry, trigger, skippedReason
 ```
 
 Daily summary — `message: "crawl_health_check_daily"`:
@@ -137,7 +156,7 @@ Manage notifiers → New notifier → Email**, then attach it to each monitor.
 ```apl
 ['worker-app']
 | where message == "crawl_health_check" and (status == "failed" or status == "degraded")
-| project _time, engine, status, durationMs, contentLength, sourcesCount, inlineLinksCount, sourcePanelLinksCount, error, failureType, proxySource, proxyServer, attemptCount, trigger
+| project _time, engine, status, durationMs, contentLength, sourcesCount, inlineLinksCount, sourcePanelLinksCount, error, failureType, proxySource, proxyServer, attemptCount, zeroSourceRetry, trigger
 ```
 
 3. **Crawl health check — missing daily run** (Threshold monitor). Worker down,

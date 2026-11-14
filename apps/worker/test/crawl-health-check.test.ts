@@ -1,8 +1,9 @@
-import { describe, expect, it, mock, spyOn } from "bun:test";
+import { describe, expect, it, mock } from "bun:test";
+import { readFileSync } from "node:fs";
 import type { AnswerEngineAvailability } from "@opencited/actions";
-import * as actions from "@opencited/actions";
 import {
 	AllProxiesFailedError,
+	CrawlAbortedError,
 	type CrawlResult,
 	type FailureType,
 	type Logger,
@@ -133,6 +134,7 @@ function defaultDeps(overrides: Record<string, unknown> = {}) {
 		rateLimit: async () => {},
 		flush: async () => {},
 		perEngineTimeoutMs: 5_000,
+		abortGraceMs: 100,
 		...overrides,
 	} as Parameters<typeof handleCrawlHealthCheck>[2];
 }
@@ -195,7 +197,7 @@ describe("classifyCrawlResult", () => {
 		expect(classification.error).toContain("content_too_short");
 	});
 
-	it("ignores surrounding whitespace for the content floor", () => {
+	it("uses trimmed content only for the floor and reports the raw length", () => {
 		const result = crawlResult("chatgpt", {
 			contentLength: 80,
 			inlineLinks: 1,
@@ -206,7 +208,7 @@ describe("classifyCrawlResult", () => {
 		const classification = classifyCrawlResult(result);
 
 		expect(classification.status).toBe("ok");
-		expect(classification.contentLength).toBe(80);
+		expect(classification.contentLength).toBe(86);
 	});
 });
 
@@ -288,6 +290,7 @@ describe("handleCrawlHealthCheck", () => {
 			proxySource: "proxy_server",
 			proxyServer: "proxy.local:8000",
 			attemptCount: 2,
+			zeroSourceRetry: false,
 			trigger: "schedule",
 			skippedReason: null,
 		});
@@ -324,35 +327,35 @@ describe("handleCrawlHealthCheck", () => {
 		});
 	});
 
-	it("does not touch crawl intake, failures, brand extraction, or scoring", async () => {
-		const { logger } = makeLogger();
-		const intakeSpy = spyOn(actions, "intakeCrawlResultAction");
-		const failSpy = spyOn(actions, "failCrawlAction");
-		const brandSpy = spyOn(actions, "extractBrandIntelligenceAction");
-		const scoreSpy = spyOn(actions, "computeVisibilityScoreAction");
+	it("does not touch crawl intake, failures, brand extraction, or scoring", () => {
+		const sources = [
+			readFileSync(
+				new URL("../src/handlers/crawl-health-check.ts", import.meta.url),
+				"utf8",
+			),
+			readFileSync(
+				new URL("../src/lib/crawl-health.ts", import.meta.url),
+				"utf8",
+			),
+		];
 
-		try {
-			await handleCrawlHealthCheck(
-				makeJob(),
-				logger,
-				defaultDeps({
-					readEngines: async () => [engineAvailability("chatgpt", true)],
-					createRunner: () => ({
-						crawl: async () => crawlResult("chatgpt"),
-						classifyError: () => "unknown" as FailureType,
-					}),
-				}),
-			);
+		const forbidden = [
+			"intakeCrawlResultAction",
+			"failCrawlAction",
+			"extractBrandIntelligenceAction",
+			"computeVisibilityScoreAction",
+			"sticky",
+		];
+		const runtimeActionsImport =
+			/^\s*import\s+(?!type\b)[^;]*?from\s+["']@opencited\/actions["']/m;
+		const dynamicActionsImport = /import\(\s*["']@opencited\/actions["']\s*\)/;
 
-			expect(intakeSpy).not.toHaveBeenCalled();
-			expect(failSpy).not.toHaveBeenCalled();
-			expect(brandSpy).not.toHaveBeenCalled();
-			expect(scoreSpy).not.toHaveBeenCalled();
-		} finally {
-			intakeSpy.mockRestore();
-			failSpy.mockRestore();
-			brandSpy.mockRestore();
-			scoreSpy.mockRestore();
+		for (const source of sources) {
+			for (const name of forbidden) {
+				expect(source).not.toContain(name);
+			}
+			expect(source).not.toMatch(runtimeActionsImport);
+			expect(source).not.toMatch(dynamicActionsImport);
 		}
 	});
 
@@ -385,8 +388,58 @@ describe("handleCrawlHealthCheck", () => {
 		});
 	});
 
-	it("logs degraded when the crawl returns long content with no sources", async () => {
+	it("retries a zero-source engine once and reports the retry result", async () => {
 		const { logger, logs } = makeLogger();
+		const rateLimitMock = mock(async () => {});
+		let crawlCount = 0;
+
+		await handleCrawlHealthCheck(
+			makeJob({ trigger: "manual", engines: ["chatgpt"] }),
+			logger,
+			defaultDeps({
+				readEngines: async () => [engineAvailability("chatgpt", true)],
+				rateLimit: rateLimitMock,
+				createRunner: () => ({
+					crawl: async () => {
+						crawlCount++;
+						if (crawlCount === 1) {
+							return crawlResult("chatgpt", {
+								contentLength: 9_812,
+								inlineLinks: 0,
+								sourcePanelLinks: 0,
+							});
+						}
+						return crawlResult("chatgpt", {
+							contentLength: 4_321,
+							inlineLinks: 2,
+							sourcePanelLinks: 0,
+							attemptCount: 1,
+						});
+					},
+					classifyError: () => "unknown" as FailureType,
+				}),
+			}),
+		);
+
+		expect(crawlCount).toBe(2);
+		expect(rateLimitMock).toHaveBeenCalledTimes(2);
+
+		const events = engineEvents(logs);
+		expect(events).toHaveLength(1);
+		expect(events[0]).toMatchObject({
+			status: "ok",
+			contentLength: 4_321,
+			sourcesCount: 2,
+			zeroSourceRetry: true,
+		});
+		expect(dailyEvents(logs)[0]?.context).toMatchObject({
+			overallStatus: "ok",
+		});
+	});
+
+	it("logs degraded only when both zero-source runs have no sources", async () => {
+		const { logger, logs } = makeLogger();
+		let crawlCount = 0;
 
 		await handleCrawlHealthCheck(
 			makeJob({ trigger: "manual", engines: ["chatgpt"] }),
@@ -394,16 +447,20 @@ describe("handleCrawlHealthCheck", () => {
 			defaultDeps({
 				readEngines: async () => [engineAvailability("chatgpt", true)],
 				createRunner: () => ({
-					crawl: async () =>
-						crawlResult("chatgpt", {
+					crawl: async () => {
+						crawlCount++;
+						return crawlResult("chatgpt", {
 							contentLength: 9_812,
 							inlineLinks: 0,
 							sourcePanelLinks: 0,
-						}),
+						});
+					},
 					classifyError: () => "unknown" as FailureType,
 				}),
 			}),
 		);
+
+		expect(crawlCount).toBe(2);
 
 		const events = engineEvents(logs);
 		expect(events).toHaveLength(1);
@@ -411,6 +468,7 @@ describe("handleCrawlHealthCheck", () => {
 			status: "degraded",
 			contentLength: 9_812,
 			sourcesCount: 0,
+			zeroSourceRetry: true,
 		});
 		expect(logs.find((log) => log.message === CRAWL_HEALTH_EVENT)?.level).toBe(
 			"warn",
@@ -445,6 +503,9 @@ describe("handleCrawlHealthCheck", () => {
 			sourcesCount: null,
 			error: "bot detection challenge",
 			failureType: "bot_detection",
+			proxyUsed: true,
+			proxyServer: "proxy.local:8000",
+			zeroSourceRetry: false,
 		});
 		expect(logs.find((log) => log.message === CRAWL_HEALTH_EVENT)?.level).toBe(
 			"error",
@@ -455,8 +516,70 @@ describe("handleCrawlHealthCheck", () => {
 		});
 	});
 
-	it("reports a timeout even when the crawl never settles", async () => {
+	it("aborts the crawl and waits for it to settle before starting the next engine", async () => {
 		const { logger, logs } = makeLogger();
+		let chatgptSignal: AbortSignal | undefined;
+		let chatgptSettledAt = 0;
+		let perplexityStartedAt = 0;
+
+		await handleCrawlHealthCheck(
+			makeJob({ trigger: "manual", engines: ["chatgpt", "perplexity"] }),
+			logger,
+			defaultDeps({
+				readEngines: async () => [
+					engineAvailability("chatgpt", true),
+					engineAvailability("perplexity", true),
+				],
+				perEngineTimeoutMs: 10,
+				abortGraceMs: 200,
+				createRunner: (engine: "chatgpt" | "perplexity") => ({
+					crawl: ({ signal }) => {
+						if (engine === "perplexity") {
+							perplexityStartedAt = Date.now();
+							return Promise.resolve(crawlResult("perplexity"));
+						}
+
+						chatgptSignal = signal;
+						return new Promise<CrawlResult>((_resolve, reject) => {
+							signal?.addEventListener(
+								"abort",
+								() => {
+									setTimeout(() => {
+										chatgptSettledAt = Date.now();
+										reject(new CrawlAbortedError(3));
+									}, 25);
+								},
+								{ once: true },
+							);
+						});
+					},
+					classifyError: () => "unknown" as FailureType,
+				}),
+			}),
+		);
+
+		expect(chatgptSignal?.aborted).toBe(true);
+		expect(chatgptSettledAt).toBeGreaterThan(0);
+		expect(perplexityStartedAt).toBeGreaterThanOrEqual(chatgptSettledAt);
+
+		const events = engineEvents(logs);
+		expect(events).toHaveLength(2);
+		expect(events.find((event) => event.engine === "chatgpt")).toMatchObject({
+			status: "failed",
+			error: "timeout",
+			failureType: "timeout",
+			attemptCount: 3,
+		});
+		expect(events.find((event) => event.engine === "perplexity")).toMatchObject(
+			{
+				status: "ok",
+			},
+		);
+	});
+
+	it("reports a timeout after the abort grace when the crawl never settles", async () => {
+		const { logger, logs } = makeLogger();
+		let signal: AbortSignal | undefined;
 
 		await handleCrawlHealthCheck(
 			makeJob({ trigger: "manual", engines: ["chatgpt"] }),
@@ -464,12 +587,18 @@ describe("handleCrawlHealthCheck", () => {
 			defaultDeps({
 				readEngines: async () => [engineAvailability("chatgpt", true)],
 				perEngineTimeoutMs: 10,
+				abortGraceMs: 20,
 				createRunner: () => ({
-					crawl: () => new Promise<CrawlResult>(() => {}),
+					crawl: ({ signal: crawlSignal }) => {
+						signal = crawlSignal;
+						return new Promise<CrawlResult>(() => {});
+					},
 					classifyError: () => "unknown" as FailureType,
 				}),
 			}),
 		);
+
+		expect(signal?.aborted).toBe(true);
 
 		const events = engineEvents(logs);
 		expect(events).toHaveLength(1);
@@ -477,6 +606,7 @@ describe("handleCrawlHealthCheck", () => {
 			status: "failed",
 			error: "timeout",
 			failureType: "timeout",
+			attemptCount: 1,
 		});
 		expect(dailyEvents(logs)).toHaveLength(1);
 	});
@@ -507,8 +637,10 @@ describe("handleCrawlHealthCheck", () => {
 		expect(engineEvents(logs)[0]).toMatchObject({
 			status: "failed",
 			proxyUsed: true,
+			proxyServer: "proxy.local:8000",
 			attemptCount: 4,
 			failureType: "connection_error",
+			zeroSourceRetry: false,
 		});
 	});
 
@@ -537,5 +669,11 @@ describe("handleCrawlHealthCheck", () => {
 		expect(dailyEvents(logs)[0]?.context).toMatchObject({
 			overallStatus: "failed",
 		});
+		expect(
+			logs.find(
+				(log) =>
+					log.message === "Crawl health check could not read answer engines",
+			)?.context.event,
+		).toBe("crawl_health_check_registry_error");
 	});
 });

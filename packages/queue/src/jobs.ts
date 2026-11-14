@@ -76,6 +76,8 @@ export const jobs = {
 		}),
 		options: {
 			attempts: 1,
+			removeOnComplete: { count: 30 },
+			removeOnFail: { count: 30 },
 		},
 	},
 } satisfies Record<string, JobDefinition<z.ZodType>>;

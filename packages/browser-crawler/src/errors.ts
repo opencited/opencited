@@ -127,3 +127,23 @@ export class AllProxiesFailedError extends CrawlerError {
 		this.name = "AllProxiesFailedError";
 	}
 }
+
+/**
+ * Thrown when the caller aborts a crawl through `CrawlOptions.signal`.
+ * `attemptsMade` is the number of browser attempts started before the abort,
+ * so callers can report the real count instead of guessing.
+ */
+export class CrawlAbortedError extends CrawlerError {
+	constructor(
+		public readonly attemptsMade: number,
+		cause?: unknown,
+	) {
+		super(
+			`Crawl aborted after ${attemptsMade} attempt${attemptsMade === 1 ? "" : "s"}`,
+			"crawler",
+			"crawl",
+			cause,
+		);
+		this.name = "CrawlAbortedError";
+	}
+}
