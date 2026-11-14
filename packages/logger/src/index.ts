@@ -1,13 +1,14 @@
+export { isLevelEnabled } from "./levels";
 export {
+	AxiomTransport,
+	ConsoleTransport,
 	createLogger,
 	defaultLogger,
 	flush,
-	ConsoleTransport,
-	AxiomTransport,
 } from "./logger";
 export type {
-	LogLevel,
 	Logger,
 	LoggerContext,
+	LogLevel,
 	Transport,
 } from "./types";

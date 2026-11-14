@@ -1,5 +1,6 @@
-import type { LogLevel, Logger, LoggerContext, Transport } from "./types";
 import { env } from "./env";
+import { isLevelEnabled } from "./levels";
+import type { Logger, LoggerContext, LogLevel, Transport } from "./types";
 
 function extractContext(...args: unknown[]): Record<string, unknown> {
 	const ctx: Record<string, unknown> = {};
@@ -24,17 +25,7 @@ function buildLogger(
 		message: string,
 		...args: unknown[]
 	): void {
-		if (level === "off") return;
-
-		const hierarchy: Record<LogLevel, number> = {
-			off: 0,
-			error: 1,
-			warn: 2,
-			info: 3,
-			debug: 4,
-		};
-
-		if (hierarchy[level] < hierarchy[minLevel]) return;
+		if (!isLevelEnabled(level, minLevel)) return;
 
 		const mergedCtx = { ...ctxObj, ...extractContext(...args) };
 
@@ -93,8 +84,8 @@ function createDefaultTransports(level: LogLevel): Transport[] {
 	return transports;
 }
 
-export { ConsoleTransport, AxiomTransport } from "./transports";
-export type { LogLevel, Logger, LoggerContext, Transport } from "./types";
+export { AxiomTransport, ConsoleTransport } from "./transports";
+export type { Logger, LoggerContext, LogLevel, Transport } from "./types";
 
 export const defaultLogger = createLogger();
 

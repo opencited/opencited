@@ -1,3 +1,4 @@
+import { isLevelEnabled } from "../levels";
 import type { LogLevel, Transport } from "../types";
 
 const levelIcons: Record<LogLevel, string> = {
@@ -30,7 +31,7 @@ export class ConsoleTransport implements Transport {
 	}
 
 	log(level: LogLevel, message: string, ctx: Record<string, unknown>): void {
-		if (!this.shouldLog(level)) return;
+		if (!isLevelEnabled(level, this.level)) return;
 
 		if (this.pretty) {
 			this.logPretty(level, message, ctx);
@@ -95,16 +96,5 @@ export class ConsoleTransport implements Transport {
 			case "off":
 				break;
 		}
-	}
-
-	private shouldLog(level: LogLevel): boolean {
-		const hierarchy: Record<LogLevel, number> = {
-			off: 0,
-			error: 1,
-			warn: 2,
-			info: 3,
-			debug: 4,
-		};
-		return (hierarchy[level] ?? 0) >= (hierarchy[this.level] ?? 0);
 	}
 }
