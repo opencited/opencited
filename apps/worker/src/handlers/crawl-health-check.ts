@@ -47,6 +47,20 @@ export const CRAWL_HEALTH_CHECK_ENGINE_TIMEOUT_MS = 8 * 60 * 1000;
  */
 export const CRAWL_HEALTH_CHECK_ABORT_GRACE_MS = 60 * 1000;
 
+/**
+ * A zero-source retry with less than this much budget left is not worth
+ * starting: it would time out mid-crawl and turn a healthy first run into a
+ * false `failed`. Report the first run as `degraded` instead.
+ */
+export const CRAWL_HEALTH_CHECK_MIN_RETRY_BUDGET_MS = 3 * 60 * 1000;
+
+export type CrawlHealthZeroSourceRetryOutcome =
+	| "ok"
+	| "degraded"
+	| "skipped_budget"
+	| "skipped_rate_limit"
+	| "error";
+
 export type CrawlHealthCheckJob = Job<JobPayload<"crawl-health-check">>;
 
 export interface CrawlHealthCheckEngineRunner {
@@ -74,6 +88,7 @@ export interface CrawlHealthCheckDeps {
 	flush?: () => Promise<void>;
 	perEngineTimeoutMs?: number;
 	abortGraceMs?: number;
+	minRetryBudgetMs?: number;
 }
 
 interface EngineOutcome {
@@ -91,6 +106,7 @@ interface EngineOutcome {
 	proxyServer: string | null;
 	attemptCount: number;
 	zeroSourceRetry: boolean;
+	zeroSourceRetryOutcome: CrawlHealthZeroSourceRetryOutcome | null;
 	trigger: CrawlHealthTrigger;
 	skippedReason: string | null;
 }
@@ -135,23 +151,35 @@ async function runWithTimeout<T>(
 async function waitForSettlement(
 	promise: Promise<unknown>,
 	graceMs: number,
+	logger: Logger,
+	engine: CrawlHealthEngine,
 ): Promise<void> {
 	if (graceMs <= 0) return;
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
-	const grace = new Promise<void>((resolve) => {
-		timer = setTimeout(resolve, graceMs);
+	const grace = new Promise<false>((resolve) => {
+		timer = setTimeout(() => resolve(false), graceMs);
 	});
 
 	try {
-		await Promise.race([
+		const settled = await Promise.race([
 			promise.then(
-				() => {},
-				() => {},
+				() => true,
+				() => true,
 			),
 			grace,
 		]);
+
+		if (!settled) {
+			logger.warn(
+				"Crawl health check crawl did not settle within abort grace",
+				{
+					engine,
+					graceMs,
+				},
+			);
+		}
 	} finally {
 		if (timer) clearTimeout(timer);
 	}
@@ -168,10 +196,12 @@ type CrawlAttemptOutcome =
 
 async function runCrawlAttempt(args: {
 	runner: CrawlHealthCheckEngineRunner;
+	engine: CrawlHealthEngine;
 	query: string;
 	proxies: ProxyOptions[];
 	timeoutMs: number;
 	abortGraceMs: number;
+	logger: Logger;
 }): Promise<CrawlAttemptOutcome> {
 	const controller = new AbortController();
 	let timedOut = false;
@@ -201,7 +231,12 @@ async function runCrawlAttempt(args: {
 				timedOut = true;
 				controller.abort();
 			}
-			await waitForSettlement(crawlPromise, args.abortGraceMs);
+			await waitForSettlement(
+				crawlPromise,
+				args.abortGraceMs,
+				args.logger,
+				args.engine,
+			);
 		}
 
 		return {
@@ -286,6 +321,7 @@ async function checkEngine(args: {
 	createRunner: CrawlHealthCheckRunnerFactory;
 	perEngineTimeoutMs: number;
 	abortGraceMs: number;
+	minRetryBudgetMs: number;
 }): Promise<EngineOutcome> {
 	const startedAt = Date.now();
 	const base = {
@@ -295,6 +331,7 @@ async function checkEngine(args: {
 		proxyUsed: false,
 		proxyServer: null,
 		zeroSourceRetry: false,
+		zeroSourceRetryOutcome: null,
 		skippedReason: null,
 	};
 
@@ -359,7 +396,6 @@ async function checkEngine(args: {
 
 	const failureOutcome = (
 		attempt: Extract<CrawlAttemptOutcome, { kind: "error" }>,
-		zeroSourceRetry: boolean,
 	): EngineOutcome => ({
 		...base,
 		...nullCounts(),
@@ -376,85 +412,142 @@ async function checkEngine(args: {
 		proxyUsed,
 		proxyServer: failedProxyServer,
 		attemptCount: attempt.attemptsMade,
-		zeroSourceRetry,
 	});
 
-	const successOutcome = (
-		result: CrawlResult,
-		classification: ReturnType<typeof classifyCrawlResult>,
-		zeroSourceRetry: boolean,
-	): EngineOutcome => ({
+	const successOutcome = (outcome: {
+		result: CrawlResult;
+		classification: ReturnType<typeof classifyCrawlResult>;
+		attemptCount: number;
+		zeroSourceRetry: boolean;
+		zeroSourceRetryOutcome: CrawlHealthZeroSourceRetryOutcome | null;
+		error?: string | null;
+	}): EngineOutcome => ({
 		...base,
-		status: classification.status,
+		status: outcome.classification.status,
 		durationMs: Date.now() - startedAt,
-		contentLength: classification.contentLength,
-		sourcesCount: classification.sourcesCount,
-		inlineLinksCount: classification.inlineLinksCount,
-		sourcePanelLinksCount: classification.sourcePanelLinksCount,
-		error: classification.error,
+		contentLength: outcome.classification.contentLength,
+		sourcesCount: outcome.classification.sourcesCount,
+		inlineLinksCount: outcome.classification.inlineLinksCount,
+		sourcePanelLinksCount: outcome.classification.sourcePanelLinksCount,
+		error: outcome.error ?? outcome.classification.error,
 		failureType:
-			classification.status === "failed" ? "extraction_failed" : null,
+			outcome.classification.status === "failed" ? "extraction_failed" : null,
 		proxyUsed,
-		proxyServer: proxyServerLabel(result.usedProxy?.server),
-		attemptCount: result.attemptCount ?? 1,
-		zeroSourceRetry,
+		proxyServer: proxyServerLabel(outcome.result.usedProxy?.server),
+		attemptCount: outcome.attemptCount,
+		zeroSourceRetry: outcome.zeroSourceRetry,
+		zeroSourceRetryOutcome: outcome.zeroSourceRetryOutcome,
 	});
 
+	// The total engine duration includes the wait for user crawls, but the
+	// crawl budget starts when the first crawl actually does. Otherwise a slow
+	// queue wait can leave the retry with only a few seconds of budget.
+	const crawlStartedAt = Date.now();
 	const firstAttempt = await runCrawlAttempt({
 		runner,
+		engine: args.engine,
 		query: args.query,
 		proxies,
 		timeoutMs: args.perEngineTimeoutMs,
 		abortGraceMs: args.abortGraceMs,
+		logger: engineLogger,
 	});
 
 	if (firstAttempt.kind === "error") {
-		return failureOutcome(firstAttempt, false);
+		return failureOutcome(firstAttempt);
 	}
 
-	let result = firstAttempt.result;
-	let classification = classifyCrawlResult(result);
+	const firstAttemptCount = firstAttempt.result.attemptCount ?? 1;
+	const result = firstAttempt.result;
+	const classification = classifyCrawlResult(result);
 
 	// About one in eight ChatGPT answers legitimately cites no sources. A
 	// single zero-source run is not enough to page someone, so retry once
-	// inside the same per-engine time budget. Only two zero-source runs are
+	// inside the same per-engine crawl budget. Only two zero-source runs are
 	// reported as degraded.
-	if (classification.status === "degraded") {
-		let rateLimited = false;
-		try {
-			await args.rateLimit(args.engine);
-			rateLimited = true;
-		} catch (error) {
-			engineLogger.warn(
-				"Crawl health check zero-source retry rate limit failed",
-				{
-					error: toErrorMessage(error),
-				},
-			);
-		}
-
-		const remainingMs = args.perEngineTimeoutMs - (Date.now() - startedAt);
-
-		if (rateLimited && remainingMs > 0) {
-			const retryAttempt = await runCrawlAttempt({
-				runner,
-				query: args.query,
-				proxies,
-				timeoutMs: remainingMs,
-				abortGraceMs: args.abortGraceMs,
-			});
-
-			if (retryAttempt.kind === "error") {
-				return failureOutcome(retryAttempt, true);
-			}
-
-			result = retryAttempt.result;
-			classification = classifyCrawlResult(result);
-			return successOutcome(result, classification, true);
-		}
+	if (classification.status !== "degraded") {
+		return successOutcome({
+			result,
+			classification,
+			attemptCount: firstAttemptCount,
+			zeroSourceRetry: false,
+			zeroSourceRetryOutcome: null,
+		});
 	}
 
-	return successOutcome(result, classification, false);
+	const remainingMs = args.perEngineTimeoutMs - (Date.now() - crawlStartedAt);
+
+	if (remainingMs < args.minRetryBudgetMs) {
+		return successOutcome({
+			result,
+			classification,
+			attemptCount: firstAttemptCount,
+			zeroSourceRetry: false,
+			zeroSourceRetryOutcome: "skipped_budget",
+			error: "zero_source_retry_skipped: budget",
+		});
+	}
+
+	try {
+		await args.rateLimit(args.engine);
+	} catch (error) {
+		engineLogger.warn(
+			"Crawl health check zero-source retry rate limit failed",
+			{
+				error: toErrorMessage(error),
+			},
+		);
+
+		return successOutcome({
+			result,
+			classification,
+			attemptCount: firstAttemptCount,
+			zeroSourceRetry: false,
+			zeroSourceRetryOutcome: "skipped_rate_limit",
+			error: "zero_source_retry_skipped: rate_limit",
+		});
+	}
+
+	const retryAttempt = await runCrawlAttempt({
+		runner,
+		engine: args.engine,
+		query: args.query,
+		proxies,
+		timeoutMs: remainingMs,
+		abortGraceMs: args.abortGraceMs,
+		logger: engineLogger,
+	});
+
+	if (retryAttempt.kind === "error") {
+		const retryError = retryAttempt.timedOut
+			? "timeout"
+			: toErrorMessage(retryAttempt.error);
+
+		return successOutcome({
+			result,
+			classification,
+			attemptCount: firstAttemptCount + retryAttempt.attemptsMade,
+			zeroSourceRetry: true,
+			zeroSourceRetryOutcome: "error",
+			error: `zero_source_retry_failed: ${retryError}`,
+		});
+	}
+
+	const retryClassification = classifyCrawlResult(retryAttempt.result);
+	const retryOutcome: CrawlHealthZeroSourceRetryOutcome =
+		retryClassification.status === "ok"
+			? "ok"
+			: retryClassification.status === "degraded"
+				? "degraded"
+				: "error";
+
+	return successOutcome({
+		result: retryAttempt.result,
+		classification: retryClassification,
+		attemptCount: firstAttemptCount + (retryAttempt.result.attemptCount ?? 1),
+		zeroSourceRetry: true,
+		zeroSourceRetryOutcome: retryOutcome,
+	});
 }
 
 /**
@@ -485,6 +578,8 @@ export async function handleCrawlHealthCheck(
 	const perEngineTimeoutMs =
 		deps.perEngineTimeoutMs ?? CRAWL_HEALTH_CHECK_ENGINE_TIMEOUT_MS;
 	const abortGraceMs = deps.abortGraceMs ?? CRAWL_HEALTH_CHECK_ABORT_GRACE_MS;
+	const minRetryBudgetMs =
+		deps.minRetryBudgetMs ?? CRAWL_HEALTH_CHECK_MIN_RETRY_BUDGET_MS;
 
 	const proxySource = describeProxySource();
 	const statuses = new Map<CrawlHealthEngine, CrawlHealthStatus>(
@@ -519,6 +614,7 @@ export async function handleCrawlHealthCheck(
 			createRunner,
 			perEngineTimeoutMs,
 			abortGraceMs,
+			minRetryBudgetMs,
 		});
 
 		statuses.set(engine, outcome.status);

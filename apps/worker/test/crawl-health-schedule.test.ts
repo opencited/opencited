@@ -16,6 +16,7 @@ describe("decideCrawlHealthSchedule", () => {
 				pattern: PATTERN,
 				tz: TZ,
 				now: NOW,
+				nextJobExists: false,
 			}),
 		).toEqual({ action: "upsert", catchUpJobId: null });
 	});
@@ -31,8 +32,25 @@ describe("decideCrawlHealthSchedule", () => {
 				pattern: PATTERN,
 				tz: TZ,
 				now: NOW,
+				nextJobExists: true,
 			}),
 		).toEqual({ action: "keep", catchUpJobId: null });
+	});
+
+	it("upserts an unchanged scheduler when its next job was deleted", () => {
+		expect(
+			decideCrawlHealthSchedule({
+				existing: {
+					pattern: PATTERN,
+					tz: TZ,
+					next: NOW + 60 * 60 * 1000,
+				},
+				pattern: PATTERN,
+				tz: TZ,
+				now: NOW,
+				nextJobExists: false,
+			}),
+		).toEqual({ action: "upsert", catchUpJobId: null });
 	});
 
 	it("upserts a changed scheduler and catches up an overdue run", () => {
@@ -46,6 +64,7 @@ describe("decideCrawlHealthSchedule", () => {
 				pattern: PATTERN,
 				tz: TZ,
 				now: NOW,
+				nextJobExists: false,
 			}),
 		).toEqual({
 			action: "upsert",
@@ -64,6 +83,7 @@ describe("decideCrawlHealthSchedule", () => {
 				pattern: PATTERN,
 				tz: TZ,
 				now: NOW,
+				nextJobExists: false,
 			}),
 		).toEqual({ action: "upsert", catchUpJobId: null });
 	});

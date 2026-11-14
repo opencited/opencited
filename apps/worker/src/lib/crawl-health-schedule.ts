@@ -37,21 +37,24 @@ export function crawlHealthCatchUpJobId(now: number, timeZone: string): string {
  * the previous delayed job. When the pattern and timezone are unchanged we
  * leave the scheduler alone so an overdue run survives a worker restart.
  *
- * A changed schedule has to be upserted, but the upsert would drop an overdue
- * run. In that case the caller enqueues one deterministic catch-up job.
+ * A missing scheduler, a missing next delayed job (for example deleted in Bull
+ * Board), or a changed schedule has to be upserted. The upsert drops the
+ * previous delayed job, so an overdue run gets one deterministic catch-up job.
  */
 export function decideCrawlHealthSchedule(args: {
 	existing: CrawlHealthSchedulerState | null | undefined;
 	pattern: string;
 	tz: string;
 	now: number;
+	/** Whether the delayed job for `existing.next` still exists. */
+	nextJobExists: boolean;
 }): CrawlHealthScheduleDecision {
 	const { existing } = args;
 	const exists = Boolean(existing?.pattern);
 	const unchanged =
 		exists && existing?.pattern === args.pattern && existing?.tz === args.tz;
 
-	if (unchanged) {
+	if (unchanged && args.nextJobExists) {
 		return { action: "keep", catchUpJobId: null };
 	}
 

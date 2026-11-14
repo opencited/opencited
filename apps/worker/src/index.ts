@@ -420,11 +420,22 @@ async function registerCrawlHealthCheckSchedule(): Promise<void> {
 		const existing = await crawlHealthCheckQueue.getJobScheduler(
 			CRAWL_HEALTH_CHECK_SCHEDULER_ID,
 		);
+		// The scheduler can survive while its delayed job is deleted (Bull
+		// Board). Re-upsert in that case so the next run actually exists.
+		const nextJobExists =
+			typeof existing?.next === "number"
+				? Boolean(
+						await crawlHealthCheckQueue.getJob(
+							`repeat:${CRAWL_HEALTH_CHECK_SCHEDULER_ID}:${existing.next}`,
+						),
+					)
+				: false;
 		const decision = decideCrawlHealthSchedule({
 			existing,
 			pattern: env.CRAWL_HEALTH_CHECK_CRON,
 			tz: env.CRAWL_HEALTH_CHECK_TZ,
 			now: Date.now(),
+			nextJobExists,
 		});
 
 		if (decision.action === "upsert") {

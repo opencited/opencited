@@ -8,7 +8,10 @@ import {
 	type FailureType,
 	type Logger,
 } from "@opencited/browser-crawler";
-import { handleCrawlHealthCheck } from "../src/handlers/crawl-health-check";
+import {
+	CRAWL_HEALTH_CHECK_MIN_RETRY_BUDGET_MS,
+	handleCrawlHealthCheck,
+} from "../src/handlers/crawl-health-check";
 import {
 	CRAWL_HEALTH_DAILY_EVENT,
 	CRAWL_HEALTH_EVENT,
@@ -399,6 +402,7 @@ describe("handleCrawlHealthCheck", () => {
 			defaultDeps({
 				readEngines: async () => [engineAvailability("chatgpt", true)],
 				rateLimit: rateLimitMock,
+				perEngineTimeoutMs: CRAWL_HEALTH_CHECK_MIN_RETRY_BUDGET_MS + 60_000,
 				createRunner: () => ({
 					crawl: async () => {
 						crawlCount++;
@@ -431,6 +435,8 @@ describe("handleCrawlHealthCheck", () => {
 			contentLength: 4_321,
 			sourcesCount: 2,
 			zeroSourceRetry: true,
+			zeroSourceRetryOutcome: "ok",
+			attemptCount: 2,
 		});
 		expect(dailyEvents(logs)[0]?.context).toMatchObject({
 			overallStatus: "ok",
@@ -446,6 +452,7 @@ describe("handleCrawlHealthCheck", () => {
 			logger,
 			defaultDeps({
 				readEngines: async () => [engineAvailability("chatgpt", true)],
+				perEngineTimeoutMs: CRAWL_HEALTH_CHECK_MIN_RETRY_BUDGET_MS + 60_000,
 				createRunner: () => ({
 					crawl: async () => {
 						crawlCount++;
@@ -469,6 +476,8 @@ describe("handleCrawlHealthCheck", () => {
 			contentLength: 9_812,
 			sourcesCount: 0,
 			zeroSourceRetry: true,
+			zeroSourceRetryOutcome: "degraded",
+			attemptCount: 2,
 		});
 		expect(logs.find((log) => log.message === CRAWL_HEALTH_EVENT)?.level).toBe(
 			"warn",
@@ -476,6 +485,152 @@ describe("handleCrawlHealthCheck", () => {
 		expect(dailyEvents(logs)[0]?.level).toBe("warn");
 		expect(dailyEvents(logs)[0]?.context).toMatchObject({
 			overallStatus: "degraded",
+		});
+	});
+
+	it("skips the zero-source retry when the first run leaves too little budget", async () => {
+		const { logger, logs } = makeLogger();
+		const rateLimitMock = mock(async () => {});
+		let crawlCount = 0;
+
+		await handleCrawlHealthCheck(
+			makeJob({ trigger: "manual", engines: ["chatgpt"] }),
+			logger,
+			defaultDeps({
+				readEngines: async () => [engineAvailability("chatgpt", true)],
+				rateLimit: rateLimitMock,
+				// Below the 3-minute retry floor.
+				perEngineTimeoutMs: 60_000,
+				createRunner: () => ({
+					crawl: async () => {
+						crawlCount++;
+						return crawlResult("chatgpt", {
+							contentLength: 9_812,
+							inlineLinks: 0,
+							sourcePanelLinks: 0,
+						});
+					},
+					classifyError: () => "unknown" as FailureType,
+				}),
+			}),
+		);
+
+		expect(crawlCount).toBe(1);
+		// The initial rate limit still runs; the retry's does not.
+		expect(rateLimitMock).toHaveBeenCalledTimes(1);
+
+		const events = engineEvents(logs);
+		expect(events).toHaveLength(1);
+		expect(events[0]).toMatchObject({
+			status: "degraded",
+			contentLength: 9_812,
+			sourcesCount: 0,
+			error: "zero_source_retry_skipped: budget",
+			zeroSourceRetry: false,
+			zeroSourceRetryOutcome: "skipped_budget",
+			attemptCount: 1,
+		});
+		expect(dailyEvents(logs)[0]?.context).toMatchObject({
+			overallStatus: "degraded",
+		});
+	});
+
+	it("reports degraded, not failed, when the zero-source retry times out", async () => {
+		const { logger, logs } = makeLogger();
+		let crawlCount = 0;
+
+		await handleCrawlHealthCheck(
+			makeJob({ trigger: "manual", engines: ["chatgpt"] }),
+			logger,
+			defaultDeps({
+				readEngines: async () => [engineAvailability("chatgpt", true)],
+				perEngineTimeoutMs: 100,
+				abortGraceMs: 10,
+				// Let the retry start despite the tiny timeout, as a fast first
+				// run would in production.
+				minRetryBudgetMs: 0,
+				createRunner: () => ({
+					crawl: () => {
+						crawlCount++;
+						if (crawlCount === 1) {
+							return Promise.resolve(
+								crawlResult("chatgpt", {
+									contentLength: 9_812,
+									inlineLinks: 0,
+									sourcePanelLinks: 0,
+								}),
+							);
+						}
+						return new Promise<CrawlResult>(() => {});
+					},
+					classifyError: () => "unknown" as FailureType,
+				}),
+			}),
+		);
+
+		expect(crawlCount).toBe(2);
+
+		const events = engineEvents(logs);
+		expect(events).toHaveLength(1);
+		expect(events[0]).toMatchObject({
+			status: "degraded",
+			contentLength: 9_812,
+			sourcesCount: 0,
+			error: "zero_source_retry_failed: timeout",
+			failureType: null,
+			zeroSourceRetry: true,
+			zeroSourceRetryOutcome: "error",
+			attemptCount: 2,
+		});
+		expect(dailyEvents(logs)[0]?.context).toMatchObject({
+			overallStatus: "degraded",
+		});
+	});
+
+	it("reports degraded and skips the retry when the retry rate limit throws", async () => {
+		const { logger, logs } = makeLogger();
+		let rateLimitCalls = 0;
+		let crawlCount = 0;
+
+		await handleCrawlHealthCheck(
+			makeJob({ trigger: "manual", engines: ["chatgpt"] }),
+			logger,
+			defaultDeps({
+				readEngines: async () => [engineAvailability("chatgpt", true)],
+				perEngineTimeoutMs: CRAWL_HEALTH_CHECK_MIN_RETRY_BUDGET_MS + 60_000,
+				rateLimit: async () => {
+					rateLimitCalls++;
+					if (rateLimitCalls > 1) {
+						throw new Error("rate limit backend down");
+					}
+				},
+				createRunner: () => ({
+					crawl: async () => {
+						crawlCount++;
+						return crawlResult("chatgpt", {
+							contentLength: 9_812,
+							inlineLinks: 0,
+							sourcePanelLinks: 0,
+						});
+					},
+					classifyError: () => "unknown" as FailureType,
+				}),
+			}),
+		);
+
+		expect(crawlCount).toBe(1);
+		expect(rateLimitCalls).toBe(2);
+
+		const events = engineEvents(logs);
+		expect(events).toHaveLength(1);
+		expect(events[0]).toMatchObject({
+			status: "degraded",
+			contentLength: 9_812,
+			sourcesCount: 0,
+			error: "zero_source_retry_skipped: rate_limit",
+			zeroSourceRetry: false,
+			zeroSourceRetryOutcome: "skipped_rate_limit",
+			attemptCount: 1,
 		});
 	});
 
@@ -609,6 +764,16 @@ describe("handleCrawlHealthCheck", () => {
 			attemptCount: 1,
 		});
 		expect(dailyEvents(logs)).toHaveLength(1);
+		expect(
+			logs.find(
+				(log) =>
+					log.message ===
+					"Crawl health check crawl did not settle within abort grace",
+			),
+		).toMatchObject({
+			level: "warn",
+			context: { engine: "chatgpt", graceMs: 20 },
+		});
 	});
 
 	it("uses the proxy rotation attempt count from AllProxiesFailedError", async () => {

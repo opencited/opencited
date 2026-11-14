@@ -31,8 +31,11 @@ What it does **not** do:
 On startup the worker reads `getJobScheduler("crawl-health-check-daily")`.
 When the cron pattern and timezone are unchanged it leaves the scheduler alone,
 so an overdue delayed job survives a restart — if the worker is down at 06:00
-IST and comes back at 06:30, it still runs that day. The scheduler is upserted
-only when it is missing or the pattern/timezone changed; that upsert replaces
+IST and comes back at 06:30, it still runs that day. If the scheduler is
+unchanged but its next delayed job is missing (for example deleted in Bull
+Board), it is upserted so the next run is not lost. The scheduler is upserted
+only when it is missing, its next job is missing, or the pattern/timezone
+changed; that upsert replaces
 the previous delayed job, so a changed schedule with an already-overdue run
 also enqueues one deterministic catch-up job
 (`crawl-health-check-catchup-YYYY-MM-DD` in the configured timezone). The
@@ -86,7 +89,7 @@ The classifier reads only the raw `CrawlResult`
 | Status | When |
 |---|---|
 | `ok` | No throw/timeout, trimmed content ≥ 80 chars, `sourcesCount > 0` |
-| `degraded` | Content ≥ 80 chars but both runs have `sourcesCount === 0` (the “no sources button found” case) |
+| `degraded` | Content ≥ 80 chars and the first run has `sourcesCount === 0` (the “no sources button found” case), and either the retry also has zero sources or the retry was skipped/failed |
 | `failed` | Throw, timeout, empty/short extraction (< 80 chars), or bot detection |
 | `skipped` | Engine is disabled in `answer_engine`, or not requested by a manual run |
 
@@ -94,11 +97,17 @@ The classifier reads only the raw `CrawlResult`
 `contentLength` is the raw `result.content.length`; only the 80-character floor
 trims surrounding whitespace.
 
-Each engine gets an 8-minute wall-clock budget. A `Crawler.crawl` call rotates
-proxies internally. If the first result is `degraded`, the engine is crawled
-once more within the same budget (after another `rateLimit(engine)`); the event
-reports `degraded` only if both runs have zero sources, otherwise it reports
-the second result. On timeout the handler aborts the crawl, which closes the
+Each engine gets an 8-minute crawl budget, measured from just before the first
+crawl rather than from when the engine started waiting for user crawls; the
+event's `durationMs` still covers the whole engine, including that wait. A
+`Crawler.crawl` call rotates proxies internally. If the first result is
+`degraded`, the engine is crawled once more (after another
+`rateLimit(engine)`) only when at least 3 minutes of the budget remain. If the
+retry is skipped for budget or rate limiting, or the retry errors or times out,
+the event reports the first result as `degraded` with `zeroSourceRetryOutcome`
+and a short `error` note; `zeroSourceRetry` is true only when a retry actually
+started. Otherwise the event reports the second result. `attemptCount` is the
+sum across both runs. On timeout the handler aborts the crawl, which closes the
 open Camoufox session and stops further proxy attempts, then waits up to 60s
 for the crawl to settle before logging and moving on. Engines run sequentially,
 one Camoufox at a time. If the matching user-crawl queue has active jobs, the
@@ -119,7 +128,8 @@ Per engine — `message: "crawl_health_check"` (level: `info` for ok/skipped,
 ```text
 event, engine, status, durationMs, contentLength, sourcesCount,
 inlineLinksCount, sourcePanelLinksCount, error, failureType, proxyUsed,
-proxySource, proxyServer, attemptCount, zeroSourceRetry, trigger, skippedReason
+proxySource, proxyServer, attemptCount, zeroSourceRetry, zeroSourceRetryOutcome,
+trigger, skippedReason
 ```
 
 Daily summary — `message: "crawl_health_check_daily"`:
@@ -156,7 +166,7 @@ Manage notifiers → New notifier → Email**, then attach it to each monitor.
 ```apl
 ['worker-app']
 | where message == "crawl_health_check" and (status == "failed" or status == "degraded")
-| project _time, engine, status, durationMs, contentLength, sourcesCount, inlineLinksCount, sourcePanelLinksCount, error, failureType, proxySource, proxyServer, attemptCount, zeroSourceRetry, trigger
+| project _time, engine, status, durationMs, contentLength, sourcesCount, inlineLinksCount, sourcePanelLinksCount, error, failureType, proxySource, proxyServer, attemptCount, zeroSourceRetry, zeroSourceRetryOutcome, trigger
 ```
 
 3. **Crawl health check — missing daily run** (Threshold monitor). Worker down,
